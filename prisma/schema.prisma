@@ -1,14 +1,616 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Smart Restaurant - Multi-Tenant Database Schema
+// Database: PostgreSQL
+// Created: December 12, 2025
+// Version: 1.0
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ============================================
+// TENANT & ORGANIZATION TABLES
+// ============================================
+
+model Tenant {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String   @db.VarChar(255)
+  address           String?  @db.VarChar(255)
+  slug              String   @unique @db.VarChar(100)
+  ownerId           String   @map("owner_id") @db.Uuid
+  subscriptionTier  String   @default("basic") @map("subscription_tier") @db.VarChar(50)
+  status            String   @default("active") @db.VarChar(20)
+  settings          Json?    @db.JsonB
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  owner                  User                    @relation("TenantOwner", fields: [ownerId], references: [id])
+  users                  User[]                  @relation("TenantUsers")
+  categories             Category[]
+  menuItems              MenuItem[]
+  modifierGroups         ModifierGroup[]
+  tables                 Table[]
+  orders                 Order[]
+  payments               Payment[]
+  dailySalesSummary      DailySalesSummary[]
+  menuItemAnalytics      MenuItemAnalytics[]
+  notifications          Notification[]
+  auditLogs              AuditLog[]
+  tenantSettings         Setting[]
+
+  @@index([slug])
+  @@index([ownerId])
+  @@index([status])
+  @@map("tenants")
+}
+
+// ============================================
+// USER & AUTHENTICATION TABLES
+// ============================================
+
+model User {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                  String    @unique @db.VarChar(255)
+  passwordHash           String?   @map("password_hash") @db.VarChar(255)
+  fullName               String    @map("full_name") @db.VarChar(255)
+  phone                  String?   @db.VarChar(20)
+  avatarUrl              String?   @map("avatar_url") @db.VarChar(500)
+  role                   String    @db.VarChar(20)
+  tenantId               String?   @map("tenant_id") @db.Uuid
+  emailVerified          Boolean   @default(false) @map("email_verified")
+  status                 String    @default("active") @db.VarChar(20)
+  lastLoginAt            DateTime? @map("last_login_at") @db.Timestamp(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  tenant                 Tenant?                  @relation("TenantUsers", fields: [tenantId], references: [id])
+  ownedTenants           Tenant[]                 @relation("TenantOwner")
+  verificationTokens     UserVerificationToken[]
+  oauthProviders         UserOAuthProvider[]
+  refreshTokens          RefreshToken[]
+  tableSessions          TableSession[]
+  ordersAsCustomer       Order[]                  @relation("OrderCustomer")
+  ordersAsWaiter         Order[]                  @relation("OrderWaiter")
+  orderStatusChanges     OrderStatusHistory[]
+  reviews                Review[]
+  notifications          Notification[]
+  auditLogs              AuditLog[]
+
+  @@index([email])
+  @@index([tenantId])
+  @@index([role])
+  @@index([tenantId, role])
+  @@map("users")
+}
+
+model UserVerificationToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  token     String    @unique @db.VarChar(255)
+  type      String    @db.VarChar(20)
+  expiresAt DateTime  @map("expires_at") @db.Timestamp(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([token, type, expiresAt])
+  @@map("user_verification_tokens")
+}
+
+model UserOAuthProvider {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  provider       String   @db.VarChar(20)
+  providerUserId String   @map("provider_user_id") @db.VarChar(255)
+  accessToken    String?  @map("access_token") @db.Text
+  refreshToken   String?  @map("refresh_token") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("user_oauth_providers")
+}
+
+model RefreshToken {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique @db.VarChar(500)
+  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ============================================
+// MENU MANAGEMENT TABLES
+// ============================================
+
+model Category {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  name         String   @db.VarChar(100)
+  description  String?  @db.Text
+  displayOrder Int      @default(0) @map("display_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  menuItems MenuItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, displayOrder])
+  @@index([tenantId, isActive])
+  @@map("categories")
+}
+
+model MenuItem {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String   @map("tenant_id") @db.Uuid
+  categoryId           String?  @map("category_id") @db.Uuid
+  name                 String   @db.VarChar(255)
+  description          String?  @db.Text
+  basePrice            Decimal  @map("base_price") @db.Decimal(10, 2)
+  preparationTime      Int?     @map("preparation_time")
+  status               String   @default("available") @db.VarChar(20)
+  isChefRecommendation Boolean  @default(false) @map("is_chef_recommendation")
+  allergenInfo         String?  @map("allergen_info") @db.Text
+  nutritionalInfo      Json?    @map("nutritional_info") @db.JsonB
+  popularityScore      Int      @default(0) @map("popularity_score")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  tenant              Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category            Category?                @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  images              MenuItemImage[]
+  modifierGroups      MenuItemModifierGroup[]
+  pairings            MenuItemPairing[]        @relation("MenuItemPairings")
+  relatedPairings     MenuItemPairing[]        @relation("RelatedItemPairings")
+  orderItems          OrderItem[]
+  reviews             Review[]
+  analytics           MenuItemAnalytics[]
+
+  @@index([tenantId])
+  @@index([categoryId])
+  @@index([tenantId, categoryId])
+  @@index([tenantId, status])
+  @@index([tenantId, popularityScore])
+  @@index([tenantId, isChefRecommendation])
+  @@map("menu_items")
+}
+
+model MenuItemImage {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  menuItemId   String   @map("menu_item_id") @db.Uuid
+  imageUrl     String   @map("image_url") @db.VarChar(500)
+  displayOrder Int      @default(0) @map("display_order")
+  isPrimary    Boolean  @default(false) @map("is_primary")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@index([menuItemId])
+  @@index([menuItemId, isPrimary])
+  @@map("menu_item_images")
+}
+
+model ModifierGroup {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  name          String   @db.VarChar(100)
+  type          String   @db.VarChar(20)
+  isRequired    Boolean  @default(false) @map("is_required")
+  minSelections Int      @default(0) @map("min_selections")
+  maxSelections Int?     @map("max_selections")
+  displayOrder  Int      @default(0) @map("display_order")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  tenant        Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  modifiers     Modifier[]
+  menuItems     MenuItemModifierGroup[]
+
+  @@index([tenantId])
+  @@map("modifier_groups")
+}
+
+model Modifier {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  modifierGroupId String   @map("modifier_group_id") @db.Uuid
+  name            String   @db.VarChar(100)
+  priceAdjustment Decimal  @default(0) @map("price_adjustment") @db.Decimal(10, 2)
+  isAvailable     Boolean  @default(true) @map("is_available")
+  displayOrder    Int      @default(0) @map("display_order")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  modifierGroup     ModifierGroup        @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+  orderItemModifiers OrderItemModifier[]
+
+  @@index([modifierGroupId])
+  @@map("modifiers")
+}
+
+model MenuItemModifierGroup {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  menuItemId      String   @map("menu_item_id") @db.Uuid
+  modifierGroupId String   @map("modifier_group_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  menuItem      MenuItem      @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  modifierGroup ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, modifierGroupId])
+  @@index([menuItemId])
+  @@index([modifierGroupId])
+  @@map("menu_item_modifier_groups")
+}
+
+model MenuItemPairing {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  menuItemId    String   @map("menu_item_id") @db.Uuid
+  relatedItemId String   @map("related_item_id") @db.Uuid
+  displayOrder  Int      @default(0) @map("display_order")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  menuItem    MenuItem @relation("MenuItemPairings", fields: [menuItemId], references: [id], onDelete: Cascade)
+  relatedItem MenuItem @relation("RelatedItemPairings", fields: [relatedItemId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, relatedItemId])
+  @@index([menuItemId])
+  @@index([relatedItemId])
+  @@map("menu_item_pairings")
+}
+
+// ============================================
+// TABLE MANAGEMENT TABLES
+// ============================================
+
+model Table {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  tableNumber        String    @map("table_number") @db.VarChar(20)
+  capacity           Int
+  position           String?   @db.VarChar(100)
+  floor              String?   @db.VarChar(100)
+  shape              String?   @db.VarChar(100)
+  status             String    @default("available") @db.VarChar(20)
+  qrCodeToken        String?   @unique @map("qr_code_token") @db.VarChar(500)
+  qrCodeUrl          String?   @map("qr_code_url") @db.VarChar(500)
+  qrCodeGeneratedAt  DateTime? @map("qr_code_generated_at") @db.Timestamp(6)
+  isActive           Boolean   @default(true) @map("is_active")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions      TableSession[]
+  orders        Order[]
+
+  @@unique([tenantId, tableNumber])
+  @@index([tenantId])
+  @@index([qrCodeToken])
+  @@index([tenantId, status])
+  @@map("tables")
+}
+
+model TableSession {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tableId         String    @map("table_id") @db.Uuid
+  customerId      String?   @map("customer_id") @db.Uuid
+  guestName       String?   @map("guest_name") @db.VarChar(255)
+  sessionToken    String    @unique @map("session_token") @db.VarChar(500)
+  startedAt       DateTime  @default(now()) @map("started_at") @db.Timestamp(6)
+  endedAt         DateTime? @map("ended_at") @db.Timestamp(6)
+  durationMinutes Int?      @map("duration_minutes")
+  status          String    @default("active") @db.VarChar(20)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  table    Table   @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  customer User?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  orders   Order[]
+
+  @@index([tableId])
+  @@index([sessionToken])
+  @@index([customerId])
+  @@index([tableId, status])
+  @@map("table_sessions")
+}
+
+// ============================================
+// ORDER MANAGEMENT TABLES
+// ============================================
+
+model Order {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderNumber          String    @unique @map("order_number") @db.VarChar(50)
+  tenantId             String    @map("tenant_id") @db.Uuid
+  tableId              String    @map("table_id") @db.Uuid
+  tableSessionId       String    @map("table_session_id") @db.Uuid
+  customerId           String?   @map("customer_id") @db.Uuid
+  waiterId             String?   @map("waiter_id") @db.Uuid
+  status               String    @default("pending") @db.VarChar(20)
+  priority             String    @default("normal") @db.VarChar(20)
+  subtotal             Decimal   @default(0) @db.Decimal(10, 2)
+  taxAmount            Decimal   @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  discountAmount       Decimal   @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  totalAmount          Decimal   @default(0) @map("total_amount") @db.Decimal(10, 2)
+  specialInstructions  String?   @map("special_instructions") @db.Text
+  rejectionReason      String?   @map("rejection_reason") @db.Text
+  acceptedAt           DateTime? @map("accepted_at") @db.Timestamp(6)
+  completedAt          DateTime? @map("completed_at") @db.Timestamp(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  table         Table                @relation(fields: [tableId], references: [id])
+  tableSession  TableSession         @relation(fields: [tableSessionId], references: [id])
+  customer      User?                @relation("OrderCustomer", fields: [customerId], references: [id], onDelete: SetNull)
+  waiter        User?                @relation("OrderWaiter", fields: [waiterId], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+  payments      Payment[]
+  reviews       Review[]
+
+  @@index([orderNumber])
+  @@index([tenantId])
+  @@index([tableId])
+  @@index([customerId])
+  @@index([waiterId])
+  @@index([tableSessionId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, priority, createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId                 String    @map("order_id") @db.Uuid
+  menuItemId              String    @map("menu_item_id") @db.Uuid
+  quantity                Int       @default(1)
+  unitPrice               Decimal   @map("unit_price") @db.Decimal(10, 2)
+  modifiersTotal          Decimal   @default(0) @map("modifiers_total") @db.Decimal(10, 2)
+  subtotal                Decimal   @db.Decimal(10, 2)
+  status                  String    @default("pending") @db.VarChar(20)
+  specialInstructions     String?   @map("special_instructions") @db.Text
+  preparationStartedAt    DateTime? @map("preparation_started_at") @db.Timestamp(6)
+  preparationCompletedAt  DateTime? @map("preparation_completed_at") @db.Timestamp(6)
+  servedAt                DateTime? @map("served_at") @db.Timestamp(6)
+  estimatedPrepTime       Int?      @map("estimated_prep_time")
+  actualPrepTime          Int?      @map("actual_prep_time")
+  cancellationReason      String?   @map("cancellation_reason") @db.Text
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt               DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  order     Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem  MenuItem            @relation(fields: [menuItemId], references: [id])
+  modifiers OrderItemModifier[]
+
+  @@index([orderId])
+  @@index([menuItemId])
+  @@index([orderId, status])
+  @@map("order_items")
+}
+
+model OrderItemModifier {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderItemId     String   @map("order_item_id") @db.Uuid
+  modifierId      String   @map("modifier_id") @db.Uuid
+  modifierName    String   @map("modifier_name") @db.VarChar(100)
+  priceAdjustment Decimal  @map("price_adjustment") @db.Decimal(10, 2)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  modifier  Modifier  @relation(fields: [modifierId], references: [id])
+
+  @@index([orderItemId])
+  @@index([modifierId])
+  @@map("order_item_modifiers")
+}
+
+model OrderStatusHistory {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId    String    @map("order_id") @db.Uuid
+  fromStatus String?   @map("from_status") @db.VarChar(20)
+  toStatus   String    @map("to_status") @db.VarChar(20)
+  changedBy  String?   @map("changed_by") @db.Uuid
+  notes      String?   @db.Text
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [changedBy], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([createdAt])
+  @@map("order_status_history")
+}
+
+// ============================================
+// PAYMENT TABLES
+// ============================================
+
+model Payment {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId         String    @map("order_id") @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  paymentMethod   String    @map("payment_method") @db.VarChar(50)
+  amount          Decimal   @db.Decimal(10, 2)
+  currency        String    @default("VND") @db.VarChar(3)
+  status          String    @default("pending") @db.VarChar(20)
+  transactionId   String?   @unique @map("transaction_id") @db.VarChar(255)
+  gatewayResponse Json?     @map("gateway_response") @db.JsonB
+  paidAt          DateTime? @map("paid_at") @db.Timestamp(6)
+  refundedAt      DateTime? @map("refunded_at") @db.Timestamp(6)
+  refundAmount    Decimal?  @map("refund_amount") @db.Decimal(10, 2)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([tenantId])
+  @@index([transactionId])
+  @@index([tenantId, status])
+  @@index([tenantId, paymentMethod])
+  @@index([tenantId, paidAt])
+  @@map("payments")
+}
+
+// ============================================
+// REVIEW & RATING TABLES
+// ============================================
+
+model Review {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  menuItemId         String   @map("menu_item_id") @db.Uuid
+  customerId         String   @map("customer_id") @db.Uuid
+  orderId            String?  @map("order_id") @db.Uuid
+  rating             Int
+  comment            String?  @db.Text
+  isVerifiedPurchase Boolean  @default(false) @map("is_verified_purchase")
+  status             String   @default("approved") @db.VarChar(20)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  customer User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  order    Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@unique([customerId, orderId, menuItemId])
+  @@index([menuItemId])
+  @@index([customerId])
+  @@index([orderId])
+  @@map("reviews")
+}
+
+// ============================================
+// ANALYTICS & REPORTING TABLES
+// ============================================
+
+model DailySalesSummary {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  date              DateTime @db.Date
+  totalOrders       Int      @default(0) @map("total_orders")
+  totalRevenue      Decimal  @default(0) @map("total_revenue") @db.Decimal(10, 2)
+  totalCustomers    Int      @default(0) @map("total_customers")
+  averageOrderValue Decimal  @default(0) @map("average_order_value") @db.Decimal(10, 2)
+  peakHour          Int?     @map("peak_hour")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, date])
+  @@index([tenantId])
+  @@index([date])
+  @@map("daily_sales_summary")
+}
+
+model MenuItemAnalytics {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  menuItemId      String   @map("menu_item_id") @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  date            DateTime @db.Date
+  totalOrdered    Int      @default(0) @map("total_ordered")
+  totalRevenue    Decimal  @default(0) @map("total_revenue") @db.Decimal(10, 2)
+  totalCancelled  Int      @default(0) @map("total_cancelled")
+  averageRating   Decimal? @map("average_rating") @db.Decimal(3, 2)
+  averagePrepTime Int?     @map("average_prep_time")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, date])
+  @@index([menuItemId])
+  @@index([tenantId])
+  @@index([date])
+  @@map("menu_item_analytics")
+}
+
+// ============================================
+// NOTIFICATION TABLES
+// ============================================
+
+model Notification {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tenantId  String?   @map("tenant_id") @db.Uuid
+  type      String    @db.VarChar(50)
+  title     String    @db.VarChar(255)
+  message   String    @db.Text
+  data      Json?     @db.JsonB
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at") @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================
+// SYSTEM TABLES
+// ============================================
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String?  @map("tenant_id") @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String   @db.VarChar(50)
+  entityType String   @map("entity_type") @db.VarChar(50)
+  entityId   String?  @map("entity_id") @db.Uuid
+  oldValues  Json?    @map("old_values") @db.JsonB
+  newValues  Json?    @map("new_values") @db.JsonB
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Setting {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  key         String   @db.VarChar(100)
+  value       Json     @db.JsonB
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+  @@map("settings")
 }

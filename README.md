@@ -23,25 +23,66 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Smart Restaurant - A multi-tenant QR-based menu ordering system for dine-in restaurants built with [NestJS](https://github.com/nestjs/nest) and Prisma 7.
+
+## Features
+
+- 🏢 Multi-tenant architecture with row-level isolation
+- 📱 QR code-based table ordering
+- 👨‍🍳 Real-time Kitchen Display System (KDS)
+- 💳 Multiple payment gateway integration (ZaloPay, MoMo, VNPay)
+- 👥 Role-based access control (Super Admin, Owner, Admin, Waiter, Kitchen Staff, Customer)
+- 📊 Analytics and reporting
+- ⭐ Customer reviews and ratings
+
+## Tech Stack
+
+- **Framework**: NestJS 11
+- **Database**: PostgreSQL with Prisma 7
+- **Authentication**: JWT with refresh tokens
+- **Language**: TypeScript 5.7
 
 ## Project setup
 
 ```bash
-$ npm install
+# Install dependencies
+npm install
+
+# Setup environment variables
+cp .env.example .env
+# Edit .env with your database credentials
 ```
+
+## Database Setup
+
+```bash
+# Generate Prisma Client
+npm run prisma:generate
+
+# Run migrations
+npm run prisma:migrate
+
+# Seed database with sample data
+npm run prisma:seed
+
+# Open Prisma Studio (database GUI)
+npm run prisma:studio
+```
+
+See [PRISMA_SETUP.md](./PRISMA_SETUP.md) for detailed Prisma 7 configuration.
+See [SEED_GUIDE.md](./SEED_GUIDE.md) for information about seeded data and test credentials.
 
 ## Compile and run the project
 
 ```bash
 # development
-$ npm run start
+npm run start
 
 # watch mode
-$ npm run start:dev
+npm run start:dev
 
 # production mode
-$ npm run start:prod
+npm run start:prod
 ```
 
 ## Run tests
