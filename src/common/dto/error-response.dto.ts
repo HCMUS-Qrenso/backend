@@ -28,7 +28,7 @@ export class ErrorResponseDto {
 
   @ApiProperty({
     description: 'API endpoint path where the error occurred',
-    example: '/api/auth/login',
+    example: '/auth/login',
   })
   path: string;
 }

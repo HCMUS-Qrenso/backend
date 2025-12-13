@@ -47,7 +47,7 @@ npm run start:dev
 
 **Server will be running at:**
 - API: http://localhost:3000
-- Swagger Docs: http://localhost:3000/api/docs
+- Swagger Docs: http://localhost:3000/docs
 
 ---
 
@@ -579,7 +579,7 @@ Get all users. **[Protected - Admin/Manager only]**
 ### Access Documentation
 Open in your browser:
 ```
-http://localhost:3000/api/docs
+http://localhost:3000/docs
 ```
 
 ### Features
@@ -618,7 +618,7 @@ http://localhost:3000/api/docs
 
 #### 3. Download API Spec
 ```
-http://localhost:3000/api/docs-json
+http://localhost:3000/docs-json
 ```
 
 ### Swagger Configuration
@@ -650,7 +650,7 @@ All API errors follow a consistent structure:
   "message": "Invalid credentials",
   "error": "Bad Request",
   "timestamp": "2025-12-13T10:30:00.000Z",
-  "path": "/api/auth/login"
+  "path": "/auth/login"
 }
 ```
 
@@ -692,7 +692,7 @@ All API errors follow a consistent structure:
   ],
   "error": "Bad Request",
   "timestamp": "2025-12-13T10:30:00.000Z",
-  "path": "/api/auth/signup"
+  "path": "/auth/signup"
 }
 ```
 
@@ -703,7 +703,7 @@ All API errors follow a consistent structure:
   "message": "Invalid credentials",
   "error": "Unauthorized",
   "timestamp": "2025-12-13T10:30:00.000Z",
-  "path": "/api/auth/login"
+  "path": "/auth/login"
 }
 ```
 
@@ -714,7 +714,7 @@ All API errors follow a consistent structure:
   "message": "Forbidden resource",
   "error": "Forbidden",
   "timestamp": "2025-12-13T10:30:00.000Z",
-  "path": "/api/users/all"
+  "path": "/users/all"
 }
 ```
 
@@ -1133,8 +1133,8 @@ npm run test:cov           # Test coverage
 - [Nodemailer](https://nodemailer.com/)
 
 ### API Documentation
-- Swagger UI: http://localhost:3000/api/docs
-- OpenAPI Spec: http://localhost:3000/api/docs-json
+- Swagger UI: http://localhost:3000/docs
+- OpenAPI Spec: http://localhost:3000/docs-json
 
 ---
 
