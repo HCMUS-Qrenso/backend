@@ -16,7 +16,7 @@ export class EmailService {
       this.configService.get<string>('BREVO_FROM_EMAIL') ||
       'noreply@smartrestaurant.com';
     this.fromName =
-      this.configService.get<string>('BREVO_FROM_NAME') || 'Smart Restaurant';
+      this.configService.get<string>('BREVO_FROM_NAME') || 'Qrenso';
 
     if (smtpKey) {
       // Brevo SMTP configuration

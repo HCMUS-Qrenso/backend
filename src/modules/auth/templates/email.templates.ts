@@ -1,6 +1,6 @@
 export const EMAIL_TEMPLATES = {
   verification: {
-    subject: 'Verify Your Email Address - Smart Restaurant',
+    subject: 'Verify Your Email Address - Qrenso',
     getHtml: (fullName: string, verificationUrl: string) => `
       <!DOCTYPE html>
       <html>
@@ -17,7 +17,7 @@ export const EMAIL_TEMPLATES = {
                   <!-- Header -->
                   <tr>
                     <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
-                      <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">Smart Restaurant</h1>
+                      <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">Qrenso</h1>
                     </td>
                   </tr>
                   <!-- Content -->
@@ -25,7 +25,7 @@ export const EMAIL_TEMPLATES = {
                     <td style="padding: 40px 30px;">
                       <h2 style="color: #333333; margin: 0 0 20px; font-size: 24px;">Welcome, ${fullName}! 🎉</h2>
                       <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                        Thank you for registering with Smart Restaurant. We're excited to have you on board!
+                        Thank you for registering with Qrenso. We're excited to have you on board!
                       </p>
                       <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0 0 30px;">
                         Please verify your email address by clicking the button below:
@@ -56,7 +56,7 @@ export const EMAIL_TEMPLATES = {
                   <tr>
                     <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #eeeeee;">
                       <p style="color: #999999; font-size: 14px; margin: 0;">
-                        © ${new Date().getFullYear()} Smart Restaurant. All rights reserved.
+                        © ${new Date().getFullYear()} Qrenso. All rights reserved.
                       </p>
                     </td>
                   </tr>
@@ -70,7 +70,7 @@ export const EMAIL_TEMPLATES = {
   },
 
   passwordReset: {
-    subject: 'Reset Your Password - Smart Restaurant',
+    subject: 'Reset Your Password - Qrenso',
     getHtml: (fullName: string, resetUrl: string) => `
       <!DOCTYPE html>
       <html>
@@ -95,7 +95,7 @@ export const EMAIL_TEMPLATES = {
                     <td style="padding: 40px 30px;">
                       <h2 style="color: #333333; margin: 0 0 20px; font-size: 24px;">Hi ${fullName},</h2>
                       <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                        We received a request to reset your password for your Smart Restaurant account.
+                        We received a request to reset your password for your Qrenso account.
                       </p>
                       <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0 0 30px;">
                         Click the button below to create a new password:
@@ -126,7 +126,7 @@ export const EMAIL_TEMPLATES = {
                   <tr>
                     <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #eeeeee;">
                       <p style="color: #999999; font-size: 14px; margin: 0;">
-                        © ${new Date().getFullYear()} Smart Restaurant. All rights reserved.
+                        © ${new Date().getFullYear()} Qrenso. All rights reserved.
                       </p>
                     </td>
                   </tr>
@@ -140,14 +140,14 @@ export const EMAIL_TEMPLATES = {
   },
 
   welcome: {
-    subject: 'Welcome to Smart Restaurant! 🎊',
+    subject: 'Welcome to Qrenso! 🎊',
     getHtml: (fullName: string) => `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Welcome to Smart Restaurant</title>
+          <title>Welcome to Qrenso</title>
         </head>
         <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
           <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
@@ -168,7 +168,7 @@ export const EMAIL_TEMPLATES = {
                         Your account has been successfully verified! 🎊
                       </p>
                       <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                        You're all set to explore and enjoy all the features Smart Restaurant has to offer.
+                        You're all set to explore and enjoy all the features Qrenso has to offer.
                       </p>
                       <div style="background-color: #f8f9fa; border-left: 4px solid #4facfe; padding: 20px; margin: 30px 0;">
                         <h3 style="color: #333333; margin: 0 0 15px; font-size: 18px;">What's Next?</h3>
@@ -190,7 +190,7 @@ export const EMAIL_TEMPLATES = {
                   <tr>
                     <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #eeeeee;">
                       <p style="color: #999999; font-size: 14px; margin: 0;">
-                        © ${new Date().getFullYear()} Smart Restaurant. All rights reserved.
+                        © ${new Date().getFullYear()} Qrenso. All rights reserved.
                       </p>
                     </td>
                   </tr>
