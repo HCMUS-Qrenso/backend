@@ -8,6 +8,7 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
+import { t } from '../../common/utils';
 import {
   CreateTableDto,
   UpdateTableDto,
@@ -29,11 +30,14 @@ import { Readable } from 'stream';
 export class TablesService {
   private readonly logger = new Logger(TablesService.name);
   private readonly JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-  private readonly QR_API_URL = process.env.QR_API_URL || 'https://api.qrserver.com/v1/create-qr-code/';
+  private readonly QR_API_URL =
+    process.env.QR_API_URL || 'https://api.qrserver.com/v1/create-qr-code/';
   private readonly APP_ORDER_URL =
     process.env.APP_ORDER_URL || 'localhost:3002';
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService
+  ) {}
 
   /**
    * Get paginated list of tables with filtering
@@ -209,7 +213,7 @@ export class TablesService {
 
     if (existing) {
       throw new ConflictException(
-        `Table number '${createTableDto.table_number}' already exists`,
+        t('tables.tableNameExists', 'A table with this name already exists in this restaurant'),
       );
     }
 
@@ -245,7 +249,7 @@ export class TablesService {
 
     return {
       success: true,
-      message: 'Table created successfully',
+      message: t('tables.tableCreatedSuccess', 'Table created successfully'),
       data: {
         id: table.id,
         table_number: table.tableNumber,
@@ -291,7 +295,9 @@ export class TablesService {
     });
 
     if (!table) {
-      throw new NotFoundException('Table not found or access denied');
+      throw new NotFoundException(
+        t('tables.tableNotFoundOrDenied', 'Table not found or access denied'),
+      );
     }
 
     const position = table.position ? JSON.parse(table.position) : null;
@@ -342,7 +348,7 @@ export class TablesService {
     });
 
     if (!table) {
-      throw new NotFoundException('Table not found or access denied');
+      throw new NotFoundException(t('tables.tableNotFoundOrDenied', 'Table not found or access denied'));
     }
 
     // Check table number uniqueness if changing
@@ -361,7 +367,7 @@ export class TablesService {
 
       if (existing) {
         throw new ConflictException(
-          `Table number '${updateTableDto.table_number}' already exists`,
+          t('tables.tableNameExists', 'A table with this name already exists in this restaurant'),
         );
       }
     }
@@ -388,9 +394,7 @@ export class TablesService {
       updateData.isActive = updateTableDto.is_active;
     }
     if (updateTableDto.position !== undefined) {
-      const currentPosition = table.position
-        ? JSON.parse(table.position)
-        : {};
+      const currentPosition = table.position ? JSON.parse(table.position) : {};
       updateData.position = JSON.stringify({
         x: updateTableDto.position.x ?? currentPosition.x ?? 0,
         y: updateTableDto.position.y ?? currentPosition.y ?? 0,
@@ -408,7 +412,7 @@ export class TablesService {
 
     return {
       success: true,
-      message: 'Table updated successfully',
+      message: t('tables.tableUpdatedSuccess', 'Table updated successfully'),
       data: {
         id: updatedTable.id,
         table_number: updatedTable.tableNumber,
@@ -451,12 +455,14 @@ export class TablesService {
     });
 
     if (!table) {
-      throw new NotFoundException('Table not found or access denied');
+      throw new NotFoundException(t('tables.tableNotFoundOrDenied', 'Table not found or access denied'));
     }
 
     // Check if table has active orders or sessions
     if (table.orders.length > 0 || table.sessions.length > 0) {
-      throw new ConflictException('Cannot delete table with active orders');
+      throw new ConflictException(
+        t('tables.cannotDeleteActiveOrders', 'Cannot delete table with active orders'),
+      );
     }
 
     // Soft delete (set is_active to false)
@@ -467,7 +473,7 @@ export class TablesService {
 
     return {
       success: true,
-      message: 'Table deleted successfully',
+      message: t('tables.tableDeletedSuccess', 'Table deleted successfully'),
     };
   }
 
@@ -524,7 +530,7 @@ export class TablesService {
     });
 
     if (!table) {
-      throw new NotFoundException('Table not found or access denied');
+      throw new NotFoundException(t('tables.tableNotFoundOrDenied', 'Table not found or access denied'));
     }
 
     const newPosition = {
@@ -541,7 +547,7 @@ export class TablesService {
 
     return {
       success: true,
-      message: 'Table position updated successfully',
+      message: t('tables.tablePositionUpdatedSuccess', 'Table position updated successfully'),
       data: {
         id: updatedTable.id,
         position: newPosition,
@@ -570,7 +576,7 @@ export class TablesService {
 
     if (tables.length !== tableIds.length) {
       throw new BadRequestException(
-        'One or more tables not found or access denied',
+        t('tables.invalidTableIdsFormat', 'Invalid tableIds format. Expected array of numbers.'),
       );
     }
 
@@ -598,7 +604,7 @@ export class TablesService {
 
     return {
       success: true,
-      message: 'Layout updated successfully',
+      message: t('tables.layoutUpdatedSuccess', 'Layout updated successfully'),
       data: {
         updated_count: results.length,
         tables: results,
@@ -700,7 +706,7 @@ export class TablesService {
     });
 
     if (!table) {
-      throw new NotFoundException('Table not found or access denied');
+      throw new NotFoundException(t('tables.tableNotFoundOrDenied', 'Table not found or access denied'));
     }
 
     // Check if should regenerate
@@ -711,7 +717,7 @@ export class TablesService {
     ) {
       return {
         success: true,
-        message: 'QR code already exists',
+        message: t('tables.qrAlreadyExists', 'QR code already exists'),
         data: {
           id: table.id,
           table_number: table.tableNumber,
@@ -727,7 +733,7 @@ export class TablesService {
 
     return {
       success: true,
-      message: 'QR code generated successfully',
+      message: t('tables.qrGeneratedSuccess', 'QR code generated successfully'),
       data: qrData,
     };
   }
@@ -793,10 +799,7 @@ export class TablesService {
             qr_code_url: qrData.qr_code_url,
           };
         } catch (error) {
-          this.logger.error(
-            `Error generating QR for table ${tableId}:`,
-            error,
-          );
+          this.logger.error(`Error generating QR for table ${tableId}:`, error);
           return {
             table_id: tableId,
             table_number: null,
@@ -837,7 +840,7 @@ export class TablesService {
     });
 
     if (!table) {
-      throw new NotFoundException('Table not found or access denied');
+      throw new NotFoundException(t('tables.tableNotFoundOrDenied', 'Table not found or access denied'));
     }
 
     return {
@@ -872,14 +875,12 @@ export class TablesService {
     });
 
     if (!table) {
-      throw new NotFoundException('Table not found or access denied');
+      throw new NotFoundException(t('tables.tableNotFoundOrDenied', 'Table not found or access denied'));
     }
 
     // Prevent setting to available if there are active orders
     if (status === 'available' && table.orders.length > 0) {
-      throw new BadRequestException(
-        'Cannot set table to available while it has active orders',
-      );
+      throw new BadRequestException(t('tables.invalidTableStatus', 'Invalid table status. Must be available or unavailable.'));
     }
 
     const updatedTable = await this.prisma.table.update({
@@ -889,7 +890,7 @@ export class TablesService {
 
     return {
       success: true,
-      message: 'Table status updated successfully',
+      message: t('tables.tableStatusUpdatedSuccess', 'Table status updated successfully'),
       data: {
         id: updatedTable.id,
         table_number: updatedTable.tableNumber,
@@ -914,7 +915,7 @@ export class TablesService {
     });
 
     if (!table) {
-      throw new NotFoundException('Table not found');
+      throw new NotFoundException(t('tables.tableNotFound', 'Table not found'));
     }
 
     // Create JWT token with table and tenant information
@@ -930,7 +931,7 @@ export class TablesService {
     // Generate ordering URL with tenant slug and table info
     // This is the actual URL that will be embedded in QR code
     const orderingUrl = `${this.APP_ORDER_URL}/${table.tenant.slug}/menu?table=${tableId}&token=${token}`;
-    
+
     // Generate external QR image URL for frontend display
     const qrCodeUrl = `${this.QR_API_URL}?size=200x200&data=${encodeURIComponent(orderingUrl)}`;
 
@@ -939,8 +940,8 @@ export class TablesService {
       where: { id: tableId },
       data: {
         qrCodeToken: token,
-        orderingUrl: orderingUrl,      // Store actual ordering link
-        qrCodeUrl: qrCodeUrl,           // Store external QR image for display
+        orderingUrl: orderingUrl, // Store actual ordering link
+        qrCodeUrl: qrCodeUrl, // Store external QR image for display
         qrCodeGeneratedAt: new Date(),
       },
     });
@@ -949,8 +950,8 @@ export class TablesService {
       id: updatedTable.id,
       table_number: updatedTable.tableNumber,
       qr_code_token: token,
-      qr_code_url: qrCodeUrl,           // External QR image for display
-      ordering_url: orderingUrl,         // Actual ordering link
+      qr_code_url: qrCodeUrl, // External QR image for display
+      ordering_url: orderingUrl, // Actual ordering link
       qr_code_generated_at: updatedTable.qrCodeGeneratedAt,
     };
   }
@@ -998,11 +999,11 @@ export class TablesService {
     });
 
     if (!table) {
-      throw new NotFoundException('Table not found or access denied');
+      throw new NotFoundException(t('tables.tableNotFoundOrDenied', 'Table not found or access denied'));
     }
 
     if (!table.qrCodeUrl) {
-      throw new BadRequestException('QR code not generated for this table');
+      throw new BadRequestException(t('tables.qrNotGenerated', 'QR code not generated for this table'));
     }
 
     if (format === DownloadFormat.PNG) {
@@ -1043,21 +1044,19 @@ export class TablesService {
       doc.moveDown();
 
       // Add table number prominently
-      doc
-        .fontSize(36)
-        .text(`Table ${table.tableNumber}`, { align: 'center' });
+      doc.fontSize(36).text(`Table ${table.tableNumber}`, { align: 'center' });
       doc.moveDown(2);
 
       // Add QR code centered (calculate X position manually)
       const pageWidth = doc.page.width;
       const qrSize = 400;
       const xPosition = (pageWidth - qrSize) / 2;
-      
+
       doc.image(qrImageBuffer, xPosition, doc.y, {
         width: qrSize,
         height: qrSize,
       });
-      
+
       doc.moveDown(12); // Move down after the QR code
 
       // Add instruction text
@@ -1098,7 +1097,7 @@ export class TablesService {
     });
 
     if (tables.length === 0) {
-      throw new BadRequestException('No tables with QR codes found');
+      throw new BadRequestException(t('tables.noTablesWithQr', 'No tables with QR codes found'));
     }
 
     const archive = archiver('zip', { zlib: { level: 9 } });
@@ -1133,7 +1132,9 @@ export class TablesService {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret-key');
 
       if (typeof decoded === 'string') {
-        throw new UnauthorizedException('Invalid token format');
+        throw new UnauthorizedException(
+          t('tables.invalidTokenFormat', 'Invalid token format'),
+        );
       }
 
       const { table_id, tenant_id } = decoded as {
@@ -1152,7 +1153,7 @@ export class TablesService {
         return {
           valid: false,
           error: 'Table not found',
-          message: 'This QR code is no longer valid. Please ask staff for assistance.',
+          message: t('tables.qrNoLongerValid', 'This QR code is no longer valid. Please ask staff for assistance.'),
         };
       }
 
@@ -1160,7 +1161,7 @@ export class TablesService {
         return {
           valid: false,
           error: 'Table is inactive',
-          message: 'This table is currently unavailable. Please ask staff for assistance.',
+          message: t('tables.tableUnavailable', 'This table is currently unavailable. Please ask staff for assistance.'),
         };
       }
 
@@ -1169,7 +1170,7 @@ export class TablesService {
         return {
           valid: false,
           error: 'Token has been regenerated',
-          message: 'This QR code is outdated. Please scan the current QR code on the table.',
+          message: t('tables.qrOutdated', 'This QR code is outdated. Please scan the current QR code on the table.'),
         };
       }
 
@@ -1188,7 +1189,7 @@ export class TablesService {
         return {
           valid: false,
           error: 'Token expired',
-          message: 'This QR code has expired. Please ask staff for a new one.',
+          message: t('tables.qrExpired', 'This QR code has expired. Please ask staff for a new one.'),
         };
       }
 
@@ -1196,11 +1197,13 @@ export class TablesService {
         return {
           valid: false,
           error: 'Invalid token',
-          message: 'This QR code is invalid. Please ask staff for assistance.',
+          message: t('tables.qrInvalid', 'This QR code is invalid. Please ask staff for assistance.'),
         };
       }
 
-      throw new UnauthorizedException('Token verification failed');
+      throw new UnauthorizedException(
+        t('tables.tokenVerificationFailed', 'Token verification failed'),
+      );
     }
   }
 }

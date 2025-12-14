@@ -12,14 +12,15 @@
 2. [Project Overview](#project-overview)
 3. [Setup & Installation](#setup--installation)
 4. [Authentication System](#authentication-system)
-5. [API Documentation](#api-documentation)
-6. [Swagger UI](#swagger-ui)
-7. [Error Handling](#error-handling)
-8. [Architecture & Code Organization](#architecture--code-organization)
-9. [Security Features](#security-features)
-10. [Testing](#testing)
-11. [Deployment](#deployment)
-12. [Troubleshooting](#troubleshooting)
+5. [Localization (i18n)](#localization-i18n)
+6. [API Documentation](#api-documentation)
+7. [Swagger UI](#swagger-ui)
+8. [Error Handling](#error-handling)
+9. [Architecture & Code Organization](#architecture--code-organization)
+10. [Security Features](#security-features)
+11. [Testing](#testing)
+12. [Deployment](#deployment)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -338,6 +339,157 @@ Professional HTML email templates with:
 
 ---
 
+## Localization (i18n)
+
+The backend supports internationalization with **English (en)** and **Vietnamese (vi)** languages.
+
+### How It Works
+
+The backend uses `nestjs-i18n` to provide localized response messages based on the `Accept-Language` header sent by the client.
+
+### Client Usage
+
+To get responses in a specific language, include the `Accept-Language` header in your HTTP requests:
+
+**English (default):**
+```
+Accept-Language: en
+```
+
+**Vietnamese:**
+```
+Accept-Language: vi
+```
+
+### Example Requests
+
+**Login with English messages:**
+```bash
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -H "Accept-Language: en" \
+  -d '{
+    "email": "test@example.com",
+    "password": "wrongpassword"
+  }'
+```
+
+Response:
+```json
+{
+  "statusCode": 401,
+  "message": "Incorrect password"
+}
+```
+
+**Login with Vietnamese messages:**
+```bash
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -H "Accept-Language: vi" \
+  -d '{
+    "email": "test@example.com",
+    "password": "wrongpassword"
+  }'
+```
+
+Response:
+```json
+{
+  "statusCode": 401,
+  "message": "Mật khẩu không chính xác"
+}
+```
+
+### Supported Languages
+
+- **en** (English) - Default language
+- **vi** (Vietnamese)
+
+### Translation Files
+
+Translation files are located in:
+- `src/i18n/en/messages.json` - English translations
+- `src/i18n/vi/messages.json` - Vietnamese translations
+
+### Adding New Languages
+
+To add support for a new language:
+
+1. Create a new folder in `src/i18n/` with the language code (e.g., `fr` for French)
+2. Create a `messages.json` file with all the translation keys
+3. The language will be automatically detected and used when clients send the appropriate `Accept-Language` header
+
+### Adding New Messages
+
+When adding new translatable messages:
+
+1. Add the key-value pair to both `src/i18n/en/messages.json` and `src/i18n/vi/messages.json`
+2. Use the global `t()` utility function in your code:
+
+```typescript
+import { t } from '../../common/utils';
+
+// In your method
+throw new BadRequestException(
+  t('common.badRequest', 'Bad request'),
+);
+```
+
+**Examples:**
+```typescript
+// Authentication errors
+throw new UnauthorizedException(
+  t('auth.emailNotExists', 'Email address not found'),
+);
+
+// Success messages
+return {
+  message: t('auth.userRegistered', 'User registered successfully'),
+};
+
+// Table operations
+throw new NotFoundException(
+  t('tables.tableNotFound', 'Table not found'),
+);
+```
+
+**Note:** 
+- Translation keys do NOT need the `messages.` prefix when using `t()` - it's added automatically
+- The utility function is located at `src/common/utils/i18n.util.ts`
+- Always provide a fallback message in English as the second parameter
+
+### Fallback Behavior
+
+If a client doesn't send an `Accept-Language` header or requests an unsupported language, the system will default to English (en).
+
+### Testing Localization
+
+You can test localization using tools like:
+- **Postman:** Set the `Accept-Language` header in the Headers tab
+- **curl:** Use the `-H "Accept-Language: vi"` flag
+- **Browser DevTools:** Modify the request headers
+- **REST Client extensions in VS Code**
+
+### Current Coverage
+
+All response messages have been localized in the following modules:
+- **Authentication** - signup, login (with specific errors), password reset, email verification
+- **Tables** - CRUD operations, QR code generation, status updates
+- **Error messages** - validation errors, not found, unauthorized, etc.
+
+### Login Error Messages
+
+The login endpoint now provides specific error messages:
+
+| Error | English | Vietnamese |
+|-------|---------|------------|
+| Email not found | "Email address not found" | "Không tìm thấy địa chỉ email" |
+| Wrong password | "Incorrect password" | "Mật khẩu không chính xác" |
+| Account inactive | "Account is inactive" | "Tài khoản đã bị vô hiệu hóa" |
+
+---
+
 ## API Documentation
 
 ### Base URL
@@ -401,7 +553,8 @@ Login with email and password.
 *Note: Refresh token is automatically set in HTTP-only cookie*
 
 **Errors:**
-- `401 Unauthorized` - Invalid credentials
+- `401 Unauthorized` - Email address not found
+- `401 Unauthorized` - Incorrect password
 - `401 Unauthorized` - Account inactive
 
 ---

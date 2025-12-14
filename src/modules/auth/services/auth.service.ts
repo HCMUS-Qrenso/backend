@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../../prisma.service';
-import { HashUtil } from '../../../common/utils';
+import { HashUtil, t } from '../../../common/utils';
 import { JwtPayload, AuthResponse } from '../../../common/interfaces';
 import {
   LoginDto,
@@ -38,7 +38,9 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('User with this email already exists');
+      throw new ConflictException(
+        t('auth.userExists', 'User with this email already exists'),
+      );
     }
 
     const passwordHash = await HashUtil.hash(password);
@@ -69,8 +71,7 @@ export class AuthService {
     this.logger.log(`User registered: ${email}`);
 
     return {
-      message:
-        'User registered successfully. Please check your email to verify your account.',
+      message: t('auth.userRegistered', 'User registered successfully'),
     };
   }
 
@@ -81,18 +82,30 @@ export class AuthService {
       where: { email },
     });
 
-    if (!user || !user.passwordHash) {
-      throw new UnauthorizedException('Invalid credentials');
+    if (!user) {
+      throw new UnauthorizedException(
+        t('auth.emailNotExists', 'Email address not found'),
+      );
+    }
+
+    if (!user.passwordHash) {
+      throw new UnauthorizedException(
+        t('auth.invalidCredentials', 'Invalid credentials'),
+      );
     }
 
     const isPasswordValid = await HashUtil.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(
+        t('auth.wrongPassword', 'Incorrect password'),
+      );
     }
 
     if (user.status !== 'active') {
-      throw new UnauthorizedException('Account is inactive');
+      throw new UnauthorizedException(
+        t('auth.accountInactive', 'Account is inactive'),
+      );
     }
 
     await this.prisma.user.update({
@@ -111,7 +124,9 @@ export class AuthService {
     const user = await this.tokenService.validateRefreshToken(refreshToken);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException(
+        t('auth.invalidRefreshToken', 'Invalid or expired refresh token'),
+      );
     }
 
     await this.tokenService.deleteRefreshToken(refreshToken);
@@ -132,7 +147,7 @@ export class AuthService {
 
     if (!user) {
       return {
-        message: 'If the email exists, a password reset link has been sent.',
+        message: t('auth.passwordResetSent', 'If the email exists, a password reset link has been sent.'),
       };
     }
 
@@ -150,7 +165,7 @@ export class AuthService {
     this.logger.log(`Password reset requested for: ${email}`);
 
     return {
-      message: 'If the email exists, a password reset link has been sent.',
+      message: t('auth.passwordResetSent', 'If the email exists, a password reset link has been sent.'),
     };
   }
 
@@ -184,7 +199,7 @@ export class AuthService {
     this.logger.log(`Password reset for user: ${validation.user!.email}`);
 
     return {
-      message: 'Password reset successfully',
+      message: t('auth.passwordResetSuccess', 'Password reset successfully'),
     };
   }
 
@@ -202,7 +217,9 @@ export class AuthService {
     }
 
     if (validation.user!.email !== email) {
-      throw new BadRequestException('Invalid email address');
+      throw new BadRequestException(
+        t('auth.invalidEmail', 'Invalid email address'),
+      );
     }
 
     await this.prisma.$transaction([
@@ -221,7 +238,7 @@ export class AuthService {
     this.logger.log(`Email verified for user: ${email}`);
 
     return {
-      message: 'Email verified successfully',
+      message: t('auth.emailVerifiedSuccess', 'Email verified successfully'),
     };
   }
 
@@ -309,7 +326,7 @@ export class AuthService {
     }
 
     return {
-      message: 'Logged out successfully',
+      message: t('auth.logoutSuccess', 'Logged out successfully'),
     };
   }
 

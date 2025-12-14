@@ -32,6 +32,7 @@ import {
 } from './dto';
 import { GoogleAuthGuard, JwtAuthGuard } from './guards';
 import { Public, CurrentUser } from '../../common/decorators';
+import { t } from '../../common/utils';
 import { COOKIE_CONFIG } from '../../common/constants';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 
@@ -40,7 +41,9 @@ import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService
+  ) {}
 
   private setRefreshTokenCookie(res: Response, token: string): void {
     res.cookie(
@@ -59,7 +62,11 @@ export class AuthController {
   @Public()
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Register a new user account' })
+  @ApiOperation({
+    summary: 'Register a new user account',
+    description:
+      'Create a new user account and send verification email. Supports localization via Accept-Language header for response messages.',
+  })
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'User registered successfully. Verification email sent.',
@@ -82,7 +89,11 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiOperation({
+    summary: 'Login with email and password',
+    description:
+      'Authenticate user with email and password. Returns specific error messages for different failure scenarios. Supports localization via Accept-Language header.',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description:
@@ -91,8 +102,37 @@ export class AuthController {
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid credentials or account inactive',
+    description:
+      'Authentication failed. Possible errors:\n' +
+      '- Email address not found\n' +
+      '- Incorrect password\n' +
+      '- Account is inactive',
     type: ErrorResponseDto,
+    schema: {
+      oneOf: [
+        {
+          properties: {
+            statusCode: { type: 'number', example: 401 },
+            message: { type: 'string', example: 'Email address not found' },
+            error: { type: 'string', example: 'Unauthorized' },
+          },
+        },
+        {
+          properties: {
+            statusCode: { type: 'number', example: 401 },
+            message: { type: 'string', example: 'Incorrect password' },
+            error: { type: 'string', example: 'Unauthorized' },
+          },
+        },
+        {
+          properties: {
+            statusCode: { type: 'number', example: 401 },
+            message: { type: 'string', example: 'Account is inactive' },
+            error: { type: 'string', example: 'Unauthorized' },
+          },
+        },
+      ],
+    },
   })
   async login(
     @Body() loginDto: LoginDto,
@@ -135,7 +175,9 @@ export class AuthController {
 
     if (!refreshToken) {
       this.clearRefreshTokenCookie(res);
-      throw new UnauthorizedException('Refresh token not found');
+      throw new UnauthorizedException(
+        t('auth.refreshTokenNotFound', 'Refresh token not found'),
+      );
     }
 
     try {
@@ -268,7 +310,9 @@ export class AuthController {
     this.clearRefreshTokenCookie(res);
     this.logger.log(`User logged out: ${userId}`);
 
-    return { message: 'Logged out successfully' };
+    return {
+      message: t('auth.logoutSuccess', 'Logged out successfully'),
+    };
   }
 
   @UseGuards(JwtAuthGuard)

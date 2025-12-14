@@ -1,6 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { I18nModule, AcceptLanguageResolver, I18nMiddleware } from 'nestjs-i18n';
+import * as path from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaService } from './prisma.service';
@@ -14,6 +16,14 @@ import { JwtAuthGuard } from './modules/auth/guards';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+    I18nModule.forRoot({
+      fallbackLanguage: 'en',
+      loaderOptions: {
+        path: path.join(__dirname, 'i18n'),
+        watch: true,
+      },
+      resolvers: [AcceptLanguageResolver],
     }),
     AuthModule,
     UserModule,
@@ -30,4 +40,8 @@ import { JwtAuthGuard } from './modules/auth/guards';
   ],
   exports: [PrismaService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(I18nMiddleware).forRoutes('*');
+  }
+}

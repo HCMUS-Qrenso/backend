@@ -151,7 +151,10 @@ export class TablesController {
     status: 409,
     description: 'Table number already exists',
   })
-  async create(@CurrentUser() user: any, @Body() createTableDto: CreateTableDto) {
+  async create(
+    @CurrentUser() user: any,
+    @Body() createTableDto: CreateTableDto,
+  ) {
     return this.tablesService.create(user.tenantId, createTableDto);
   }
 

@@ -32,7 +32,21 @@ async function bootstrap() {
   // Setup Swagger documentation
   const config = new DocumentBuilder()
     .setTitle('Backend API')
-    .setDescription('API documentation for the backend application')
+    .setDescription(
+      'API documentation for the backend application\n\n' +
+        '## 🌐 Localization\n\n' +
+        'This API supports multiple languages through the `Accept-Language` header.\n\n' +
+        '**Supported Languages:**\n' +
+        '- `en` (English) - Default\n' +
+        '- `vi` (Vietnamese)\n\n' +
+        '**Usage:**\n' +
+        'Include the `Accept-Language` header in your requests to receive localized responses.\n\n' +
+        '**Example:**\n' +
+        '```\n' +
+        'Accept-Language: vi\n' +
+        '```\n\n' +
+        'All error messages, success messages, and validation messages will be returned in the specified language.',
+    )
     .setVersion('1.0')
     .addTag('auth', 'Authentication endpoints')
     .addTag('users', 'User management endpoints')
@@ -52,6 +66,17 @@ async function bootstrap() {
       type: 'apiKey',
       in: 'cookie',
       name: 'refreshToken',
+    })
+    .addGlobalParameters({
+      in: 'header',
+      required: false,
+      name: 'Accept-Language',
+      description: 'Language preference for response messages (en, vi)',
+      schema: {
+        type: 'string',
+        enum: ['en', 'vi'],
+        default: 'en',
+      },
     })
     .build();
 
