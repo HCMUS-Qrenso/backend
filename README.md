@@ -1,6 +1,6 @@
 # Backend API - Complete Documentation
 
-> **Last Updated:** December 13, 2025  
+> **Last Updated:** December 14, 2025  
 > **Version:** 1.0  
 > **Framework:** NestJS 11 with TypeScript
 
@@ -73,6 +73,14 @@ npm run start:dev
 - Password reset flow
 - Google OAuth 2.0
 
+✅ **Tables Management API**
+- Multi-tenant table management with QR codes
+- Floor plan layout management (drag-and-drop positions)
+- QR code generation with JWT tokens (365-day expiry)
+- Download QR codes (PNG 512x512, PDF A4 with branding, ZIP batch)
+- Token verification for customer orders
+- Dual QR storage: ordering_url (actual link) + qr_code_url (display image)
+
 ✅ **API Documentation**
 - Interactive Swagger UI
 - Complete request/response schemas
@@ -110,6 +118,9 @@ npm install
 - `passport-jwt`, `passport-google-oauth20` - Auth strategies
 - `cookie-parser` - Cookie handling
 - `@nestjs/swagger` - API documentation
+- `qrcode` - QR code generation
+- `pdfkit` - PDF generation
+- `archiver` - ZIP file creation
 
 ### 2. Environment Configuration
 
@@ -137,6 +148,10 @@ GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
 
 # Brevo Email (SMTP)
 BREVO_SMTP_USER=your-smtp-login@smtp-brevo.com
+
+# QR Code & Ordering
+APP_ORDER_URL=http://localhost:3001
+QR_API_URL=https://api.qrserver.com/v1/create-qr-code/
 BREVO_SMTP_KEY=your-brevo-smtp-key
 BREVO_FROM_EMAIL=noreply@yourdomain.com
 BREVO_FROM_NAME=Your App Name
@@ -569,6 +584,465 @@ Get all users. **[Protected - Admin/Manager only]**
 ]
 ```
 
+
+## Tables Management API
+
+### Overview
+
+The Tables Management API provides comprehensive table and QR code management for multi-tenant restaurant environments. Each table has a unique QR code that customers scan to access the ordering menu.
+
+### Key Features
+
+✅ **Table Management**
+- Full CRUD operations for tables
+- Multi-tenant isolation by restaurant
+- Floor plan layout management with positions (x, y)
+- Table status tracking (available, occupied, reserved, maintenance)
+- Pagination and filtering
+
+✅ **QR Code System**
+- Dual storage strategy:
+  - `ordering_url`: Actual ordering link embedded in QR code
+  - `qr_code_url`: External QR image from api.qrserver.com for display
+- JWT tokens with 365-day expiry
+- Multi-tenant URLs with slug: `/${tenant.slug}/menu?table=X&token=Y`
+- QR code regeneration with token invalidation
+
+✅ **Download Features**
+- PNG format (512x512 high quality)
+- PDF format (A4 with restaurant branding, centered QR)
+- ZIP batch download for all tables
+- Uses stored `ordering_url` 
+- **tables** - Table management and QR codesfor consistent quality
+
+✅ **Floor Layout**
+- Position storage with (x, y) coordinates
+- Floor-based organization
+- Batch position updates for drag-and-drop
+- Table shapes (circle, rectangle, oval)
+
+### QR Code Architecture
+
+#### Storage Strategy
+```typescript
+{
+  qr_code_token: "eyJhbGci...",     // JWT token (TEXT type)
+  ordering_url: "http://localhost:3001/joes-diner/menu?table=X&token=Y", // Actual link (TEXT)
+  qr_code_url: "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=...", // Display image (TEXT)
+  qr_code_generated_at: "2025-12-14T..."
+}
+```
+
+#### Token Payload
+```json
+{
+  "tenant_id": "uuid",
+  "table_id": "uuid",
+  "table_number": "T-01",
+  "issued_at": "2025-12-14T10:30:00Z"
+}
+```
+
+#### QR Generation Flow
+```
+1. Create JWT token (365-day expiry)
+2. Generate ordering_url: ${APP_ORDER_URL}/${tenant.slug}/menu?table=${id}&token=${token}
+3. Generate qr_code_url: ${QR_API_URL}?size=200x200&data=${encodeURIComponent(ordering_url)}
+4. Store all three in database
+5. Return data to client
+```
+
+#### QR Downloads
+- All downloads use stored `ordering_url` for quality and consistency
+- PNG: 512x512 pixels with error correction level H
+- PDF: A4 page with restaurant name, table number, centered QR code
+- ZIP: Batch download with filenames `table-{number}.png`
+
+### Table Endpoints
+
+#### 📋 GET /tables
+Get paginated list of tables with filtering.
+
+**Query Parameters:**
+- `page` (default: 1)
+- `limit` (default: 10)
+- `search` - Search by table number or floor
+- `floor` - Filter by floor
+- `status` - Filter by status
+- `is_active` - Filter by active status
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "tables": [
+      {
+        "id": "uuid",
+        "table_number": "T-01",
+        "capacity": 4,
+        "floor": "Ground Floor",
+        "shape": "rectangle",
+        "status": "available",
+        "is_active": true,
+        "position": { "x": 100, "y": 200 },
+        "current_order": null,
+        "created_at": "2025-12-14T...",
+        "updated_at": "2025-12-14T..."
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 25,
+      "total_pages": 3
+    }
+  }
+}
+```
+
+---
+
+#### 📊 GET /tables/stats
+Get table statistics.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "total_tables": 25,
+    "available_tables": 18,
+    "occupied_tables": 5,
+    "waiting_for_payment": 2,
+    "maintenance_tables": 1,
+    "inactive_tables": 1
+  }
+}
+```
+
+---
+
+#### ➕ POST /tables
+Create a new table.
+
+**Request:**
+```json
+{
+  "table_number": "T-01",
+  "capacity": 4,
+  "floor": "Ground Floor",
+  "shape": "rectangle",
+  "status": "available",
+  "is_active": true,
+  "position": { "x": 100, "y": 200 },
+  "auto_generate_qr": true
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "message": "Table created successfully",
+  "data": {
+    "id": "uuid",
+    "table_number": "T-01",
+    "capacity": 4,
+    "floor": "Ground Floor",
+    "shape": "rectangle",
+    "status": "available",
+    "is_active": true,
+    "position": { "x": 100, "y": 200 },
+    "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?...",
+    "ordering_url": "http://localhost:3001/joes-diner/menu?table=...&token=...",
+    "created_at": "2025-12-14T...",
+    "updated_at": "2025-12-14T..."
+  }
+}
+```
+
+---
+
+#### 🔍 GET /tables/:id
+Get table details by ID.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "table_number": "T-01",
+    "capacity": 4,
+    "floor": "Ground Floor",
+    "shape": "rectangle",
+    "status": "available",
+    "is_active": true,
+    "position": { "x": 100, "y": 200 },
+    "qr_code_token": "eyJhbGci...",
+    "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?...",
+    "ordering_url": "http://localhost:3001/joes-diner/menu?table=...&token=...",
+    "qr_code_generated_at": "2025-12-14T...",
+    "current_order": null,
+    "created_at": "2025-12-14T...",
+    "updated_at": "2025-12-14T..."
+  }
+}
+```
+
+---
+
+#### 📝 PUT /tables/:id
+Update table details.
+
+**Request:**
+```json
+{
+  "table_number": "T-01A",
+  "capacity": 6,
+  "floor": "First Floor",
+  "status": "maintenance",
+  "position": { "x": 150, "y": 250 }
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Table updated successfully",
+  "data": { ... }
+}
+```
+
+---
+
+#### 🗑️ DELETE /tables/:id
+Delete table (soft delete - sets is_active to false).
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Table deleted successfully"
+}
+```
+
+**Errors:**
+- `409 Conflict` - Cannot delete table with active orders
+
+---
+
+### QR Code Endpoints
+
+#### 🎯 POST /tables/:id/qr/generate
+Generate or regenerate QR code for a table.
+
+**Request:**
+```json
+{
+  "force_regenerate": false
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "QR code generated successfully",
+  "data": {
+    "id": "uuid",
+    "table_number": "T-01",
+    "qr_code_token": "eyJhbGci...",
+    "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?...",
+    "ordering_url": "http://localhost:3001/joes-diner/menu?table=...&token=...",
+    "qr_code_generated_at": "2025-12-14T..."
+  }
+}
+```
+
+---
+
+#### 📥 GET /tables/:id/qr/download?format=png|pdf
+Download QR code as PNG or PDF.
+
+**Query Parameters:**
+- `format`: `png` (default) or `pdf`
+
+**Response:** 
+- PNG: `image/png` (512x512 pixels)
+- PDF: `application/pdf` (A4 with branding)
+
+**Headers:**
+```
+Content-Type: image/png | application/pdf
+Content-Disposition: attachment; filename="table-{number}-qr.png|pdf"
+```
+
+---
+
+#### 📦 GET /tables/qr/download-all
+Download all QR codes as ZIP file.
+
+**Response:** `application/zip`
+```
+qr-codes.zip
+├── table-T-01.png
+├── table-T-02.png
+└── table-T-03.png
+```
+
+---
+
+#### ✅ POST /tables/verify-token
+Verify QR code token (public endpoint for customers).
+
+**Request:**
+```json
+{
+  "token": "eyJhbGci..."
+}
+```
+
+**Response:** `200 OK` (Valid)
+```json
+{
+  "valid": true,
+  "table": {
+    "id": "uuid",
+    "tableNumber": "T-01",
+    "floor": "Ground Floor",
+    "capacity": 4,
+    "status": "available"
+  }
+}
+```
+
+**Response:** `200 OK` (Invalid)
+```json
+{
+  "valid": false,
+  "error": "Token expired",
+  "message": "This QR code has expired. Please ask staff for a new one."
+}
+```
+
+---
+
+### Floor Layout Endpoints
+
+#### 🗺️ GET /tables/layout?floor=Ground%20Floor
+Get table layout for a specific floor.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "floor": "Ground Floor",
+    "tables": [
+      {
+        "id": "uuid",
+        "table_number": "T-01",
+        "type": "rectangle",
+        "name": "T-01",
+        "seats": 4,
+        "area": "Ground Floor",
+        "status": "available",
+        "position": { "x": 100, "y": 200 }
+      }
+    ]
+  }
+}
+```
+
+---
+
+#### 🏢 GET /tables/floors
+Get all available floors.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "floors": ["Ground Floor", "First Floor", "Second Floor"]
+  }
+}
+```
+
+---
+
+#### 🔄 POST /tables/layout/batch-update
+Batch update table positions (for drag-and-drop).
+
+**Request:**
+```json
+{
+  "updates": [
+    {
+      "table_id": "uuid-1",
+      "position": { "x": 150, "y": 250 }
+    },
+    {
+      "table_id": "uuid-2",
+      "position": { "x": 300, "y": 100 }
+    }
+  ]
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Layout updated successfully",
+  "data": {
+    "updated_count": 2,
+    "tables": [
+      { "id": "uuid-1", "position": { "x": 150, "y": 250 } },
+      { "id": "uuid-2", "position": { "x": 300, "y": 100 } }
+    ]
+  }
+}
+```
+
+---
+
+### Database Schema
+
+#### Tables Table
+```sql
+CREATE TABLE tables (
+  id UUID PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES tenants(id),
+  table_number VARCHAR(20) NOT NULL,
+  capacity INT NOT NULL,
+  position VARCHAR(100),  -- JSON: {"x": 100, "y": 200}
+  floor VARCHAR(100),
+  shape VARCHAR(100),     -- circle, rectangle, oval
+  status VARCHAR(20) DEFAULT 'available',
+  qr_code_token TEXT UNIQUE,
+  qr_code_url TEXT,       -- External QR image URL
+  ordering_url TEXT,      -- Actual ordering link
+  qr_code_generated_at TIMESTAMP,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  
+  UNIQUE(tenant_id, table_number)
+);
+```
+
+### Additional Documentation
+
+For complete API documentation with all endpoints, see:
+- Frontend API Documentation: `/frontend/API_DOC_FOR_TABLES/TABLES_API_DOCUMENTATION.md`
+- Database Design: `/docs/database/DATABASE_DESIGN.dbml`
+- Database Description: `/docs/database/DATABASE_DESCRIPTION.md`
+
+---
 **Errors:**
 - `403 Forbidden` - Insufficient permissions
 
@@ -630,6 +1104,7 @@ const config = new DocumentBuilder()
   .setDescription('API documentation for the backend application')
   .setVersion('1.0')
   .addTag('auth', 'Authentication endpoints')
+  .addTag('tables', 'Table management and QR code endpoints')
   .addTag('users', 'User management endpoints')
   .addBearerAuth()
   .addCookieAuth('refreshToken')
@@ -798,6 +1273,12 @@ backend/
 │   │   │
 │   │   └── user/             # User module
 │   │       ├── user.controller.ts
+│   │
+│   │   └── tables/           # Tables module
+│   │       ├── dto/          # Table DTOs
+│   │       ├── tables.controller.ts
+│   │       ├── tables.service.ts
+│   │       └── tables.module.ts
 │   │       ├── user.service.ts
 │   │       └── user.module.ts
 │   │
@@ -825,6 +1306,7 @@ constructor(
   private readonly jwtService: JwtService,
   private readonly emailService: EmailService,
   private readonly tokenService: TokenService,
+- **TablesService** - Table and QR code management
 ) {}
 ```
 
@@ -1150,7 +1632,7 @@ npm run test:cov           # Test coverage
 - Never commit `.env` file
 - Use strong JWT secrets
 - Enable HTTPS in production
-- Implement rate limiting
+- Implement rate limiting4
 - Keep dependencies updated
 
 ---

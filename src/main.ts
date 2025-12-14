@@ -36,6 +36,7 @@ async function bootstrap() {
     .setVersion('1.0')
     .addTag('auth', 'Authentication endpoints')
     .addTag('users', 'User management endpoints')
+    .addTag('tables', 'Table management endpoints')
     .addBearerAuth(
       {
         type: 'http',

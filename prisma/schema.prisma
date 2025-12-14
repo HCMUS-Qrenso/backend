@@ -288,8 +288,9 @@ model Table {
   floor              String?   @db.VarChar(100)
   shape              String?   @db.VarChar(100)
   status             String    @default("available") @db.VarChar(20)
-  qrCodeToken        String?   @unique @map("qr_code_token") @db.VarChar(500)
-  qrCodeUrl          String?   @map("qr_code_url") @db.VarChar(500)
+  qrCodeToken        String?   @unique @map("qr_code_token") @db.Text
+  qrCodeUrl          String?   @map("qr_code_url") @db.Text
+  orderingUrl        String?   @map("ordering_url") @db.Text
   qrCodeGeneratedAt  DateTime? @map("qr_code_generated_at") @db.Timestamp(6)
   isActive           Boolean   @default(true) @map("is_active")
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
