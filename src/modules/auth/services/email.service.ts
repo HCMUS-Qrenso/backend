@@ -68,7 +68,7 @@ export class EmailService {
     token: string,
     fullName: string,
   ): Promise<void> {
-    const resetUrl = `${this.configService.get<string>('FRONTEND_URL')}/reset-password?token=${token}`;
+    const resetUrl = `${this.configService.get<string>('FRONTEND_URL')}/auth/reset-password?token=${token}`;
 
     const mailOptions = {
       from: `"${this.fromName}" <${this.fromEmail}>`,
