@@ -29,9 +29,9 @@ import { Readable } from 'stream';
 export class TablesService {
   private readonly logger = new Logger(TablesService.name);
   private readonly JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-  private readonly QR_API_URL = 'https://api.qrserver.com/v1/create-qr-code/';
+  private readonly QR_API_URL = process.env.QR_API_URL || 'https://api.qrserver.com/v1/create-qr-code/';
   private readonly APP_ORDER_URL =
-    process.env.APP_ORDER_URL || 'https://app.smartrestaurant.com/order';
+    process.env.APP_ORDER_URL || 'localhost:3002';
 
   constructor(private readonly prisma: PrismaService) {}
 
