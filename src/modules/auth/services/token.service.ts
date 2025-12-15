@@ -5,9 +5,7 @@ import { TOKEN_CONFIG } from '../../../common/constants';
 
 @Injectable()
 export class TokenService {
-  constructor(
-    private readonly prisma: PrismaService
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async createRefreshToken(userId: string): Promise<string> {
     const token = TokenGenerator.generate(64);

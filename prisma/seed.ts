@@ -212,7 +212,8 @@ async function main() {
       data: {
         tenantId: tenant.id,
         name: 'Appetizers',
-        description: 'Start your meal with these delicious Vietnamese appetizers',
+        description:
+          'Start your meal with these delicious Vietnamese appetizers',
         displayOrder: 1,
         isActive: true,
       },
@@ -265,7 +266,8 @@ async function main() {
         tenantId: tenant.id,
         categoryId: categories[0].id,
         name: 'Fresh Spring Rolls (Gỏi Cuốn)',
-        description: 'Rice paper rolls filled with shrimp, herbs, and vermicelli',
+        description:
+          'Rice paper rolls filled with shrimp, herbs, and vermicelli',
         basePrice: 45000,
         preparationTime: 10,
         status: 'available',
@@ -280,7 +282,8 @@ async function main() {
         tenantId: tenant.id,
         categoryId: categories[0].id,
         name: 'Crispy Spring Rolls (Chả Giò)',
-        description: 'Deep-fried rolls with pork, vegetables, and glass noodles',
+        description:
+          'Deep-fried rolls with pork, vegetables, and glass noodles',
         basePrice: 50000,
         preparationTime: 15,
         status: 'available',
@@ -295,7 +298,8 @@ async function main() {
         tenantId: tenant.id,
         categoryId: categories[1].id,
         name: 'Grilled Pork with Broken Rice (Cơm Tấm)',
-        description: 'Grilled marinated pork chop served with broken rice and fish sauce',
+        description:
+          'Grilled marinated pork chop served with broken rice and fish sauce',
         basePrice: 75000,
         preparationTime: 20,
         status: 'available',

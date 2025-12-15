@@ -118,7 +118,9 @@ export class ZonesService {
     });
 
     if (existing) {
-      throw new ConflictException(t('zones.zoneNameExists', 'A zone with this name already exists'));
+      throw new ConflictException(
+        t('zones.zoneNameExists', 'A zone with this name already exists'),
+      );
     }
 
     const zone = await this.prisma.zone.create({
@@ -137,7 +139,7 @@ export class ZonesService {
     });
 
     this.logger.log(
-      `Zone created: ${zone.id} (${zone.name}) for tenant ${tenantId}`
+      `Zone created: ${zone.id} (${zone.name}) for tenant ${tenantId}`,
     );
 
     return {
@@ -179,7 +181,9 @@ export class ZonesService {
       });
 
       if (duplicate) {
-        throw new ConflictException(t('zones.zoneNameExists', 'A zone with this name already exists'));
+        throw new ConflictException(
+          t('zones.zoneNameExists', 'A zone with this name already exists'),
+        );
       }
     }
 
@@ -236,7 +240,10 @@ export class ZonesService {
     // Check if zone has tables
     if (existing._count.tables > 0) {
       throw new ConflictException(
-        t('zones.zoneHasTables', `Cannot delete zone with ${existing._count.tables} tables assigned to it`)
+        t(
+          'zones.zoneHasTables',
+          `Cannot delete zone with ${existing._count.tables} tables assigned to it`,
+        ),
       );
     }
 

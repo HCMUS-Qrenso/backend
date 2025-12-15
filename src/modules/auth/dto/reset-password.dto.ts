@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString, MinLength, MaxLength, IsStrongPassword } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  MinLength,
+  MaxLength,
+  IsStrongPassword,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ResetPasswordDto {
@@ -11,7 +17,8 @@ export class ResetPasswordDto {
   token: string;
 
   @ApiProperty({
-    description: 'New password (8-255 characters). Must include uppercase, lowercase, number, and special character.',
+    description:
+      'New password (8-255 characters). Must include uppercase, lowercase, number, and special character.',
     example: 'NewSecurePass@123!',
     minLength: 8,
     maxLength: 255,

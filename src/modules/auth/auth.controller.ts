@@ -42,9 +42,7 @@ import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
-  constructor(
-    private readonly authService: AuthService
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   private setRefreshTokenCookie(res: Response, token: string): void {
     res.cookie(
@@ -272,10 +270,7 @@ export class AuthController {
     type: ErrorResponseDto,
   })
   async resendEmail(@Body() resendDto: ResendEmailDto) {
-    return this.authService.resendEmail(
-      resendDto.email,
-      resendDto.type,
-    );
+    return this.authService.resendEmail(resendDto.email, resendDto.type);
   }
 
   @Public()

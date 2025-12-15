@@ -300,7 +300,8 @@ export class TablesController {
     name: 'format',
     enum: DownloadFormat,
     required: false,
-    description: 'Download format: zip (individual PNGs) or pdf (single document)',
+    description:
+      'Download format: zip (individual PNGs) or pdf (single document)',
   })
   @ApiResponse({
     status: 200,

@@ -15,7 +15,6 @@ import {
   RefreshTokenDto,
   ForgotPasswordDto,
   ResetPasswordDto,
-  ResendEmailDto,
   ResendEmailType,
 } from '../dto';
 import { EmailService } from './email.service';
@@ -155,7 +154,10 @@ export class AuthService {
 
     if (!user) {
       return {
-        message: t('auth.passwordResetSent', 'If the email exists, a password reset link has been sent.'),
+        message: t(
+          'auth.passwordResetSent',
+          'If the email exists, a password reset link has been sent.',
+        ),
       };
     }
 
@@ -173,7 +175,10 @@ export class AuthService {
     this.logger.log(`Password reset requested for: ${email}`);
 
     return {
-      message: t('auth.passwordResetSent', 'If the email exists, a password reset link has been sent.'),
+      message: t(
+        'auth.passwordResetSent',
+        'If the email exists, a password reset link has been sent.',
+      ),
     };
   }
 

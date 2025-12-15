@@ -1,7 +1,11 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { I18nModule, AcceptLanguageResolver, I18nMiddleware } from 'nestjs-i18n';
+import {
+  I18nModule,
+  AcceptLanguageResolver,
+  I18nMiddleware,
+} from 'nestjs-i18n';
 import * as path from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
