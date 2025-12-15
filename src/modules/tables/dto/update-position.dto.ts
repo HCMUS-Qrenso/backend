@@ -1,15 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsObject, ValidateNested } from 'class-validator';
+import { IsDecimal, IsObject, ValidateNested, IsInt } from 'class-validator';
 import { Type } from 'class-transformer';
-import {
-  IsInt,
-  IsOptional,
-  Min,
-  Max,
-  IsBoolean,
-  IsString,
-} from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
 
 class PositionUpdateDto {
   @ApiProperty({ example: 100, description: 'X coordinate on canvas' })
@@ -19,6 +10,10 @@ class PositionUpdateDto {
   @ApiProperty({ example: 200, description: 'Y coordinate on canvas' })
   @IsInt()
   y: number;
+
+  @ApiProperty({ example: -45, description: 'Rotation angle in degrees' })
+  @IsDecimal()
+  rotation: number;
 }
 
 export class UpdatePositionDto {

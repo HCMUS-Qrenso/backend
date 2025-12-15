@@ -11,6 +11,7 @@ import {
   MaxLength,
   IsObject,
   ValidateNested,
+  IsDecimal,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -22,6 +23,10 @@ class PositionDto {
   @ApiProperty({ example: 200, description: 'Y coordinate on canvas' })
   @IsInt()
   y: number;
+
+  @ApiProperty({ example: -45, description: 'Rotation angle in degrees' })
+  @IsDecimal()
+  rotation: number;
 }
 
 export enum TableShape {

@@ -76,8 +76,8 @@ npm run start:dev
 
 ✅ **Tables Management API**
 - Multi-tenant table management with QR codes
-- Zone-based organization (floors, VIP areas, outdoor seating)
-- Floor plan layout management (drag-and-drop positions)
+- Zone-based organization (zones: e.g., VIP, outdoor, etc.)
+- Zone layout management (drag-and-drop positions)
 - QR code generation with JWT tokens (365-day expiry)
 - Download QR codes (PNG 512x512, PDF A4 with branding, ZIP batch)
 - Token verification for customer orders
@@ -835,7 +835,7 @@ The Tables Management API provides comprehensive table and QR code management fo
 ✅ **Table Management**
 - Full CRUD operations for tables
 - Multi-tenant isolation by restaurant
-- Floor plan layout management with positions (x, y)
+- Zone layout management with positions (x, y, rotation)
 - Table status tracking (available, occupied, reserved, maintenance)
 - Pagination and filtering
 
@@ -855,9 +855,9 @@ The Tables Management API provides comprehensive table and QR code management fo
   - PDF: Single document with all QRs and table info
 - Uses stored `ordering_url` for consistent quality
 
-✅ **Floor Layout**
+✅ **Zone Layout**
 - Position storage with (x, y) coordinates
-- Floor-based organization
+- Zone-based organization
 - Batch position updates for drag-and-drop
 - Table shapes (circle, rectangle, oval)
 
@@ -906,8 +906,8 @@ Get paginated list of tables with filtering.
 **Query Parameters:**
 - `page` (default: 1)
 - `limit` (default: 10)
-- `search` - Search by table number or floor
-- `floor` - Filter by floor
+- `search` - Search by table number or zone
+- `zone_id` - Filter by zone
 - `status` - Filter by status
 - `is_active` - Filter by active status
 
@@ -925,7 +925,7 @@ Get paginated list of tables with filtering.
         "shape": "rectangle",
         "status": "available",
         "is_active": true,
-        "position": { "x": 100, "y": 200 },
+        "position": { "x": 100, "y": 200, "rotation": 45 },
         "current_order": null,
         "created_at": "2025-12-14T...",
         "updated_at": "2025-12-14T..."
@@ -975,7 +975,7 @@ Create a new table.
   "shape": "rectangle",
   "status": "available",
   "is_active": true,
-  "position": { "x": 100, "y": 200 },
+  "position": { "x": 100, "y": 200, "rotation": 45 },
   "auto_generate_qr": true
 }
 ```
@@ -994,11 +994,14 @@ Create a new table.
     "id": "uuid",
     "table_number": "T-01",
     "capacity": 4,
-    "floor": "Ground Floor",
+    "zone": {
+      "id": "zone-uuid",
+      "name": "VIP Area"
+    },
     "shape": "rectangle",
     "status": "available",
     "is_active": true,
-    "position": { "x": 100, "y": 200 },
+    "position": { "x": 100, "y": 200, "rotation": 45 },
     "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?...",
     "ordering_url": "http://localhost:3001/joes-diner/menu?table=...&token=...",
     "created_at": "2025-12-14T...",
@@ -1024,7 +1027,7 @@ Get table details by ID.
     "shape": "rectangle",
     "status": "available",
     "is_active": true,
-    "position": { "x": 100, "y": 200 },
+    "position": { "x": 100, "y": 200, "rotation": 45 },
     "qr_code_token": "eyJhbGci...",
     "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?...",
     "ordering_url": "http://localhost:3001/joes-diner/menu?table=...&token=...",
@@ -1048,7 +1051,7 @@ Update table details.
   "capacity": 6,
   "zone_id": "123e4567-e89b-12d3-a456-426614174000",
   "status": "maintenance",
-  "position": { "x": 150, "y": 250 }
+  "position": { "x": 150, "y": 250, "rotation": 45 }
 }
 ```
 
@@ -1189,15 +1192,18 @@ Verify QR code token (public endpoint for customers).
 
 ### Floor Layout Endpoints
 
-#### 🗺️ GET /tables/layout?floor=Ground%20Floor
-Get table layout for a specific floor.
+#### 🗺️ GET /tables/layout?zone_id=zone-uuid
+Get table layout for a specific zone.
 
 **Response:** `200 OK`
 ```json
 {
   "success": true,
   "data": {
-    "floor": "Ground Floor",
+    "zone": {
+      "id": "zone-uuid",
+      "name": "VIP Area"
+    },
     "tables": [
       {
         "id": "uuid",
@@ -1205,9 +1211,8 @@ Get table layout for a specific floor.
         "type": "rectangle",
         "name": "T-01",
         "seats": 4,
-        "area": "Ground Floor",
         "status": "available",
-        "position": { "x": 100, "y": 200 }
+        "position": { "x": 100, "y": 200, "rotation": 45 }
       }
     ]
   }
@@ -1216,15 +1221,18 @@ Get table layout for a specific floor.
 
 ---
 
-#### 🏢 GET /tables/floors
-Get all available floors.
+#### 🏢 GET /tables/zones
+Get all available zones.
 
 **Response:** `200 OK`
 ```json
 {
   "success": true,
   "data": {
-    "floors": ["Ground Floor", "First Floor", "Second Floor"]
+    "zones": [
+      { "id": "zone-uuid", "name": "VIP Area" },
+      { "id": "zone-uuid-2", "name": "Outdoor" }
+    ]
   }
 }
 ```
@@ -1240,11 +1248,11 @@ Batch update table positions (for drag-and-drop).
   "updates": [
     {
       "table_id": "uuid-1",
-      "position": { "x": 150, "y": 250 }
+      "position": { "x": 150, "y": 250, "rotation": 45 }
     },
     {
       "table_id": "uuid-2",
-      "position": { "x": 300, "y": 100 }
+      "position": { "x": 300, "y": 100, "rotation": 180 }
     }
   ]
 }
@@ -1258,8 +1266,8 @@ Batch update table positions (for drag-and-drop).
   "data": {
     "updated_count": 2,
     "tables": [
-      { "id": "uuid-1", "position": { "x": 150, "y": 250 } },
-      { "id": "uuid-2", "position": { "x": 300, "y": 100 } }
+      { "id": "uuid-1", "position": { "x": 150, "y": 250, "rotation": 45 } },
+      { "id": "uuid-2", "position": { "x": 300, "y": 100, "rotation": 180 } }
     ]
   }
 }
@@ -1302,7 +1310,7 @@ CREATE TABLE tables (
   zone_id UUID NOT NULL REFERENCES zones(id),
   table_number VARCHAR(20) NOT NULL,
   capacity INT NOT NULL CHECK (capacity BETWEEN 1 AND 20),
-  position VARCHAR(100),  -- JSON: {"x": 100, "y": 200}
+  position VARCHAR(100),  -- JSON: {"x": 100, "y": 200, "rotation": -45}
   shape VARCHAR(100),     -- circle, rectangle, oval
   status VARCHAR(20) DEFAULT 'available',
   qr_code_token TEXT UNIQUE,

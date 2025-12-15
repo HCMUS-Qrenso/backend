@@ -122,6 +122,7 @@ export class TablesService {
           ? {
               x: position.x || 0,
               y: position.y || 0,
+              rotation: position.rotation || 0,
             }
           : null,
         current_order: currentOrder
@@ -230,6 +231,7 @@ export class TablesService {
       ? JSON.stringify({
           x: createTableDto.position.x || 0,
           y: createTableDto.position.y || 0,
+          rotation: createTableDto.position.rotation || 0,
         })
       : JSON.stringify({ x: 0, y: 0 });
 
@@ -269,6 +271,7 @@ export class TablesService {
         position: {
           x: parsedPosition.x || 0,
           y: parsedPosition.y || 0,
+          rotation: parsedPosition.rotation || 0,
         },
         qr_code_url: qrData?.qr_code_url || null,
         ordering_url: qrData?.ordering_url || null,
@@ -328,6 +331,7 @@ export class TablesService {
           ? {
               x: position.x || 0,
               y: position.y || 0,
+              rotation: position.rotation || 0,
             }
           : null,
         qr_code_token: table.qrCodeToken,
@@ -411,6 +415,8 @@ export class TablesService {
       updateData.position = JSON.stringify({
         x: updateTableDto.position.x ?? currentPosition.x ?? 0,
         y: updateTableDto.position.y ?? currentPosition.y ?? 0,
+        rotation:
+          updateTableDto.position.rotation ?? currentPosition.rotation ?? 0,
       });
     }
 
@@ -438,6 +444,7 @@ export class TablesService {
           ? {
               x: parsedPosition.x || 0,
               y: parsedPosition.y || 0,
+              rotation: parsedPosition.rotation || 0,
             }
           : null,
         updated_at: updatedTable.updatedAt,
@@ -530,6 +537,7 @@ export class TablesService {
         position: {
           x: position.x || 0,
           y: position.y || 0,
+          rotation: position.rotation || 0,
         },
       };
     });
@@ -565,6 +573,7 @@ export class TablesService {
     const newPosition = {
       x: updatePositionDto.position.x,
       y: updatePositionDto.position.y,
+      rotation: updatePositionDto.position.rotation,
     };
 
     const updatedTable = await this.prisma.table.update({
@@ -621,6 +630,7 @@ export class TablesService {
         const newPosition = {
           x: update.position.x,
           y: update.position.y,
+          rotation: update.position.rotation,
         };
 
         const updatedTable = await this.prisma.table.update({
