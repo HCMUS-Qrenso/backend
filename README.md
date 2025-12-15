@@ -1,6 +1,6 @@
 # Backend API - Complete Documentation
 
-> **Last Updated:** December 13, 2025  
+> **Last Updated:** December 15, 2025  
 > **Version:** 1.0  
 > **Framework:** NestJS 11 with TypeScript
 
@@ -12,14 +12,15 @@
 2. [Project Overview](#project-overview)
 3. [Setup & Installation](#setup--installation)
 4. [Authentication System](#authentication-system)
-5. [API Documentation](#api-documentation)
-6. [Swagger UI](#swagger-ui)
-7. [Error Handling](#error-handling)
-8. [Architecture & Code Organization](#architecture--code-organization)
-9. [Security Features](#security-features)
-10. [Testing](#testing)
-11. [Deployment](#deployment)
-12. [Troubleshooting](#troubleshooting)
+5. [Localization (i18n)](#localization-i18n)
+6. [API Documentation](#api-documentation)
+7. [Swagger UI](#swagger-ui)
+8. [Error Handling](#error-handling)
+9. [Architecture & Code Organization](#architecture--code-organization)
+10. [Security Features](#security-features)
+11. [Testing](#testing)
+12. [Deployment](#deployment)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -73,6 +74,21 @@ npm run start:dev
 - Password reset flow
 - Google OAuth 2.0
 
+✅ **Tables Management API**
+- Multi-tenant table management with QR codes
+- Zone-based organization (floors, VIP areas, outdoor seating)
+- Floor plan layout management (drag-and-drop positions)
+- QR code generation with JWT tokens (365-day expiry)
+- Download QR codes (PNG 512x512, PDF A4 with branding, ZIP batch)
+- Token verification for customer orders
+- Dual QR storage: ordering_url (actual link) + qr_code_url (display image)
+
+✅ **Zones Management API**
+- CRUD operations for table zones
+- Zone statistics and table counts
+- Display order management for zones
+- Active/inactive zone toggling
+
 ✅ **API Documentation**
 - Interactive Swagger UI
 - Complete request/response schemas
@@ -110,6 +126,9 @@ npm install
 - `passport-jwt`, `passport-google-oauth20` - Auth strategies
 - `cookie-parser` - Cookie handling
 - `@nestjs/swagger` - API documentation
+- `qrcode` - QR code generation
+- `pdfkit` - PDF generation
+- `archiver` - ZIP file creation
 
 ### 2. Environment Configuration
 
@@ -137,6 +156,10 @@ GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
 
 # Brevo Email (SMTP)
 BREVO_SMTP_USER=your-smtp-login@smtp-brevo.com
+
+# QR Code & Ordering
+APP_ORDER_URL=http://localhost:3001
+QR_API_URL=https://api.qrserver.com/v1/create-qr-code/
 BREVO_SMTP_KEY=your-brevo-smtp-key
 BREVO_FROM_EMAIL=noreply@yourdomain.com
 BREVO_FROM_NAME=Your App Name
@@ -323,6 +346,157 @@ Professional HTML email templates with:
 
 ---
 
+## Localization (i18n)
+
+The backend supports internationalization with **English (en)** and **Vietnamese (vi)** languages.
+
+### How It Works
+
+The backend uses `nestjs-i18n` to provide localized response messages based on the `Accept-Language` header sent by the client.
+
+### Client Usage
+
+To get responses in a specific language, include the `Accept-Language` header in your HTTP requests:
+
+**English (default):**
+```
+Accept-Language: en
+```
+
+**Vietnamese:**
+```
+Accept-Language: vi
+```
+
+### Example Requests
+
+**Login with English messages:**
+```bash
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -H "Accept-Language: en" \
+  -d '{
+    "email": "test@example.com",
+    "password": "wrongpassword"
+  }'
+```
+
+Response:
+```json
+{
+  "statusCode": 401,
+  "message": "Incorrect password"
+}
+```
+
+**Login with Vietnamese messages:**
+```bash
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -H "Accept-Language: vi" \
+  -d '{
+    "email": "test@example.com",
+    "password": "wrongpassword"
+  }'
+```
+
+Response:
+```json
+{
+  "statusCode": 401,
+  "message": "Mật khẩu không chính xác"
+}
+```
+
+### Supported Languages
+
+- **en** (English) - Default language
+- **vi** (Vietnamese)
+
+### Translation Files
+
+Translation files are located in:
+- `src/i18n/en/messages.json` - English translations
+- `src/i18n/vi/messages.json` - Vietnamese translations
+
+### Adding New Languages
+
+To add support for a new language:
+
+1. Create a new folder in `src/i18n/` with the language code (e.g., `fr` for French)
+2. Create a `messages.json` file with all the translation keys
+3. The language will be automatically detected and used when clients send the appropriate `Accept-Language` header
+
+### Adding New Messages
+
+When adding new translatable messages:
+
+1. Add the key-value pair to both `src/i18n/en/messages.json` and `src/i18n/vi/messages.json`
+2. Use the global `t()` utility function in your code:
+
+```typescript
+import { t } from '../../common/utils';
+
+// In your method
+throw new BadRequestException(
+  t('common.badRequest', 'Bad request'),
+);
+```
+
+**Examples:**
+```typescript
+// Authentication errors
+throw new UnauthorizedException(
+  t('auth.emailNotExists', 'Email address not found'),
+);
+
+// Success messages
+return {
+  message: t('auth.userRegistered', 'User registered successfully'),
+};
+
+// Table operations
+throw new NotFoundException(
+  t('tables.tableNotFound', 'Table not found'),
+);
+```
+
+**Note:** 
+- Translation keys do NOT need the `messages.` prefix when using `t()` - it's added automatically
+- The utility function is located at `src/common/utils/i18n.util.ts`
+- Always provide a fallback message in English as the second parameter
+
+### Fallback Behavior
+
+If a client doesn't send an `Accept-Language` header or requests an unsupported language, the system will default to English (en).
+
+### Testing Localization
+
+You can test localization using tools like:
+- **Postman:** Set the `Accept-Language` header in the Headers tab
+- **curl:** Use the `-H "Accept-Language: vi"` flag
+- **Browser DevTools:** Modify the request headers
+- **REST Client extensions in VS Code**
+
+### Current Coverage
+
+All response messages have been localized in the following modules:
+- **Authentication** - signup, login (with specific errors), password reset, email verification
+- **Tables** - CRUD operations, QR code generation, status updates
+- **Error messages** - validation errors, not found, unauthorized, etc.
+
+### Login Error Messages
+
+The login endpoint now provides specific error messages:
+
+| Error | English | Vietnamese |
+|-------|---------|------------|
+| Email not found | "Email address not found" | "Không tìm thấy địa chỉ email" |
+| Wrong password | "Incorrect password" | "Mật khẩu không chính xác" |
+| Account inactive | "Account is inactive" | "Tài khoản đã bị vô hiệu hóa" |
+
+---
+
 ## API Documentation
 
 ### Base URL
@@ -339,12 +513,21 @@ Register a new user account.
 ```json
 {
   "email": "user@example.com",
-  "password": "SecurePass123!",
+  "password": "SecurePass@123!",
   "fullName": "John Doe",
-  "phone": "+84901234567",
-  "role": "customer"
+  "phone": "+84901234567"
 }
 ```
+
+**Validation Rules:**
+- **Email**: Must be a valid email format
+- **Password**: Minimum 8 characters, must include:
+  - At least one uppercase letter (A-Z)
+  - At least one lowercase letter (a-z)
+  - At least one number (0-9)
+  - At least one special character (@, #, $, !, %, etc.)
+- **Full Name**: 2-255 characters
+- **Phone**: Valid international phone number format (e.g., +84901234567)
 
 **Response:** `201 Created`
 ```json
@@ -355,7 +538,7 @@ Register a new user account.
 
 **Errors:**
 - `409 Conflict` - Email already exists
-- `400 Bad Request` - Validation errors
+- `400 Bad Request` - Validation errors (weak password, invalid email, invalid phone)
 
 ---
 
@@ -366,7 +549,7 @@ Login with email and password.
 ```json
 {
   "email": "user@example.com",
-  "password": "SecurePass123!"
+  "password": "SecurePass@123!"
 }
 ```
 
@@ -386,7 +569,9 @@ Login with email and password.
 *Note: Refresh token is automatically set in HTTP-only cookie*
 
 **Errors:**
-- `401 Unauthorized` - Invalid credentials
+- `401 Unauthorized` - Email address not found
+- `401 Unauthorized` - Email address not verified (must verify email before login)
+- `401 Unauthorized` - Incorrect password
 - `401 Unauthorized` - Account inactive
 
 ---
@@ -442,9 +627,13 @@ Reset password with token.
 ```json
 {
   "token": "abc123def456ghi789",
-  "newPassword": "NewSecurePass123!"
+  "newPassword": "NewSecurePass@123!"
 }
 ```
+
+**Password Requirements:**
+- Minimum 8 characters
+- Must include uppercase, lowercase, number, and special character
 
 **Response:** `200 OK`
 ```json
@@ -455,6 +644,7 @@ Reset password with token.
 
 **Errors:**
 - `400 Bad Request` - Invalid or expired token
+- `400 Bad Request` - Weak password (doesn't meet requirements)
 
 ---
 
@@ -479,6 +669,64 @@ Verify email address.
 **Errors:**
 - `400 Bad Request` - Invalid verification token
 - `400 Bad Request` - Token expired
+
+---
+
+#### 📧 POST /auth/resend-email
+Resend verification or password reset email.
+
+**Use Cases**: 
+- Resend email verification link if not received or expired
+- Resend password reset link if not received or expired
+
+**Request:**
+```json
+{
+  "email": "user@example.com",
+  "type": "email_verification"
+}
+```
+
+**Type Options:**
+- `email_verification` - Resend email verification link
+- `password_reset` - Resend password reset link
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Verification email sent successfully. Please check your inbox."
+}
+```
+OR
+```json
+{
+  "message": "If the email exists, a password reset link has been sent."
+}
+```
+
+**Errors:**
+- `400 Bad Request` - Email is already verified (only for `email_verification` type)
+
+**Security Note**: 
+- For `email_verification`: Returns success only if email exists and is not verified
+- For `password_reset`: Doesn't reveal whether email exists (returns generic message)
+
+**Examples:**
+```bash
+# Resend email verification
+POST /auth/resend-email
+{
+  "email": "user@example.com",
+  "type": "email_verification"
+}
+
+# Resend password reset
+POST /auth/resend-email
+{
+  "email": "user@example.com",
+  "type": "password_reset"
+}
+```
 
 ---
 
@@ -569,6 +817,483 @@ Get all users. **[Protected - Admin/Manager only]**
 ]
 ```
 
+
+## Tables Management API
+
+### Overview
+
+The Tables Management API provides comprehensive table and QR code management for multi-tenant restaurant environments. Each table has a unique QR code that customers scan to access the ordering menu.
+
+### Key Features
+
+✅ **Table Management**
+- Full CRUD operations for tables
+- Multi-tenant isolation by restaurant
+- Floor plan layout management with positions (x, y)
+- Table status tracking (available, occupied, reserved, maintenance)
+- Pagination and filtering
+
+✅ **QR Code System**
+- Dual storage strategy:
+  - `ordering_url`: Actual ordering link embedded in QR code
+  - `qr_code_url`: External QR image from api.qrserver.com for display
+- JWT tokens with 365-day expiry
+- Multi-tenant URLs with slug: `/${tenant.slug}/menu?table=X&token=Y`
+- QR code regeneration with token invalidation
+
+✅ **Download Features**
+- PNG format (512x512 high quality)
+- PDF format (A4 with restaurant branding, centered QR)
+- Batch download options:
+  - ZIP: Individual PNG files for all tables
+  - PDF: Single document with all QRs and table info
+- Uses stored `ordering_url` for consistent quality
+
+✅ **Floor Layout**
+- Position storage with (x, y) coordinates
+- Floor-based organization
+- Batch position updates for drag-and-drop
+- Table shapes (circle, rectangle, oval)
+
+### QR Code Architecture
+
+#### Storage Strategy
+```typescript
+{
+  qr_code_token: "eyJhbGci...",     // JWT token (TEXT type)
+  ordering_url: "http://localhost:3001/joes-diner/menu?table=X&token=Y", // Actual link (TEXT)
+  qr_code_url: "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=...", // Display image (TEXT)
+  qr_code_generated_at: "2025-12-14T..."
+}
+```
+
+#### Token Payload
+```json
+{
+  "tenant_id": "uuid",
+  "table_id": "uuid",
+  "table_number": "T-01",
+  "issued_at": "2025-12-14T10:30:00Z"
+}
+```
+
+#### QR Generation Flow
+```
+1. Create JWT token (365-day expiry)
+2. Generate ordering_url: ${APP_ORDER_URL}/${tenant.slug}/menu?table=${id}&token=${token}
+3. Generate qr_code_url: ${QR_API_URL}?size=200x200&data=${encodeURIComponent(ordering_url)}
+4. Store all three in database
+5. Return data to client
+```
+
+#### QR Downloads
+- All downloads use stored `ordering_url` for quality and consistency
+- PNG: 512x512 pixels with error correction level H
+- PDF: A4 page with restaurant name, table number, centered QR code
+- ZIP: Batch download with filenames `table-{number}.png`
+
+### Table Endpoints
+
+#### 📋 GET /tables
+Get paginated list of tables with filtering.
+
+**Query Parameters:**
+- `page` (default: 1)
+- `limit` (default: 10)
+- `search` - Search by table number or floor
+- `floor` - Filter by floor
+- `status` - Filter by status
+- `is_active` - Filter by active status
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "tables": [
+      {
+        "id": "uuid",
+        "table_number": "T-01",
+        "capacity": 4,
+        "floor": "Ground Floor",
+        "shape": "rectangle",
+        "status": "available",
+        "is_active": true,
+        "position": { "x": 100, "y": 200 },
+        "current_order": null,
+        "created_at": "2025-12-14T...",
+        "updated_at": "2025-12-14T..."
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 25,
+      "total_pages": 3
+    }
+  }
+}
+```
+
+---
+
+#### 📊 GET /tables/stats
+Get table statistics.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "total_tables": 25,
+    "available_tables": 18,
+    "occupied_tables": 5,
+    "waiting_for_payment": 2,
+    "maintenance_tables": 1,
+    "inactive_tables": 1
+  }
+}
+```
+
+---
+
+#### ➕ POST /tables
+Create a new table.
+
+**Request:**
+```json
+{
+  "table_number": "T-01",
+  "capacity": 4,
+  "zone_id": "123e4567-e89b-12d3-a456-426614174000",
+  "shape": "rectangle",
+  "status": "available",
+  "is_active": true,
+  "position": { "x": 100, "y": 200 },
+  "auto_generate_qr": true
+}
+```
+
+**Field Constraints:**
+- `capacity`: Positive integer between 1-20
+- `table_number`: Max 20 characters, must be unique per tenant
+- `zone_id`: Must reference an existing active zone
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "message": "Table created successfully",
+  "data": {
+    "id": "uuid",
+    "table_number": "T-01",
+    "capacity": 4,
+    "floor": "Ground Floor",
+    "shape": "rectangle",
+    "status": "available",
+    "is_active": true,
+    "position": { "x": 100, "y": 200 },
+    "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?...",
+    "ordering_url": "http://localhost:3001/joes-diner/menu?table=...&token=...",
+    "created_at": "2025-12-14T...",
+    "updated_at": "2025-12-14T..."
+  }
+}
+```
+
+---
+
+#### 🔍 GET /tables/:id
+Get table details by ID.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "table_number": "T-01",
+    "capacity": 4,
+    "floor": "Ground Floor",
+    "shape": "rectangle",
+    "status": "available",
+    "is_active": true,
+    "position": { "x": 100, "y": 200 },
+    "qr_code_token": "eyJhbGci...",
+    "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?...",
+    "ordering_url": "http://localhost:3001/joes-diner/menu?table=...&token=...",
+    "qr_code_generated_at": "2025-12-14T...",
+    "current_order": null,
+    "created_at": "2025-12-14T...",
+    "updated_at": "2025-12-14T..."
+  }
+}
+```
+
+---
+
+#### 📝 PUT /tables/:id
+Update table details.
+
+**Request:**
+```json
+{
+  "table_number": "T-01A",
+  "capacity": 6,
+  "zone_id": "123e4567-e89b-12d3-a456-426614174000",
+  "status": "maintenance",
+  "position": { "x": 150, "y": 250 }
+}
+```
+
+**Note:** Capacity must be between 1-20
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Table updated successfully",
+  "data": { ... }
+}
+```
+
+---
+
+#### 🗑️ DELETE /tables/:id
+Delete table (soft delete - sets is_active to false).
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Table deleted successfully"
+}
+```
+
+**Errors:**
+- `409 Conflict` - Cannot delete table with active orders
+
+---
+
+### QR Code Endpoints
+
+#### 🎯 POST /tables/:id/qr/generate
+Generate or regenerate QR code for a table.
+
+**Request:**
+```json
+{
+  "force_regenerate": false
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "QR code generated successfully",
+  "data": {
+    "id": "uuid",
+    "table_number": "T-01",
+    "qr_code_token": "eyJhbGci...",
+    "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?...",
+    "ordering_url": "http://localhost:3001/joes-diner/menu?table=...&token=...",
+    "qr_code_generated_at": "2025-12-14T..."
+  }
+}
+```
+
+---
+
+#### 📥 GET /tables/:id/qr/download?format=png|pdf
+Download QR code as PNG or PDF.
+
+**Query Parameters:**
+- `format`: `png` (default) or `pdf`
+
+**Response:** 
+- PNG: `image/png` (512x512 pixels)
+- PDF: `application/pdf` (A4 with branding)
+
+**Headers:**
+```
+Content-Type: image/png | application/pdf
+Content-Disposition: attachment; filename="table-{number}-qr.png|pdf"
+```
+
+---
+
+#### 📦 GET /tables/qr/download-all?format=zip|pdf
+Download all QR codes as ZIP or PDF.
+
+**Query Parameters:**
+- `format`: `zip` (default) or `pdf`
+  - `zip`: Individual PNG files for each table
+  - `pdf`: Single PDF containing all QRs with table information
+
+**Response (ZIP):** `application/zip`
+```
+qr-codes.zip
+├── table-T-01.png
+├── table-T-02.png
+└── table-T-03.png
+```
+
+**Response (PDF):** `application/pdf`
+- One table per A4 page
+- Each page includes restaurant name, table number, QR code, and ordering instructions
+- Same professional layout as individual PDF downloads
+
+---
+
+#### ✅ POST /tables/verify-token
+Verify QR code token (public endpoint for customers).
+
+**Request:**
+```json
+{
+  "token": "eyJhbGci..."
+}
+```
+
+**Response:** `200 OK` (Valid)
+```json
+{
+  "valid": true,
+  "table": {
+    "id": "uuid",
+    "tableNumber": "T-01",
+    "floor": "Ground Floor",
+    "capacity": 4,
+    "status": "available"
+  }
+}
+```
+
+**Response:** `200 OK` (Invalid)
+```json
+{
+  "valid": false,
+  "error": "Token expired",
+  "message": "This QR code has expired. Please ask staff for a new one."
+}
+```
+
+---
+
+### Floor Layout Endpoints
+
+#### 🗺️ GET /tables/layout?floor=Ground%20Floor
+Get table layout for a specific floor.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "floor": "Ground Floor",
+    "tables": [
+      {
+        "id": "uuid",
+        "table_number": "T-01",
+        "type": "rectangle",
+        "name": "T-01",
+        "seats": 4,
+        "area": "Ground Floor",
+        "status": "available",
+        "position": { "x": 100, "y": 200 }
+      }
+    ]
+  }
+}
+```
+
+---
+
+#### 🏢 GET /tables/floors
+Get all available floors.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "floors": ["Ground Floor", "First Floor", "Second Floor"]
+  }
+}
+```
+
+---
+
+#### 🔄 POST /tables/layout/batch-update
+Batch update table positions (for drag-and-drop).
+
+**Request:**
+```json
+{
+  "updates": [
+    {
+      "table_id": "uuid-1",
+      "position": { "x": 150, "y": 250 }
+    },
+    {
+      "table_id": "uuid-2",
+      "position": { "x": 300, "y": 100 }
+    }
+  ]
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Layout updated successfully",
+  "data": {
+    "updated_count": 2,
+    "tables": [
+      { "id": "uuid-1", "position": { "x": 150, "y": 250 } },
+      { "id": "uuid-2", "position": { "x": 300, "y": 100 } }
+    ]
+  }
+}
+```
+
+---
+
+### Database Schema
+
+#### Tables Table
+```sql
+CREATE TABLE tables (
+  id UUID PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES tenants(id),
+  table_number VARCHAR(20) NOT NULL,
+  capacity INT NOT NULL,
+  position VARCHAR(100),  -- JSON: {"x": 100, "y": 200}
+  floor VARCHAR(100),
+  shape VARCHAR(100),     -- circle, rectangle, oval
+  status VARCHAR(20) DEFAULT 'available',
+  qr_code_token TEXT UNIQUE,
+  qr_code_url TEXT,       -- External QR image URL
+  ordering_url TEXT,      -- Actual ordering link
+  qr_code_generated_at TIMESTAMP,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  
+  UNIQUE(tenant_id, table_number)
+);
+```
+
+### Additional Documentation
+
+For complete API documentation with all endpoints, see:
+- Frontend API Documentation: `/frontend/API_DOC_FOR_TABLES/TABLES_API_DOCUMENTATION.md`
+- Database Design: `/docs/database/DATABASE_DESIGN.dbml`
+- Database Description: `/docs/database/DATABASE_DESCRIPTION.md`
+
+---
 **Errors:**
 - `403 Forbidden` - Insufficient permissions
 
@@ -630,6 +1355,7 @@ const config = new DocumentBuilder()
   .setDescription('API documentation for the backend application')
   .setVersion('1.0')
   .addTag('auth', 'Authentication endpoints')
+  .addTag('tables', 'Table management and QR code endpoints')
   .addTag('users', 'User management endpoints')
   .addBearerAuth()
   .addCookieAuth('refreshToken')
@@ -798,6 +1524,12 @@ backend/
 │   │   │
 │   │   └── user/             # User module
 │   │       ├── user.controller.ts
+│   │
+│   │   └── tables/           # Tables module
+│   │       ├── dto/          # Table DTOs
+│   │       ├── tables.controller.ts
+│   │       ├── tables.service.ts
+│   │       └── tables.module.ts
 │   │       ├── user.service.ts
 │   │       └── user.module.ts
 │   │
@@ -825,6 +1557,7 @@ constructor(
   private readonly jwtService: JwtService,
   private readonly emailService: EmailService,
   private readonly tokenService: TokenService,
+- **TablesService** - Table and QR code management
 ) {}
 ```
 
@@ -1150,7 +1883,7 @@ npm run test:cov           # Test coverage
 - Never commit `.env` file
 - Use strong JWT secrets
 - Enable HTTPS in production
-- Implement rate limiting
+- Implement rate limiting4
 - Keep dependencies updated
 
 ---

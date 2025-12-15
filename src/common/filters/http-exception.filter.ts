@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { I18nContext } from 'nestjs-i18n';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -16,6 +17,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
+    const i18n = I18nContext.current(host);
 
     let status: number;
     let message: string | string[];
@@ -34,11 +36,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     } else if (exception instanceof Error) {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
-      message = exception.message || 'Internal server error';
+      message =
+        exception.message ||
+        (i18n?.translate('common.internalServerError') ??
+          'Internal server error');
       error = exception.name || 'Internal Server Error';
     } else {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
-      message = 'An unexpected error occurred';
+      message =
+        i18n?.translate('common.internalServerError') ??
+        'An unexpected error occurred';
       error = 'Internal Server Error';
     }
 

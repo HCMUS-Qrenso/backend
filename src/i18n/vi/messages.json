@@ -1,0 +1,62 @@
+{
+  "auth": {
+    "userExists": "Người dùng với email này đã tồn tại",
+    "emailNotExists": "Không tìm thấy địa chỉ email",
+    "wrongPassword": "Mật khẩu không chính xác",
+    "invalidCredentials": "Thông tin đăng nhập không hợp lệ",
+    "accountInactive": "Tài khoản đã bị vô hiệu hóa",
+    "invalidRefreshToken": "Refresh token không hợp lệ hoặc đã hết hạn",
+    "invalidToken": "Token không hợp lệ hoặc đã hết hạn",
+    "invalidEmail": "Địa chỉ email không hợp lệ",
+    "userRegistered": "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.",
+    "passwordResetSent": "Nếu email tồn tại, liên kết đặt lại mật khẩu đã được gửi.",
+    "passwordResetSuccess": "Đặt lại mật khẩu thành công",
+    "emailVerifiedSuccess": "Xác thực email thành công",
+    "logoutSuccess": "Đăng xuất thành công",
+    "refreshTokenNotFound": "Không tìm thấy refresh token",
+    "userNotFoundOrInactive": "Không tìm thấy người dùng hoặc tài khoản đã bị vô hiệu hóa",
+    "emailNotVerified": "Email chưa được xác thực. Vui lòng kiểm tra email để lấy liên kết xác thực hoặc yêu cầu gửi lại.",
+    "emailAlreadyVerified": "Email đã được xác thực",
+    "verificationEmailSent": "Email xác thực đã được gửi thành công. Vui lòng kiểm tra hộp thư của bạn."
+  },
+  "tables": {
+    "tableNameExists": "Một bàn với tên này đã tồn tại trong nhà hàng",
+    "tableCreatedSuccess": "Tạo bàn thành công",
+    "tableNotFoundOrDenied": "Không tìm thấy bàn hoặc bị từ chối truy cập",
+    "tableUpdatedSuccess": "Cập nhật bàn thành công",
+    "cannotDeleteActiveOrders": "Không thể xóa bàn có đơn hàng đang hoạt động",
+    "tableDeletedSuccess": "Xóa bàn thành công",
+    "tablePositionUpdatedSuccess": "Cập nhật vị trí bàn thành công",
+    "layoutUpdatedSuccess": "Cập nhật bố cục thành công",
+    "invalidTableIdsFormat": "Định dạng tableIds không hợp lệ. Mong đợi mảng số.",
+    "qrAlreadyExists": "Mã QR đã tồn tại",
+    "qrGeneratedSuccess": "Tạo mã QR thành công",
+    "qrNotGenerated": "Chưa tạo mã QR cho bàn này",
+    "invalidTableStatus": "Trạng thái bàn không hợp lệ. Phải là available hoặc unavailable.",
+    "tableStatusUpdatedSuccess": "Cập nhật trạng thái bàn thành công",
+    "tableNotFound": "Không tìm thấy bàn",
+    "noTablesWithQr": "Không tìm thấy bàn nào có mã QR",
+    "invalidTokenFormat": "Định dạng token không hợp lệ",
+    "qrInvalid": "Mã QR này không hợp lệ. Vui lòng liên hệ nhân viên để được hỗ trợ.",
+    "qrNoLongerValid": "Mã QR này không còn hợp lệ. Vui lòng liên hệ nhân viên để được hỗ trợ.",
+    "tableUnavailable": "Bàn này hiện không khả dụng. Vui lòng liên hệ nhân viên để được hỗ trợ.",
+    "qrOutdated": "Mã QR này đã lỗi thời. Vui lòng quét mã QR hiện tại trên bàn.",
+    "qrExpired": "Mã QR này đã hết hạn. Vui lòng yêu cầu nhân viên cung cấp mã mới.",
+    "tokenVerificationFailed": "Xác thực token thất bại"
+  },
+  "zones": {
+    "zoneNotFound": "Không tìm thấy khu vực",
+    "zoneNameExists": "Khu vực với tên này đã tồn tại",
+    "zoneHasTables": "Không thể xóa khu vực có {count} bàn được gán cho nó",
+    "zoneDeleted": "Xóa khu vực thành công",
+    "zoneCreatedSuccess": "Tạo khu vực thành công",
+    "zoneUpdatedSuccess": "Cập nhật khu vực thành công"
+  },
+  "common": {
+    "notFound": "Không tìm thấy tài nguyên",
+    "badRequest": "Yêu cầu không hợp lệ",
+    "unauthorized": "Chưa xác thực",
+    "forbidden": "Bị cấm",
+    "internalServerError": "Lỗi máy chủ nội bộ"
+  }
+}

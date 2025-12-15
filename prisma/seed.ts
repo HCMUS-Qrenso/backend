@@ -212,7 +212,8 @@ async function main() {
       data: {
         tenantId: tenant.id,
         name: 'Appetizers',
-        description: 'Start your meal with these delicious Vietnamese appetizers',
+        description:
+          'Start your meal with these delicious Vietnamese appetizers',
         displayOrder: 1,
         isActive: true,
       },
@@ -265,7 +266,8 @@ async function main() {
         tenantId: tenant.id,
         categoryId: categories[0].id,
         name: 'Fresh Spring Rolls (Gỏi Cuốn)',
-        description: 'Rice paper rolls filled with shrimp, herbs, and vermicelli',
+        description:
+          'Rice paper rolls filled with shrimp, herbs, and vermicelli',
         basePrice: 45000,
         preparationTime: 10,
         status: 'available',
@@ -280,7 +282,8 @@ async function main() {
         tenantId: tenant.id,
         categoryId: categories[0].id,
         name: 'Crispy Spring Rolls (Chả Giò)',
-        description: 'Deep-fried rolls with pork, vegetables, and glass noodles',
+        description:
+          'Deep-fried rolls with pork, vegetables, and glass noodles',
         basePrice: 50000,
         preparationTime: 15,
         status: 'available',
@@ -295,7 +298,8 @@ async function main() {
         tenantId: tenant.id,
         categoryId: categories[1].id,
         name: 'Grilled Pork with Broken Rice (Cơm Tấm)',
-        description: 'Grilled marinated pork chop served with broken rice and fish sauce',
+        description:
+          'Grilled marinated pork chop served with broken rice and fish sauce',
         basePrice: 75000,
         preparationTime: 20,
         status: 'available',
@@ -525,88 +529,278 @@ async function main() {
     }),
   ]);
 
-  // 9. Create Tables
+  // 9. Create Zones
+  console.log('🏢 Creating Zones...');
+  const zones = await Promise.all([
+    prisma.zone.create({
+      data: {
+        tenantId: tenant.id,
+        name: 'Tầng 1',
+        description: 'Main dining area on the first floor',
+        displayOrder: 1,
+        isActive: true,
+      },
+    }),
+    prisma.zone.create({
+      data: {
+        tenantId: tenant.id,
+        name: 'Tầng 2',
+        description: 'Second floor dining area',
+        displayOrder: 2,
+        isActive: true,
+      },
+    }),
+    prisma.zone.create({
+      data: {
+        tenantId: tenant.id,
+        name: 'Khu VIP',
+        description: 'VIP private dining area',
+        displayOrder: 3,
+        isActive: true,
+      },
+    }),
+    prisma.zone.create({
+      data: {
+        tenantId: tenant.id,
+        name: 'Khu ngoài trời',
+        description: 'Outdoor seating area',
+        displayOrder: 4,
+        isActive: true,
+      },
+    }),
+  ]);
+  console.log(`✓ Created ${zones.length} zones\n`);
+
+  // 10. Create Tables
   console.log('🪑 Creating Tables...');
   const tables = await Promise.all([
+    // Ground Floor - Tầng 1
     prisma.table.create({
       data: {
         tenantId: tenant.id,
-        tableNumber: 'T01',
+        tableNumber: '1',
         capacity: 2,
-        position: '100,100',
-        floor: 'Ground Floor',
+        position: JSON.stringify({ x: 100, y: 100 }),
+        zoneId: zones[0].id,
         shape: 'circle',
         status: 'available',
-        qrCodeToken: 'jwt_token_table_01_' + Date.now(),
-        qrCodeUrl: 'https://storage.example.com/qr/table-01.png',
-        qrCodeGeneratedAt: new Date(),
         isActive: true,
       },
     }),
     prisma.table.create({
       data: {
         tenantId: tenant.id,
-        tableNumber: 'T02',
+        tableNumber: '2',
         capacity: 4,
-        position: '200,100',
-        floor: 'Ground Floor',
+        position: JSON.stringify({ x: 250, y: 100 }),
+        zoneId: zones[0].id,
         shape: 'rectangle',
         status: 'available',
-        qrCodeToken: 'jwt_token_table_02_' + Date.now(),
-        qrCodeUrl: 'https://storage.example.com/qr/table-02.png',
-        qrCodeGeneratedAt: new Date(),
         isActive: true,
       },
     }),
     prisma.table.create({
       data: {
         tenantId: tenant.id,
-        tableNumber: 'T03',
+        tableNumber: '3',
         capacity: 4,
-        position: '300,100',
-        floor: 'Ground Floor',
+        position: JSON.stringify({ x: 430, y: 100 }),
+        zoneId: zones[0].id,
         shape: 'rectangle',
         status: 'available',
-        qrCodeToken: 'jwt_token_table_03_' + Date.now(),
-        qrCodeUrl: 'https://storage.example.com/qr/table-03.png',
-        qrCodeGeneratedAt: new Date(),
         isActive: true,
       },
     }),
     prisma.table.create({
       data: {
         tenantId: tenant.id,
-        tableNumber: 'T04',
+        tableNumber: '4',
         capacity: 6,
-        position: '100,200',
-        floor: 'Ground Floor',
+        position: JSON.stringify({ x: 100, y: 250 }),
+        zoneId: zones[0].id,
         shape: 'oval',
         status: 'available',
-        qrCodeToken: 'jwt_token_table_04_' + Date.now(),
-        qrCodeUrl: 'https://storage.example.com/qr/table-04.png',
-        qrCodeGeneratedAt: new Date(),
         isActive: true,
       },
     }),
     prisma.table.create({
       data: {
         tenantId: tenant.id,
-        tableNumber: 'T05',
+        tableNumber: '5',
         capacity: 8,
-        position: '200,200',
-        floor: 'Ground Floor',
+        position: JSON.stringify({ x: 300, y: 250 }),
+        zoneId: zones[0].id,
         shape: 'rectangle',
         status: 'available',
-        qrCodeToken: 'jwt_token_table_05_' + Date.now(),
-        qrCodeUrl: 'https://storage.example.com/qr/table-05.png',
-        qrCodeGeneratedAt: new Date(),
+        isActive: true,
+      },
+    }),
+    prisma.table.create({
+      data: {
+        tenantId: tenant.id,
+        tableNumber: '6',
+        capacity: 4,
+        position: JSON.stringify({ x: 100, y: 400 }),
+        zoneId: zones[0].id,
+        shape: 'rectangle',
+        status: 'available',
+        isActive: true,
+      },
+    }),
+    prisma.table.create({
+      data: {
+        tenantId: tenant.id,
+        tableNumber: '7',
+        capacity: 2,
+        position: JSON.stringify({ x: 280, y: 400 }),
+        zoneId: zones[0].id,
+        shape: 'circle',
+        status: 'available',
+        isActive: true,
+      },
+    }),
+    prisma.table.create({
+      data: {
+        tenantId: tenant.id,
+        tableNumber: '8',
+        capacity: 2,
+        position: JSON.stringify({ x: 420, y: 400 }),
+        zoneId: zones[0].id,
+        shape: 'circle',
+        status: 'available',
+        isActive: true,
+      },
+    }),
+
+    // Second Floor - Tầng 2
+    prisma.table.create({
+      data: {
+        tenantId: tenant.id,
+        tableNumber: '9',
+        capacity: 6,
+        position: JSON.stringify({ x: 100, y: 100 }),
+        zoneId: zones[1].id,
+        shape: 'oval',
+        status: 'available',
+        isActive: true,
+      },
+    }),
+    prisma.table.create({
+      data: {
+        tenantId: tenant.id,
+        tableNumber: '10',
+        capacity: 6,
+        position: JSON.stringify({ x: 300, y: 100 }),
+        zoneId: zones[1].id,
+        shape: 'rectangle',
+        status: 'available',
+        isActive: true,
+      },
+    }),
+    prisma.table.create({
+      data: {
+        tenantId: tenant.id,
+        tableNumber: '11',
+        capacity: 4,
+        position: JSON.stringify({ x: 100, y: 250 }),
+        zoneId: zones[1].id,
+        shape: 'rectangle',
+        status: 'available',
+        isActive: true,
+      },
+    }),
+    prisma.table.create({
+      data: {
+        tenantId: tenant.id,
+        tableNumber: '12',
+        capacity: 4,
+        position: JSON.stringify({ x: 280, y: 250 }),
+        zoneId: zones[1].id,
+        shape: 'rectangle',
+        status: 'available',
+        isActive: true,
+      },
+    }),
+
+    // VIP Area - Khu VIP
+    prisma.table.create({
+      data: {
+        tenantId: tenant.id,
+        tableNumber: 'VIP-01',
+        capacity: 10,
+        position: JSON.stringify({ x: 100, y: 100 }),
+        zoneId: zones[2].id,
+        shape: 'rectangle',
+        status: 'available',
+        isActive: true,
+      },
+    }),
+    prisma.table.create({
+      data: {
+        tenantId: tenant.id,
+        tableNumber: 'VIP-02',
+        capacity: 8,
+        position: JSON.stringify({ x: 350, y: 100 }),
+        zoneId: zones[2].id,
+        shape: 'oval',
+        status: 'available',
+        isActive: true,
+      },
+    }),
+
+    // Outdoor Area - Khu ngoài trời
+    prisma.table.create({
+      data: {
+        tenantId: tenant.id,
+        tableNumber: 'OUT-01',
+        capacity: 4,
+        position: JSON.stringify({ x: 100, y: 100 }),
+        zoneId: zones[3].id,
+        shape: 'rectangle',
+        status: 'available',
+        isActive: true,
+      },
+    }),
+    prisma.table.create({
+      data: {
+        tenantId: tenant.id,
+        tableNumber: 'OUT-02',
+        capacity: 4,
+        position: JSON.stringify({ x: 280, y: 100 }),
+        zoneId: zones[3].id,
+        shape: 'rectangle',
+        status: 'available',
+        isActive: true,
+      },
+    }),
+    prisma.table.create({
+      data: {
+        tenantId: tenant.id,
+        tableNumber: 'OUT-03',
+        capacity: 2,
+        position: JSON.stringify({ x: 100, y: 230 }),
+        zoneId: zones[3].id,
+        shape: 'circle',
+        status: 'available',
+        isActive: true,
+      },
+    }),
+    prisma.table.create({
+      data: {
+        tenantId: tenant.id,
+        tableNumber: 'OUT-04',
+        capacity: 2,
+        position: JSON.stringify({ x: 240, y: 230 }),
+        zoneId: zones[3].id,
+        shape: 'circle',
+        status: 'available',
         isActive: true,
       },
     }),
   ]);
   console.log(`✓ Created ${tables.length} tables\n`);
 
-  // 10. Create Sample Table Session and Order
+  // 11. Create Sample Table Session and Order
   console.log('📋 Creating Sample Order...');
   const tableSession = await prisma.tableSession.create({
     data: {

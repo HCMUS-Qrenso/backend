@@ -32,6 +32,7 @@ model Tenant {
   categories             Category[]
   menuItems              MenuItem[]
   modifierGroups         ModifierGroup[]
+  zones                  Zone[]
   tables                 Table[]
   orders                 Order[]
   payments               Payment[]
@@ -279,30 +280,54 @@ model MenuItemPairing {
 // TABLE MANAGEMENT TABLES
 // ============================================
 
+model Zone {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  displayOrder Int     @default(0) @map("display_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tables Table[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([tenantId, displayOrder])
+  @@index([tenantId, isActive])
+  @@map("zones")
+}
+
 model Table {
   id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId           String    @map("tenant_id") @db.Uuid
+  zoneId             String    @map("zone_id") @db.Uuid
   tableNumber        String    @map("table_number") @db.VarChar(20)
   capacity           Int
   position           String?   @db.VarChar(100)
-  floor              String?   @db.VarChar(100)
   shape              String?   @db.VarChar(100)
   status             String    @default("available") @db.VarChar(20)
-  qrCodeToken        String?   @unique @map("qr_code_token") @db.VarChar(500)
-  qrCodeUrl          String?   @map("qr_code_url") @db.VarChar(500)
+  qrCodeToken        String?   @unique @map("qr_code_token") @db.Text
+  qrCodeUrl          String?   @map("qr_code_url") @db.Text
+  orderingUrl        String?   @map("ordering_url") @db.Text
   qrCodeGeneratedAt  DateTime? @map("qr_code_generated_at") @db.Timestamp(6)
   isActive           Boolean   @default(true) @map("is_active")
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  zone          Zone?          @relation(fields: [zoneId], references: [id], onDelete: SetNull)
   sessions      TableSession[]
   orders        Order[]
 
   @@unique([tenantId, tableNumber])
   @@index([tenantId])
+  @@index([zoneId])
   @@index([qrCodeToken])
   @@index([tenantId, status])
+  @@index([tenantId, zoneId])
   @@map("tables")
 }
 

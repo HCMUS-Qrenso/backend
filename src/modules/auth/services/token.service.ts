@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma.service';
-import { TokenGenerator } from '../../../common/utils';
+import { TokenGenerator, t } from '../../../common/utils';
 import { TOKEN_CONFIG } from '../../../common/constants';
 
 @Injectable()
@@ -109,15 +109,27 @@ export class TokenService {
     );
 
     if (!verificationToken) {
-      return { valid: false, error: 'Invalid token', user: null };
+      return {
+        valid: false,
+        error: t('auth.invalidToken', 'Invalid or expired token'),
+        user: null,
+      };
     }
 
     if (verificationToken.expiresAt < new Date()) {
-      return { valid: false, error: 'Token has expired', user: null };
+      return {
+        valid: false,
+        error: t('auth.invalidToken', 'Invalid or expired token'),
+        user: null,
+      };
     }
 
     if (verificationToken.usedAt) {
-      return { valid: false, error: 'Token has already been used', user: null };
+      return {
+        valid: false,
+        error: t('auth.invalidToken', 'Invalid or expired token'),
+        user: null,
+      };
     }
 
     return {

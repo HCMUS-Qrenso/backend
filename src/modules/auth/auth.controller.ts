@@ -27,11 +27,13 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   VerifyEmailDto,
+  ResendEmailDto,
   AuthResponseDto,
   MessageResponseDto,
 } from './dto';
 import { GoogleAuthGuard, JwtAuthGuard } from './guards';
 import { Public, CurrentUser } from '../../common/decorators';
+import { t } from '../../common/utils';
 import { COOKIE_CONFIG } from '../../common/constants';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 
@@ -59,15 +61,19 @@ export class AuthController {
   @Public()
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Register a new user account' })
+  @ApiOperation({
+    summary: 'Register a new customer account',
+    description:
+      'Create a new customer account and send verification email. Supports localization via Accept-Language header for response messages.',
+  })
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'User registered successfully. Verification email sent.',
+    description: 'Customer registered successfully. Verification email sent.',
     type: MessageResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.CONFLICT,
-    description: 'User with this email already exists',
+    description: 'Customer with this email already exists',
     type: ErrorResponseDto,
   })
   @ApiResponse({
@@ -82,7 +88,11 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiOperation({
+    summary: 'Login with email and password',
+    description:
+      'Authenticate user with email and password. Returns specific error messages for different failure scenarios. Supports localization via Accept-Language header.',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description:
@@ -91,8 +101,37 @@ export class AuthController {
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid credentials or account inactive',
+    description:
+      'Authentication failed. Possible errors:\n' +
+      '- Email address not found\n' +
+      '- Incorrect password\n' +
+      '- Account is inactive',
     type: ErrorResponseDto,
+    schema: {
+      oneOf: [
+        {
+          properties: {
+            statusCode: { type: 'number', example: 401 },
+            message: { type: 'string', example: 'Email address not found' },
+            error: { type: 'string', example: 'Unauthorized' },
+          },
+        },
+        {
+          properties: {
+            statusCode: { type: 'number', example: 401 },
+            message: { type: 'string', example: 'Incorrect password' },
+            error: { type: 'string', example: 'Unauthorized' },
+          },
+        },
+        {
+          properties: {
+            statusCode: { type: 'number', example: 401 },
+            message: { type: 'string', example: 'Account is inactive' },
+            error: { type: 'string', example: 'Unauthorized' },
+          },
+        },
+      ],
+    },
   })
   async login(
     @Body() loginDto: LoginDto,
@@ -135,7 +174,9 @@ export class AuthController {
 
     if (!refreshToken) {
       this.clearRefreshTokenCookie(res);
-      throw new UnauthorizedException('Refresh token not found');
+      throw new UnauthorizedException(
+        t('auth.refreshTokenNotFound', 'Refresh token not found'),
+      );
     }
 
     try {
@@ -209,6 +250,30 @@ export class AuthController {
   }
 
   @Public()
+  @Post('resend-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Resend email for email verification or password reset',
+    description:
+      'Request a new verification or password reset email. Supports both email_verification and password_reset types. ' +
+      'Can be used if the original email was not received, expired, or accidentally deleted.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description:
+      'Email sent successfully (if email exists and meets requirements)',
+    type: MessageResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Email is already verified (only for email_verification type)',
+    type: ErrorResponseDto,
+  })
+  async resendEmail(@Body() resendDto: ResendEmailDto) {
+    return this.authService.resendEmail(resendDto.email, resendDto.type);
+  }
+
+  @Public()
   @Get('google')
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Initiate Google OAuth 2.0 login' })
@@ -268,7 +333,9 @@ export class AuthController {
     this.clearRefreshTokenCookie(res);
     this.logger.log(`User logged out: ${userId}`);
 
-    return { message: 'Logged out successfully' };
+    return {
+      message: t('auth.logoutSuccess', 'Logged out successfully'),
+    };
   }
 
   @UseGuards(JwtAuthGuard)
