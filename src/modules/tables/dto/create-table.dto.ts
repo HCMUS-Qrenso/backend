@@ -49,13 +49,13 @@ export class CreateTableDto {
 
   @ApiProperty({
     example: 4,
-    description: 'Number of seats at the table',
+    description: 'Number of seats at the table (1-20)',
     minimum: 1,
-    maximum: 50,
+    maximum: 20,
   })
   @IsInt()
   @Min(1)
-  @Max(50)
+  @Max(20)
   capacity: number;
 
   @ApiProperty({

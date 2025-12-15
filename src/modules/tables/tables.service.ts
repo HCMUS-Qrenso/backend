@@ -1106,9 +1106,12 @@ export class TablesService {
   }
 
   /**
-   * Download all QR codes as ZIP
+   * Download all QR codes as ZIP or PDF
    */
-  async downloadAllQrCodes(tenantId: string): Promise<StreamableFile> {
+  async downloadAllQrCodes(
+    tenantId: string,
+    format: DownloadFormat = DownloadFormat.ZIP,
+  ): Promise<StreamableFile> {
     const tables = await this.prisma.table.findMany({
       where: {
         tenantId,
@@ -1117,7 +1120,7 @@ export class TablesService {
       },
       include: {
         tenant: {
-          select: { slug: true },
+          select: { slug: true, name: true },
         },
       },
       orderBy: { tableNumber: 'asc' },
@@ -1127,27 +1130,98 @@ export class TablesService {
       throw new BadRequestException(t('tables.noTablesWithQr', 'No tables with QR codes found'));
     }
 
-    const archive = archiver('zip', { zlib: { level: 9 } });
+    if (format === DownloadFormat.ZIP) {
+      // Generate ZIP with individual PNG files
+      const archive = archiver('zip', { zlib: { level: 9 } });
 
-    // Generate QR codes and add to archive using stored ordering URL
-    for (const table of tables) {
-      const qrBuffer = await QRCode.toBuffer(table.orderingUrl!, {
-        errorCorrectionLevel: 'H',
-        width: 512,
-        margin: 2,
+      // Generate QR codes and add to archive using stored ordering URL
+      for (const table of tables) {
+        const qrBuffer = await QRCode.toBuffer(table.orderingUrl!, {
+          errorCorrectionLevel: 'H',
+          width: 512,
+          margin: 2,
+        });
+
+        archive.append(qrBuffer, {
+          name: `table-${table.tableNumber}.png`,
+        });
+      }
+
+      archive.finalize();
+
+      return new StreamableFile(archive as unknown as Readable, {
+        type: 'application/zip',
+        disposition: 'attachment; filename="qr-codes.zip"',
       });
+    } else {
+      // Generate single PDF with all QR codes (one per page)
+      const PDFDocument = require('pdfkit');
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
 
-      archive.append(qrBuffer, {
-        name: `table-${table.tableNumber}.png`,
+      const buffers: Buffer[] = [];
+      doc.on('data', buffers.push.bind(buffers));
+
+      const restaurantName = tables[0].tenant.name;
+
+      // Process each table on its own page
+      for (let i = 0; i < tables.length; i++) {
+        const table = tables[i];
+
+        // Add new page for each table (except first)
+        if (i > 0) {
+          doc.addPage();
+        }
+
+        // Generate QR code data URL
+        const qrDataUrl = await QRCode.toDataURL(table.orderingUrl!, {
+          errorCorrectionLevel: 'H',
+          width: 400,
+          margin: 2,
+        });
+
+        const qrImageBuffer = Buffer.from(
+          qrDataUrl.replace(/^data:image\/png;base64,/, ''),
+          'base64',
+        );
+
+        // Add restaurant name/branding
+        doc.fontSize(24).text(restaurantName, { align: 'center' });
+        doc.moveDown();
+
+        // Add table number prominently
+        doc.fontSize(36).text(`Table ${table.tableNumber}`, { align: 'center' });
+        doc.moveDown(2);
+
+        // Add QR code centered (calculate X position manually)
+        const pageWidth = doc.page.width;
+        const qrSize = 400;
+        const xPosition = (pageWidth - qrSize) / 2;
+
+        doc.image(qrImageBuffer, xPosition, doc.y, {
+          width: qrSize,
+          height: qrSize,
+        });
+
+        doc.moveDown(12); // Move down after the QR code
+
+        // Add instruction text
+        doc.fontSize(18).text('Scan to Order', { align: 'center' });
+      }
+
+      doc.end();
+
+      return new Promise((resolve) => {
+        doc.on('end', () => {
+          const pdfBuffer = Buffer.concat(buffers);
+          resolve(
+            new StreamableFile(pdfBuffer, {
+              type: 'application/pdf',
+              disposition: 'attachment; filename="all-qr-codes.pdf"',
+            }),
+          );
+        });
       });
     }
-
-    archive.finalize();
-
-    return new StreamableFile(archive as unknown as Readable, {
-      type: 'application/zip',
-      disposition: 'attachment; filename="qr-codes.zip"',
-    });
   }
 
   /**

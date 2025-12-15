@@ -4,6 +4,7 @@ import { IsEnum, IsOptional } from 'class-validator';
 export enum DownloadFormat {
   PNG = 'png',
   PDF = 'pdf',
+  ZIP = 'zip',
 }
 
 export class DownloadQrDto {

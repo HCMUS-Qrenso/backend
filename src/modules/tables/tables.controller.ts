@@ -18,6 +18,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { TablesService } from './tables.service';
 import {
@@ -294,18 +295,36 @@ export class TablesController {
   // ============================================
 
   @Get('qr/download-all')
-  @ApiOperation({ summary: 'Download all QR codes as ZIP' })
+  @ApiOperation({ summary: 'Download all QR codes as ZIP or PDF' })
+  @ApiQuery({
+    name: 'format',
+    enum: DownloadFormat,
+    required: false,
+    description: 'Download format: zip (individual PNGs) or pdf (single document)',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Returns ZIP file with all QR codes',
+    description: 'Returns ZIP file with all QR codes or PDF document',
   })
-  async downloadAllQrCodes(@CurrentUser() user: any) {
-    return this.tablesService.downloadAllQrCodes(user.tenantId);
+  async downloadAllQrCodes(
+    @CurrentUser() user: any,
+    @Query('format') format?: DownloadFormat,
+  ) {
+    return this.tablesService.downloadAllQrCodes(
+      user.tenantId,
+      format || DownloadFormat.ZIP,
+    );
   }
 
   @Get(':id/qr/download')
   @ApiOperation({ summary: 'Download QR code for a specific table' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
+  @ApiQuery({
+    name: 'format',
+    enum: DownloadFormat,
+    required: false,
+    description: 'Download format: pdf or png',
+  })
   @ApiResponse({
     status: 200,
     description: 'Returns QR code as PNG or PDF',

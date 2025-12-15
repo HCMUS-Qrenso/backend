@@ -771,9 +771,10 @@ The Tables Management API provides comprehensive table and QR code management fo
 ✅ **Download Features**
 - PNG format (512x512 high quality)
 - PDF format (A4 with restaurant branding, centered QR)
-- ZIP batch download for all tables
-- Uses stored `ordering_url` 
-- **tables** - Table management and QR codesfor consistent quality
+- Batch download options:
+  - ZIP: Individual PNG files for all tables
+  - PDF: Single document with all QRs and table info
+- Uses stored `ordering_url` for consistent quality
 
 ✅ **Floor Layout**
 - Position storage with (x, y) coordinates
@@ -891,7 +892,7 @@ Create a new table.
 {
   "table_number": "T-01",
   "capacity": 4,
-  "floor": "Ground Floor",
+  "zone_id": "123e4567-e89b-12d3-a456-426614174000",
   "shape": "rectangle",
   "status": "available",
   "is_active": true,
@@ -899,6 +900,11 @@ Create a new table.
   "auto_generate_qr": true
 }
 ```
+
+**Field Constraints:**
+- `capacity`: Positive integer between 1-20
+- `table_number`: Max 20 characters, must be unique per tenant
+- `zone_id`: Must reference an existing active zone
 
 **Response:** `201 Created`
 ```json
@@ -961,11 +967,13 @@ Update table details.
 {
   "table_number": "T-01A",
   "capacity": 6,
-  "floor": "First Floor",
+  "zone_id": "123e4567-e89b-12d3-a456-426614174000",
   "status": "maintenance",
   "position": { "x": 150, "y": 250 }
 }
 ```
+
+**Note:** Capacity must be between 1-20
 
 **Response:** `200 OK`
 ```json
@@ -1042,16 +1050,26 @@ Content-Disposition: attachment; filename="table-{number}-qr.png|pdf"
 
 ---
 
-#### 📦 GET /tables/qr/download-all
-Download all QR codes as ZIP file.
+#### 📦 GET /tables/qr/download-all?format=zip|pdf
+Download all QR codes as ZIP or PDF.
 
-**Response:** `application/zip`
+**Query Parameters:**
+- `format`: `zip` (default) or `pdf`
+  - `zip`: Individual PNG files for each table
+  - `pdf`: Single PDF containing all QRs with table information
+
+**Response (ZIP):** `application/zip`
 ```
 qr-codes.zip
 ├── table-T-01.png
 ├── table-T-02.png
 └── table-T-03.png
 ```
+
+**Response (PDF):** `application/pdf`
+- One table per A4 page
+- Each page includes restaurant name, table number, QR code, and ordering instructions
+- Same professional layout as individual PDF downloads
 
 ---
 
