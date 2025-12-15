@@ -21,11 +21,13 @@ import {
 import { ZonesService } from './zones.service';
 import { CreateZoneDto, UpdateZoneDto, QueryZonesDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
-import { CurrentUser } from '../../common/decorators';
+import { CurrentUser, Roles, TenantContext } from '../../common/decorators';
+import { RolesGuard, TenantOwnershipGuard } from 'src/common/guards';
+import { ROLES } from 'src/common/constants';
 
 @ApiTags('zones')
 @Controller('zones')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantOwnershipGuard)
 @ApiBearerAuth('JWT-auth')
 export class ZonesController {
   constructor(private readonly zonesService: ZonesService) {}
@@ -35,23 +37,27 @@ export class ZonesController {
   // ============================================
 
   @Get()
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get paginated list of zones with filtering' })
   @ApiResponse({
     status: 200,
     description: 'Returns paginated list of zones',
   })
-  async findAll(@CurrentUser() user: any, @Query() query: QueryZonesDto) {
-    return this.zonesService.findAll(user.tenantId, query);
+  async findAll(@TenantContext() tenantId: string, @Query() query: QueryZonesDto) {
+    return this.zonesService.findAll(tenantId, query);
   }
 
   @Get('stats')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get zone statistics' })
   @ApiResponse({
     status: 200,
     description: 'Returns zone statistics',
   })
-  async getStats(@CurrentUser() user: any) {
-    return this.zonesService.getStats(user.tenantId);
+  async getStats(@TenantContext() tenantId: string) {
+    return this.zonesService.getStats(tenantId);
   }
 
   // ============================================
@@ -59,6 +65,8 @@ export class ZonesController {
   // ============================================
 
   @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get a single zone by ID' })
   @ApiParam({ name: 'id', description: 'Zone UUID' })
   @ApiResponse({
@@ -69,11 +77,13 @@ export class ZonesController {
     status: 404,
     description: 'Zone not found',
   })
-  async findOne(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.zonesService.findOne(user.tenantId, id);
+  async findOne(@TenantContext() tenantId: string, @Param('id') id: string) {
+    return this.zonesService.findOne(tenantId, id);
   }
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
   @ApiOperation({ summary: 'Create a new zone' })
   @ApiResponse({
     status: 201,
@@ -83,11 +93,13 @@ export class ZonesController {
     status: 409,
     description: 'Zone name already exists',
   })
-  async create(@CurrentUser() user: any, @Body() createZoneDto: CreateZoneDto) {
-    return this.zonesService.create(user.tenantId, createZoneDto);
+  async create(@TenantContext() tenantId: string, @Body() createZoneDto: CreateZoneDto) {
+    return this.zonesService.create(tenantId, createZoneDto);
   }
 
   @Put(':id')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
   @ApiOperation({ summary: 'Update a zone' })
   @ApiParam({ name: 'id', description: 'Zone UUID' })
   @ApiResponse({
@@ -103,14 +115,16 @@ export class ZonesController {
     description: 'Zone name already exists',
   })
   async update(
-    @CurrentUser() user: any,
+    @TenantContext() tenantId: string,
     @Param('id') id: string,
     @Body() updateZoneDto: UpdateZoneDto,
   ) {
-    return this.zonesService.update(user.tenantId, id, updateZoneDto);
+    return this.zonesService.update(tenantId, id, updateZoneDto);
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete a zone' })
   @ApiParam({ name: 'id', description: 'Zone UUID' })
@@ -126,7 +140,7 @@ export class ZonesController {
     status: 409,
     description: 'Zone has tables and cannot be deleted',
   })
-  async remove(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.zonesService.remove(user.tenantId, id);
+  async remove(@TenantContext() tenantId: string, @Param('id') id: string) {
+    return this.zonesService.remove(tenantId, id);
   }
 }

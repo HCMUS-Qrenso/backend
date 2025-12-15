@@ -35,11 +35,13 @@ import {
   VerifyTokenDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
-import { CurrentUser, Public } from '../../common/decorators';
+import { CurrentUser, Public, Roles, TenantContext } from '../../common/decorators';
+import { ROLES } from 'src/common/constants';
+import { RolesGuard, TenantOwnershipGuard } from 'src/common/guards';
 
 @ApiTags('tables')
 @Controller('tables')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantOwnershipGuard)
 @ApiBearerAuth('JWT-auth')
 export class TablesController {
   constructor(private readonly tablesService: TablesService) {}
@@ -49,50 +51,60 @@ export class TablesController {
   // ============================================
 
   @Get()
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get paginated list of tables with filtering' })
   @ApiResponse({
     status: 200,
     description: 'Returns paginated list of tables',
   })
-  async findAll(@CurrentUser() user: any, @Query() query: QueryTablesDto) {
-    return this.tablesService.findAll(user.tenantId, query);
+  async findAll(@TenantContext() tenantId: string, @Query() query: QueryTablesDto) {
+    return this.tablesService.findAll(tenantId, query);
   }
 
   @Get('stats')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get table statistics' })
   @ApiResponse({
     status: 200,
     description: 'Returns table statistics',
   })
-  async getStats(@CurrentUser() user: any) {
-    return this.tablesService.getStats(user.tenantId);
+  async getStats(@TenantContext() tenantId: string) {
+    return this.tablesService.getStats(tenantId);
   }
 
   // ============================================
-  // Floor Plan Layout
+  // Zone Plan Layout
   // ============================================
 
   @Get('layout')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get layout by zone' })
   @ApiResponse({
     status: 200,
     description: 'Returns tables layout for a specific zone',
   })
-  async getLayout(@CurrentUser() user: any, @Query('zone_id') zoneId: string) {
-    return this.tablesService.getLayout(user.tenantId, zoneId);
+  async getLayout(@TenantContext() tenantId: string, @Query('zone_id') zoneId: string) {
+    return this.tablesService.getLayout(tenantId, zoneId);
   }
 
   @Get('zones')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get available zones' })
   @ApiResponse({
     status: 200,
     description: 'Returns list of available zones',
   })
-  async getZones(@CurrentUser() user: any) {
-    return this.tablesService.getZones(user.tenantId);
+  async getZones(@TenantContext() tenantId: string) {
+    return this.tablesService.getZones(tenantId);
   }
 
   @Post('layout/batch-update')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Batch update table positions' })
   @ApiResponse({
@@ -100,10 +112,10 @@ export class TablesController {
     description: 'Successfully updated table positions',
   })
   async batchUpdateLayout(
-    @CurrentUser() user: any,
+    @TenantContext() tenantId: string,
     @Body() batchUpdateDto: BatchUpdateLayoutDto,
   ) {
-    return this.tablesService.batchUpdateLayout(user.tenantId, batchUpdateDto);
+    return this.tablesService.batchUpdateLayout(tenantId, batchUpdateDto);
   }
 
   // ============================================
@@ -111,16 +123,20 @@ export class TablesController {
   // ============================================
 
   @Get('qr')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER)
   @ApiOperation({ summary: 'Get all QR codes' })
   @ApiResponse({
     status: 200,
     description: 'Returns QR code information for all tables',
   })
-  async getAllQrCodes(@CurrentUser() user: any, @Query() query: QueryQrDto) {
-    return this.tablesService.getAllQrCodes(user.tenantId, query);
+  async getAllQrCodes(@TenantContext() tenantId: string, @Query() query: QueryQrDto) {
+    return this.tablesService.getAllQrCodes(tenantId, query);
   }
 
   @Post('qr/batch-generate')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Batch generate QR codes' })
   @ApiResponse({
@@ -128,11 +144,11 @@ export class TablesController {
     description: 'Successfully generated QR codes',
   })
   async batchGenerateQrCodes(
-    @CurrentUser() user: any,
+    @TenantContext() tenantId: string,
     @Body() batchGenerateDto: BatchGenerateQrDto,
   ) {
     return this.tablesService.batchGenerateQrCodes(
-      user.tenantId,
+      tenantId,
       batchGenerateDto,
     );
   }
@@ -142,6 +158,8 @@ export class TablesController {
   // ============================================
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new table' })
   @ApiResponse({
@@ -153,13 +171,15 @@ export class TablesController {
     description: 'Table number already exists',
   })
   async create(
-    @CurrentUser() user: any,
+    @TenantContext() tenantId: string,
     @Body() createTableDto: CreateTableDto,
   ) {
-    return this.tablesService.create(user.tenantId, createTableDto);
+    return this.tablesService.create(tenantId, createTableDto);
   }
 
   @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get table details by ID' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
   @ApiResponse({
@@ -170,11 +190,13 @@ export class TablesController {
     status: 404,
     description: 'Table not found',
   })
-  async findOne(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.tablesService.findOne(user.tenantId, id);
+  async findOne(@TenantContext() tenantId: string, @Param('id') id: string) {
+    return this.tablesService.findOne(tenantId, id);
   }
 
   @Put(':id')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
   @ApiOperation({ summary: 'Update table' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
   @ApiResponse({
@@ -186,14 +208,16 @@ export class TablesController {
     description: 'Table not found',
   })
   async update(
-    @CurrentUser() user: any,
+    @TenantContext() tenantId: string,
     @Param('id') id: string,
     @Body() updateTableDto: UpdateTableDto,
   ) {
-    return this.tablesService.update(user.tenantId, id, updateTableDto);
+    return this.tablesService.update(tenantId, id, updateTableDto);
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete table' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
@@ -209,11 +233,13 @@ export class TablesController {
     status: 409,
     description: 'Cannot delete table with active orders',
   })
-  async remove(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.tablesService.remove(user.tenantId, id);
+  async remove(@TenantContext() tenantId: string, @Param('id') id: string) {
+    return this.tablesService.remove(tenantId, id);
   }
 
   @Patch(':id/status')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
   @ApiOperation({ summary: 'Update table status only' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
   @ApiResponse({
@@ -229,18 +255,20 @@ export class TablesController {
     description: 'Cannot change status (e.g., active orders)',
   })
   async updateStatus(
-    @CurrentUser() user: any,
+    @TenantContext() tenantId: string,
     @Param('id') id: string,
     @Body() updateStatusDto: UpdateStatusDto,
   ) {
     return this.tablesService.updateStatus(
-      user.tenantId,
+      tenantId,
       id,
       updateStatusDto.status,
     );
   }
 
   @Put(':id/position')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
   @ApiOperation({ summary: 'Update table position' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
   @ApiResponse({
@@ -248,18 +276,20 @@ export class TablesController {
     description: 'Table position updated successfully',
   })
   async updatePosition(
-    @CurrentUser() user: any,
+    @TenantContext() tenantId: string,
     @Param('id') id: string,
     @Body() updatePositionDto: UpdatePositionDto,
   ) {
     return this.tablesService.updatePosition(
-      user.tenantId,
+      tenantId,
       id,
       updatePositionDto,
     );
   }
 
   @Post(':id/qr/generate')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Generate QR code for a table' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
@@ -268,26 +298,28 @@ export class TablesController {
     description: 'QR code generated successfully',
   })
   async generateQrCode(
-    @CurrentUser() user: any,
+    @TenantContext() tenantId: string,
     @Param('id') id: string,
     @Body() generateQrDto: GenerateQrDto,
   ) {
     return this.tablesService.generateQrCodeForTable(
-      user.tenantId,
+      tenantId,
       id,
       generateQrDto,
     );
   }
 
   @Get(':id/qr')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER)
   @ApiOperation({ summary: 'Get QR code for a specific table' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
   @ApiResponse({
     status: 200,
     description: 'Returns QR code information',
   })
-  async getTableQrCode(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.tablesService.getTableQrCode(user.tenantId, id);
+  async getTableQrCode(@TenantContext() tenantId: string, @Param('id') id: string) {
+    return this.tablesService.getTableQrCode(tenantId, id);
   }
 
   // ============================================
@@ -295,6 +327,8 @@ export class TablesController {
   // ============================================
 
   @Get('qr/download-all')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER)
   @ApiOperation({ summary: 'Download all QR codes as ZIP or PDF' })
   @ApiQuery({
     name: 'format',
@@ -308,16 +342,18 @@ export class TablesController {
     description: 'Returns ZIP file with all QR codes or PDF document',
   })
   async downloadAllQrCodes(
-    @CurrentUser() user: any,
+    @TenantContext() tenantId: string,
     @Query('format') format?: DownloadFormat,
   ) {
     return this.tablesService.downloadAllQrCodes(
-      user.tenantId,
+      tenantId,
       format || DownloadFormat.ZIP,
     );
   }
 
   @Get(':id/qr/download')
+  @UseGuards(RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER)
   @ApiOperation({ summary: 'Download QR code for a specific table' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
   @ApiQuery({
@@ -331,11 +367,11 @@ export class TablesController {
     description: 'Returns QR code as PNG or PDF',
   })
   async downloadQrCode(
-    @CurrentUser() user: any,
+    @TenantContext() tenantId: string,
     @Param('id') id: string,
     @Query('format') format?: DownloadFormat,
   ) {
-    return this.tablesService.downloadQrCode(user.tenantId, id, format);
+    return this.tablesService.downloadQrCode(tenantId, id, format);
   }
 
   // ============================================

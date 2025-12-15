@@ -67,17 +67,28 @@ async function bootstrap() {
       in: 'cookie',
       name: 'refreshToken',
     })
-    .addGlobalParameters({
-      in: 'header',
-      required: false,
-      name: 'Accept-Language',
-      description: 'Language preference for response messages (en, vi)',
-      schema: {
-        type: 'string',
-        enum: ['en', 'vi'],
-        default: 'en',
+    .addGlobalParameters(
+      {
+        in: 'header',
+        required: false,
+        name: 'Accept-Language',
+        description: 'Language preference for response messages (en, vi)',
+        schema: {
+          type: 'string',
+          enum: ['en', 'vi'],
+          default: 'en',
+        },
       },
-    })
+      {
+        in: 'header',
+        required: false,
+        name: 'x-tenant-id',
+        description: 'Tenant ID that the owner wants to operate on',
+        schema: {
+          type: 'string',
+        },
+      },
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

@@ -10,6 +10,7 @@ import { CurrentUser, Roles } from '../../common/decorators';
 import { RolesGuard } from '../../common/guards';
 import { UserService } from './user.service';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto';
+import { ROLES } from 'src/common/constants';
 
 @ApiTags('users')
 @Controller('users')
@@ -59,8 +60,8 @@ export class UserController {
 
   @Get('all')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'manager')
-  @ApiOperation({ summary: 'Get all users (Admin/Manager only)' })
+  @Roles(ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get all users (Super Admin only)' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Returns list of all users',
