@@ -46,9 +46,7 @@ export class TenantOwnershipGuard implements CanActivate {
     });
 
     if (!tenant) {
-      throw new UnauthorizedException(
-        'You do not have access to this tenant',
-      );
+      throw new UnauthorizedException('You do not have access to this tenant');
     }
 
     return true;

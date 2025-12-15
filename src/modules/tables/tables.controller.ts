@@ -35,7 +35,7 @@ import {
   VerifyTokenDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
-import { CurrentUser, Public, Roles, TenantContext } from '../../common/decorators';
+import { Public, Roles, TenantContext } from '../../common/decorators';
 import { ROLES } from 'src/common/constants';
 import { RolesGuard, TenantOwnershipGuard } from 'src/common/guards';
 
@@ -58,7 +58,10 @@ export class TablesController {
     status: 200,
     description: 'Returns paginated list of tables',
   })
-  async findAll(@TenantContext() tenantId: string, @Query() query: QueryTablesDto) {
+  async findAll(
+    @TenantContext() tenantId: string,
+    @Query() query: QueryTablesDto,
+  ) {
     return this.tablesService.findAll(tenantId, query);
   }
 
@@ -86,7 +89,10 @@ export class TablesController {
     status: 200,
     description: 'Returns tables layout for a specific zone',
   })
-  async getLayout(@TenantContext() tenantId: string, @Query('zone_id') zoneId: string) {
+  async getLayout(
+    @TenantContext() tenantId: string,
+    @Query('zone_id') zoneId: string,
+  ) {
     return this.tablesService.getLayout(tenantId, zoneId);
   }
 
@@ -130,7 +136,10 @@ export class TablesController {
     status: 200,
     description: 'Returns QR code information for all tables',
   })
-  async getAllQrCodes(@TenantContext() tenantId: string, @Query() query: QueryQrDto) {
+  async getAllQrCodes(
+    @TenantContext() tenantId: string,
+    @Query() query: QueryQrDto,
+  ) {
     return this.tablesService.getAllQrCodes(tenantId, query);
   }
 
@@ -147,10 +156,7 @@ export class TablesController {
     @TenantContext() tenantId: string,
     @Body() batchGenerateDto: BatchGenerateQrDto,
   ) {
-    return this.tablesService.batchGenerateQrCodes(
-      tenantId,
-      batchGenerateDto,
-    );
+    return this.tablesService.batchGenerateQrCodes(tenantId, batchGenerateDto);
   }
 
   // ============================================
@@ -280,11 +286,7 @@ export class TablesController {
     @Param('id') id: string,
     @Body() updatePositionDto: UpdatePositionDto,
   ) {
-    return this.tablesService.updatePosition(
-      tenantId,
-      id,
-      updatePositionDto,
-    );
+    return this.tablesService.updatePosition(tenantId, id, updatePositionDto);
   }
 
   @Post(':id/qr/generate')
@@ -318,7 +320,10 @@ export class TablesController {
     status: 200,
     description: 'Returns QR code information',
   })
-  async getTableQrCode(@TenantContext() tenantId: string, @Param('id') id: string) {
+  async getTableQrCode(
+    @TenantContext() tenantId: string,
+    @Param('id') id: string,
+  ) {
     return this.tablesService.getTableQrCode(tenantId, id);
   }
 

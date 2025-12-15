@@ -21,7 +21,7 @@ import {
 import { ZonesService } from './zones.service';
 import { CreateZoneDto, UpdateZoneDto, QueryZonesDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
-import { CurrentUser, Roles, TenantContext } from '../../common/decorators';
+import { Roles, TenantContext } from '../../common/decorators';
 import { RolesGuard, TenantOwnershipGuard } from 'src/common/guards';
 import { ROLES } from 'src/common/constants';
 
@@ -44,7 +44,10 @@ export class ZonesController {
     status: 200,
     description: 'Returns paginated list of zones',
   })
-  async findAll(@TenantContext() tenantId: string, @Query() query: QueryZonesDto) {
+  async findAll(
+    @TenantContext() tenantId: string,
+    @Query() query: QueryZonesDto,
+  ) {
     return this.zonesService.findAll(tenantId, query);
   }
 
@@ -93,7 +96,10 @@ export class ZonesController {
     status: 409,
     description: 'Zone name already exists',
   })
-  async create(@TenantContext() tenantId: string, @Body() createZoneDto: CreateZoneDto) {
+  async create(
+    @TenantContext() tenantId: string,
+    @Body() createZoneDto: CreateZoneDto,
+  ) {
     return this.zonesService.create(tenantId, createZoneDto);
   }
 
