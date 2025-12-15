@@ -72,23 +72,23 @@ export class TablesController {
   // ============================================
 
   @Get('layout')
-  @ApiOperation({ summary: 'Get layout by floor' })
+  @ApiOperation({ summary: 'Get layout by zone' })
   @ApiResponse({
     status: 200,
-    description: 'Returns tables layout for a specific floor',
+    description: 'Returns tables layout for a specific zone',
   })
-  async getLayout(@CurrentUser() user: any, @Query('floor') floor: string) {
-    return this.tablesService.getLayout(user.tenantId, floor);
+  async getLayout(@CurrentUser() user: any, @Query('zone_id') zoneId: string) {
+    return this.tablesService.getLayout(user.tenantId, zoneId);
   }
 
-  @Get('floors')
-  @ApiOperation({ summary: 'Get available floors' })
+  @Get('zones')
+  @ApiOperation({ summary: 'Get available zones' })
   @ApiResponse({
     status: 200,
-    description: 'Returns list of available floors',
+    description: 'Returns list of available zones',
   })
-  async getFloors(@CurrentUser() user: any) {
-    return this.tablesService.getFloors(user.tenantId);
+  async getZones(@CurrentUser() user: any) {
+    return this.tablesService.getZones(user.tenantId);
   }
 
   @Post('layout/batch-update')

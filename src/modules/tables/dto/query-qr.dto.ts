@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsEnum } from 'class-validator';
+import { IsOptional, IsString, IsEnum, IsUUID } from 'class-validator';
 
 export enum QrStatus {
   READY = 'ready',
@@ -18,10 +18,10 @@ export class QueryQrDto {
   status?: QrStatus;
 
   @ApiPropertyOptional({
-    example: 'Tầng 1',
-    description: 'Filter by floor/area',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    description: 'Filter by zone ID',
   })
   @IsOptional()
-  @IsString()
-  floor?: string;
+  @IsUUID()
+  zone_id?: string;
 }

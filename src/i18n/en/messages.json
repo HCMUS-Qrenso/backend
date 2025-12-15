@@ -41,6 +41,14 @@
     "qrExpired": "This QR code has expired. Please ask staff for a new one.",
     "tokenVerificationFailed": "Token verification failed"
   },
+  "zones": {
+    "zoneNotFound": "Zone not found",
+    "zoneNameExists": "A zone with this name already exists",
+    "zoneHasTables": "Cannot delete zone with {count} tables assigned to it",
+    "zoneDeleted": "Zone deleted successfully",
+    "zoneCreatedSuccess": "Zone created successfully",
+    "zoneUpdatedSuccess": "Zone updated successfully"
+  },
   "common": {
     "notFound": "Resource not found",
     "badRequest": "Bad request",

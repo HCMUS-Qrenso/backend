@@ -41,6 +41,14 @@
     "qrExpired": "Mã QR này đã hết hạn. Vui lòng yêu cầu nhân viên cung cấp mã mới.",
     "tokenVerificationFailed": "Xác thực token thất bại"
   },
+  "zones": {
+    "zoneNotFound": "Không tìm thấy khu vực",
+    "zoneNameExists": "Khu vực với tên này đã tồn tại",
+    "zoneHasTables": "Không thể xóa khu vực có {count} bàn được gán cho nó",
+    "zoneDeleted": "Xóa khu vực thành công",
+    "zoneCreatedSuccess": "Tạo khu vực thành công",
+    "zoneUpdatedSuccess": "Cập nhật khu vực thành công"
+  },
   "common": {
     "notFound": "Không tìm thấy tài nguyên",
     "badRequest": "Yêu cầu không hợp lệ",

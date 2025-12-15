@@ -43,7 +43,7 @@ export class TablesService {
    * Get paginated list of tables with filtering
    */
   async findAll(tenantId: string, query: QueryTablesDto) {
-    const { page = 1, limit = 10, search, floor, status, is_active } = query;
+    const { page = 1, limit = 10, search, zone_id, status, is_active } = query;
     const skip = (page - 1) * limit;
 
     // Build where clause
@@ -52,14 +52,11 @@ export class TablesService {
     };
 
     if (search) {
-      where.OR = [
-        { tableNumber: { contains: search, mode: 'insensitive' } },
-        { floor: { contains: search, mode: 'insensitive' } },
-      ];
+      where.tableNumber = { contains: search, mode: 'insensitive' };
     }
 
-    if (floor) {
-      where.floor = floor;
+    if (zone_id) {
+      where.zoneId = zone_id;
     }
 
     if (status) {
@@ -73,13 +70,19 @@ export class TablesService {
     // Get total count
     const total = await this.prisma.table.count({ where });
 
-    // Get tables with current order info
+    // Get tables with current order info and zone
     const tables = await this.prisma.table.findMany({
       where,
       skip,
       take: limit,
       orderBy: { tableNumber: 'asc' },
       include: {
+        zone: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         orders: {
           where: {
             status: {
@@ -109,7 +112,10 @@ export class TablesService {
         id: table.id,
         table_number: table.tableNumber,
         capacity: table.capacity,
-        floor: table.floor,
+        zone: table.zone ? {
+          id: table.zone.id,
+          name: table.zone.name,
+        } : null,
         shape: table.shape,
         status: table.status,
         is_active: table.isActive,
@@ -231,7 +237,7 @@ export class TablesService {
         tenantId,
         tableNumber: createTableDto.table_number,
         capacity: createTableDto.capacity,
-        floor: createTableDto.floor,
+        zoneId: createTableDto.zone_id,
         shape: createTableDto.shape,
         status: createTableDto.status || 'available',
         isActive: createTableDto.is_active ?? true,
@@ -254,7 +260,7 @@ export class TablesService {
         id: table.id,
         table_number: table.tableNumber,
         capacity: table.capacity,
-        floor: table.floor,
+        zone_id: table.zoneId,
         shape: table.shape,
         status: table.status,
         is_active: table.isActive,
@@ -312,7 +318,7 @@ export class TablesService {
         id: table.id,
         table_number: table.tableNumber,
         capacity: table.capacity,
-        floor: table.floor,
+        zone_id: table.zoneId,
         shape: table.shape,
         status: table.status,
         is_active: table.isActive,
@@ -381,8 +387,8 @@ export class TablesService {
     if (updateTableDto.capacity !== undefined) {
       updateData.capacity = updateTableDto.capacity;
     }
-    if (updateTableDto.floor !== undefined) {
-      updateData.floor = updateTableDto.floor;
+    if (updateTableDto.zone_id !== undefined) {
+      updateData.zoneId = updateTableDto.zone_id;
     }
     if (updateTableDto.shape !== undefined) {
       updateData.shape = updateTableDto.shape;
@@ -417,7 +423,7 @@ export class TablesService {
         id: updatedTable.id,
         table_number: updatedTable.tableNumber,
         capacity: updatedTable.capacity,
-        floor: updatedTable.floor,
+        zone_id: updatedTable.zoneId,
         shape: updatedTable.shape,
         status: updatedTable.status,
         is_active: updatedTable.isActive,
@@ -478,14 +484,22 @@ export class TablesService {
   }
 
   /**
-   * Get layout by floor
+   * Get layout by zone
    */
-  async getLayout(tenantId: string, floor: string) {
+  async getLayout(tenantId: string, zoneId: string) {
     const tables = await this.prisma.table.findMany({
       where: {
         tenantId,
-        floor,
+        zoneId,
         isActive: true,
+      },
+      include: {
+        zone: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: { tableNumber: 'asc' },
     });
@@ -499,7 +513,7 @@ export class TablesService {
         type: this.mapShapeToType(table.shape),
         name: table.tableNumber,
         seats: table.capacity,
-        area: table.floor,
+        zone: table.zone?.name || null,
         status: table.status,
         position: {
           x: position.x || 0,
@@ -511,7 +525,8 @@ export class TablesService {
     return {
       success: true,
       data: {
-        floor,
+        zone_id: zoneId,
+        zone_name: tables[0]?.zone?.name || null,
         tables: formattedTables,
       },
     };
@@ -613,27 +628,33 @@ export class TablesService {
   }
 
   /**
-   * Get available floors
+   * Get available zones
    */
-  async getFloors(tenantId: string) {
-    const floors = await this.prisma.table.findMany({
+  async getZones(tenantId: string) {
+    const zones = await this.prisma.zone.findMany({
       where: {
         tenantId,
         isActive: true,
       },
       select: {
-        floor: true,
+        id: true,
+        name: true,
+        displayOrder: true,
       },
-      distinct: ['floor'],
-      orderBy: {
-        floor: 'asc',
-      },
+      orderBy: [
+        { displayOrder: 'asc' },
+        { name: 'asc' },
+      ],
     });
 
     return {
       success: true,
       data: {
-        floors: floors.map((f) => f.floor).filter((f) => f !== null),
+        zones: zones.map((z) => ({
+          id: z.id,
+          name: z.name,
+          display_order: z.displayOrder,
+        })),
       },
     };
   }
@@ -642,20 +663,26 @@ export class TablesService {
    * Get all QR codes
    */
   async getAllQrCodes(tenantId: string, query: QueryQrDto) {
-    const { status, floor } = query;
+    const { status, zone_id } = query;
 
     const where: any = {
       tenantId,
       isActive: true,
     };
 
-    if (floor) {
-      where.floor = floor;
+    if (zone_id) {
+      where.zoneId = zone_id;
     }
 
     const tables = await this.prisma.table.findMany({
       where,
       include: {
+        zone: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         tenant: {
           select: {
             slug: true,
@@ -671,7 +698,7 @@ export class TablesService {
       return {
         id: table.id,
         tableNumber: table.tableNumber,
-        tableArea: table.floor,
+        tableZone: table.zone?.name || null,
         seats: table.capacity,
         qrUrl: table.qrCodeUrl,
         orderingUrl: table.orderingUrl,
@@ -1179,9 +1206,9 @@ export class TablesService {
         table: {
           id: table.id,
           tableNumber: table.tableNumber,
-          floor: table.floor,
           capacity: table.capacity,
           status: table.status,
+          zoneId: table.zoneId,
         },
       };
     } catch (error) {

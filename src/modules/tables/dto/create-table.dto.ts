@@ -5,6 +5,7 @@ import {
   IsBoolean,
   IsEnum,
   IsOptional,
+  IsUUID,
   Min,
   Max,
   MaxLength,
@@ -58,13 +59,11 @@ export class CreateTableDto {
   capacity: number;
 
   @ApiProperty({
-    example: 'Tầng 1',
-    description: 'Floor or area where the table is located',
-    maxLength: 100,
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    description: 'Zone ID where the table is located',
   })
-  @IsString()
-  @MaxLength(100)
-  floor: string;
+  @IsUUID()
+  zone_id: string;
 
   @ApiProperty({
     enum: TableShape,

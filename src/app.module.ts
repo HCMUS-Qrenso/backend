@@ -9,6 +9,7 @@ import { PrismaService } from './prisma.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { TablesModule } from './modules/tables/tables.module';
+import { ZonesModule } from './modules/zones/zones.module';
 import { JwtAuthGuard } from './modules/auth/guards';
 
 @Module({
@@ -28,6 +29,7 @@ import { JwtAuthGuard } from './modules/auth/guards';
     AuthModule,
     UserModule,
     TablesModule,
+    ZonesModule,
   ],
   controllers: [AppController],
   providers: [

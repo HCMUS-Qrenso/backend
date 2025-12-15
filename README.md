@@ -1,6 +1,6 @@
 # Backend API - Complete Documentation
 
-> **Last Updated:** December 14, 2025  
+> **Last Updated:** December 15, 2025  
 > **Version:** 1.0  
 > **Framework:** NestJS 11 with TypeScript
 
@@ -76,11 +76,18 @@ npm run start:dev
 
 ✅ **Tables Management API**
 - Multi-tenant table management with QR codes
+- Zone-based organization (floors, VIP areas, outdoor seating)
 - Floor plan layout management (drag-and-drop positions)
 - QR code generation with JWT tokens (365-day expiry)
 - Download QR codes (PNG 512x512, PDF A4 with branding, ZIP batch)
 - Token verification for customer orders
 - Dual QR storage: ordering_url (actual link) + qr_code_url (display image)
+
+✅ **Zones Management API**
+- CRUD operations for table zones
+- Zone statistics and table counts
+- Display order management for zones
+- Active/inactive zone toggling
 
 ✅ **API Documentation**
 - Interactive Swagger UI

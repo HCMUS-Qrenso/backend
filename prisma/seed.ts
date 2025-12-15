@@ -525,7 +525,49 @@ async function main() {
     }),
   ]);
 
-  // 9. Create Tables
+  // 9. Create Zones
+  console.log('🏢 Creating Zones...');
+  const zones = await Promise.all([
+    prisma.zone.create({
+      data: {
+        tenantId: tenant.id,
+        name: 'Tầng 1',
+        description: 'Main dining area on the first floor',
+        displayOrder: 1,
+        isActive: true,
+      },
+    }),
+    prisma.zone.create({
+      data: {
+        tenantId: tenant.id,
+        name: 'Tầng 2',
+        description: 'Second floor dining area',
+        displayOrder: 2,
+        isActive: true,
+      },
+    }),
+    prisma.zone.create({
+      data: {
+        tenantId: tenant.id,
+        name: 'Khu VIP',
+        description: 'VIP private dining area',
+        displayOrder: 3,
+        isActive: true,
+      },
+    }),
+    prisma.zone.create({
+      data: {
+        tenantId: tenant.id,
+        name: 'Khu ngoài trời',
+        description: 'Outdoor seating area',
+        displayOrder: 4,
+        isActive: true,
+      },
+    }),
+  ]);
+  console.log(`✓ Created ${zones.length} zones\n`);
+
+  // 10. Create Tables
   console.log('🪑 Creating Tables...');
   const tables = await Promise.all([
     // Ground Floor - Tầng 1
@@ -535,7 +577,7 @@ async function main() {
         tableNumber: '1',
         capacity: 2,
         position: JSON.stringify({ x: 100, y: 100 }),
-        floor: 'Tầng 1',
+        zoneId: zones[0].id,
         shape: 'circle',
         status: 'available',
         isActive: true,
@@ -547,7 +589,7 @@ async function main() {
         tableNumber: '2',
         capacity: 4,
         position: JSON.stringify({ x: 250, y: 100 }),
-        floor: 'Tầng 1',
+        zoneId: zones[0].id,
         shape: 'rectangle',
         status: 'available',
         isActive: true,
@@ -559,7 +601,7 @@ async function main() {
         tableNumber: '3',
         capacity: 4,
         position: JSON.stringify({ x: 430, y: 100 }),
-        floor: 'Tầng 1',
+        zoneId: zones[0].id,
         shape: 'rectangle',
         status: 'available',
         isActive: true,
@@ -571,7 +613,7 @@ async function main() {
         tableNumber: '4',
         capacity: 6,
         position: JSON.stringify({ x: 100, y: 250 }),
-        floor: 'Tầng 1',
+        zoneId: zones[0].id,
         shape: 'oval',
         status: 'available',
         isActive: true,
@@ -583,7 +625,7 @@ async function main() {
         tableNumber: '5',
         capacity: 8,
         position: JSON.stringify({ x: 300, y: 250 }),
-        floor: 'Tầng 1',
+        zoneId: zones[0].id,
         shape: 'rectangle',
         status: 'available',
         isActive: true,
@@ -595,7 +637,7 @@ async function main() {
         tableNumber: '6',
         capacity: 4,
         position: JSON.stringify({ x: 100, y: 400 }),
-        floor: 'Tầng 1',
+        zoneId: zones[0].id,
         shape: 'rectangle',
         status: 'available',
         isActive: true,
@@ -607,7 +649,7 @@ async function main() {
         tableNumber: '7',
         capacity: 2,
         position: JSON.stringify({ x: 280, y: 400 }),
-        floor: 'Tầng 1',
+        zoneId: zones[0].id,
         shape: 'circle',
         status: 'available',
         isActive: true,
@@ -619,7 +661,7 @@ async function main() {
         tableNumber: '8',
         capacity: 2,
         position: JSON.stringify({ x: 420, y: 400 }),
-        floor: 'Tầng 1',
+        zoneId: zones[0].id,
         shape: 'circle',
         status: 'available',
         isActive: true,
@@ -633,7 +675,7 @@ async function main() {
         tableNumber: '9',
         capacity: 6,
         position: JSON.stringify({ x: 100, y: 100 }),
-        floor: 'Tầng 2',
+        zoneId: zones[1].id,
         shape: 'oval',
         status: 'available',
         isActive: true,
@@ -645,7 +687,7 @@ async function main() {
         tableNumber: '10',
         capacity: 6,
         position: JSON.stringify({ x: 300, y: 100 }),
-        floor: 'Tầng 2',
+        zoneId: zones[1].id,
         shape: 'rectangle',
         status: 'available',
         isActive: true,
@@ -657,7 +699,7 @@ async function main() {
         tableNumber: '11',
         capacity: 4,
         position: JSON.stringify({ x: 100, y: 250 }),
-        floor: 'Tầng 2',
+        zoneId: zones[1].id,
         shape: 'rectangle',
         status: 'available',
         isActive: true,
@@ -669,7 +711,7 @@ async function main() {
         tableNumber: '12',
         capacity: 4,
         position: JSON.stringify({ x: 280, y: 250 }),
-        floor: 'Tầng 2',
+        zoneId: zones[1].id,
         shape: 'rectangle',
         status: 'available',
         isActive: true,
@@ -683,7 +725,7 @@ async function main() {
         tableNumber: 'VIP-01',
         capacity: 10,
         position: JSON.stringify({ x: 100, y: 100 }),
-        floor: 'Khu VIP',
+        zoneId: zones[2].id,
         shape: 'rectangle',
         status: 'available',
         isActive: true,
@@ -695,7 +737,7 @@ async function main() {
         tableNumber: 'VIP-02',
         capacity: 8,
         position: JSON.stringify({ x: 350, y: 100 }),
-        floor: 'Khu VIP',
+        zoneId: zones[2].id,
         shape: 'oval',
         status: 'available',
         isActive: true,
@@ -709,7 +751,7 @@ async function main() {
         tableNumber: 'OUT-01',
         capacity: 4,
         position: JSON.stringify({ x: 100, y: 100 }),
-        floor: 'Khu ngoài trời',
+        zoneId: zones[3].id,
         shape: 'rectangle',
         status: 'available',
         isActive: true,
@@ -721,7 +763,7 @@ async function main() {
         tableNumber: 'OUT-02',
         capacity: 4,
         position: JSON.stringify({ x: 280, y: 100 }),
-        floor: 'Khu ngoài trời',
+        zoneId: zones[3].id,
         shape: 'rectangle',
         status: 'available',
         isActive: true,
@@ -733,7 +775,7 @@ async function main() {
         tableNumber: 'OUT-03',
         capacity: 2,
         position: JSON.stringify({ x: 100, y: 230 }),
-        floor: 'Khu ngoài trời',
+        zoneId: zones[3].id,
         shape: 'circle',
         status: 'available',
         isActive: true,
@@ -745,7 +787,7 @@ async function main() {
         tableNumber: 'OUT-04',
         capacity: 2,
         position: JSON.stringify({ x: 240, y: 230 }),
-        floor: 'Khu ngoài trời',
+        zoneId: zones[3].id,
         shape: 'circle',
         status: 'available',
         isActive: true,
@@ -754,7 +796,7 @@ async function main() {
   ]);
   console.log(`✓ Created ${tables.length} tables\n`);
 
-  // 10. Create Sample Table Session and Order
+  // 11. Create Sample Table Session and Order
   console.log('📋 Creating Sample Order...');
   const tableSession = await prisma.tableSession.create({
     data: {

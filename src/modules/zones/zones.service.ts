@@ -1,0 +1,270 @@
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
+import { PrismaService } from '../../prisma.service';
+import { t } from '../../common/utils';
+import { CreateZoneDto, UpdateZoneDto, QueryZonesDto } from './dto';
+
+@Injectable()
+export class ZonesService {
+  private readonly logger = new Logger(ZonesService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Get paginated list of zones with filtering
+   */
+  async findAll(tenantId: string, query: QueryZonesDto) {
+    const { page = 1, limit = 10, search, is_active } = query;
+    const skip = (page - 1) * limit;
+
+    // Build where clause
+    const where: any = {
+      tenantId,
+    };
+
+    if (search) {
+      where.name = { contains: search, mode: 'insensitive' };
+    }
+
+    if (is_active !== undefined) {
+      where.isActive = is_active;
+    }
+
+    // Get total count
+    const total = await this.prisma.zone.count({ where });
+
+    // Get zones with table count
+    const zones = await this.prisma.zone.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+      include: {
+        _count: {
+          select: { tables: true },
+        },
+      },
+    });
+
+    // Format response
+    const formattedZones = zones.map((zone) => ({
+      id: zone.id,
+      name: zone.name,
+      description: zone.description,
+      display_order: zone.displayOrder,
+      is_active: zone.isActive,
+      table_count: zone._count.tables,
+      created_at: zone.createdAt,
+      updated_at: zone.updatedAt,
+    }));
+
+    return {
+      data: formattedZones,
+      pagination: {
+        total,
+        page,
+        limit,
+        total_pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Get a single zone by ID
+   */
+  async findOne(tenantId: string, id: string) {
+    const zone = await this.prisma.zone.findFirst({
+      where: {
+        id,
+        tenantId,
+      },
+      include: {
+        _count: {
+          select: { tables: true },
+        },
+      },
+    });
+
+    if (!zone) {
+      throw new NotFoundException(t('zones.zoneNotFound', 'Zone not found'));
+    }
+
+    return {
+      id: zone.id,
+      name: zone.name,
+      description: zone.description,
+      display_order: zone.displayOrder,
+      is_active: zone.isActive,
+      table_count: zone._count.tables,
+      created_at: zone.createdAt,
+      updated_at: zone.updatedAt,
+    };
+  }
+
+  /**
+   * Create a new zone
+   */
+  async create(tenantId: string, createZoneDto: CreateZoneDto) {
+    // Check for duplicate name
+    const existing = await this.prisma.zone.findFirst({
+      where: {
+        tenantId,
+        name: createZoneDto.name,
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException(t('zones.zoneNameExists', 'A zone with this name already exists'));
+    }
+
+    const zone = await this.prisma.zone.create({
+      data: {
+        tenantId,
+        name: createZoneDto.name,
+        description: createZoneDto.description,
+        displayOrder: createZoneDto.display_order ?? 0,
+        isActive: createZoneDto.is_active ?? true,
+      },
+      include: {
+        _count: {
+          select: { tables: true },
+        },
+      },
+    });
+
+    this.logger.log(
+      `Zone created: ${zone.id} (${zone.name}) for tenant ${tenantId}`
+    );
+
+    return {
+      id: zone.id,
+      name: zone.name,
+      description: zone.description,
+      display_order: zone.displayOrder,
+      is_active: zone.isActive,
+      table_count: zone._count.tables,
+      created_at: zone.createdAt,
+      updated_at: zone.updatedAt,
+    };
+  }
+
+  /**
+   * Update a zone
+   */
+  async update(tenantId: string, id: string, updateZoneDto: UpdateZoneDto) {
+    // Check if zone exists
+    const existing = await this.prisma.zone.findFirst({
+      where: {
+        id,
+        tenantId,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(t('zones.zoneNotFound', 'Zone not found'));
+    }
+
+    // Check for duplicate name if name is being updated
+    if (updateZoneDto.name && updateZoneDto.name !== existing.name) {
+      const duplicate = await this.prisma.zone.findFirst({
+        where: {
+          tenantId,
+          name: updateZoneDto.name,
+          id: { not: id },
+        },
+      });
+
+      if (duplicate) {
+        throw new ConflictException(t('zones.zoneNameExists', 'A zone with this name already exists'));
+      }
+    }
+
+    const zone = await this.prisma.zone.update({
+      where: { id },
+      data: {
+        name: updateZoneDto.name,
+        description: updateZoneDto.description,
+        displayOrder: updateZoneDto.display_order,
+        isActive: updateZoneDto.is_active,
+      },
+      include: {
+        _count: {
+          select: { tables: true },
+        },
+      },
+    });
+
+    this.logger.log(`Zone updated: ${zone.id} (${zone.name})`);
+
+    return {
+      id: zone.id,
+      name: zone.name,
+      description: zone.description,
+      display_order: zone.displayOrder,
+      is_active: zone.isActive,
+      table_count: zone._count.tables,
+      created_at: zone.createdAt,
+      updated_at: zone.updatedAt,
+    };
+  }
+
+  /**
+   * Delete a zone
+   */
+  async remove(tenantId: string, id: string) {
+    // Check if zone exists
+    const existing = await this.prisma.zone.findFirst({
+      where: {
+        id,
+        tenantId,
+      },
+      include: {
+        _count: {
+          select: { tables: true },
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(t('zones.zoneNotFound', 'Zone not found'));
+    }
+
+    // Check if zone has tables
+    if (existing._count.tables > 0) {
+      throw new ConflictException(
+        t('zones.zoneHasTables', `Cannot delete zone with ${existing._count.tables} tables assigned to it`)
+      );
+    }
+
+    await this.prisma.zone.delete({
+      where: { id },
+    });
+
+    this.logger.log(`Zone deleted: ${id} (${existing.name})`);
+
+    return {
+      message: t('zones.zoneDeleted', 'Zone deleted successfully'),
+    };
+  }
+
+  /**
+   * Get zone statistics
+   */
+  async getStats(tenantId: string) {
+    const [total, active, inactive] = await Promise.all([
+      this.prisma.zone.count({ where: { tenantId } }),
+      this.prisma.zone.count({ where: { tenantId, isActive: true } }),
+      this.prisma.zone.count({ where: { tenantId, isActive: false } }),
+    ]);
+
+    return {
+      total,
+      active,
+      inactive,
+    };
+  }
+}
