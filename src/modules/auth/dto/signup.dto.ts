@@ -5,6 +5,8 @@ import {
   MinLength,
   MaxLength,
   IsOptional,
+  IsStrongPassword,
+  IsPhoneNumber,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -18,15 +20,14 @@ export class SignupDto {
   email: string;
 
   @ApiProperty({
-    description: 'User password (6-255 characters)',
-    example: 'SecurePass123!',
-    minLength: 6,
-    maxLength: 255,
+    description: 'User password (minimum 8 characters). Must include uppercase, lowercase, number, and special character.',
+    example: 'Password@123!',
+    minLength: 8,
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(6)
-  @MaxLength(255)
+  @MinLength(8)
+  @IsStrongPassword()
   password: string;
 
   @ApiProperty({
@@ -49,14 +50,6 @@ export class SignupDto {
   @IsString()
   @IsOptional()
   @MaxLength(20)
+  @IsPhoneNumber()
   phone?: string;
-
-  @ApiPropertyOptional({
-    description: 'User role (customer, admin, etc.)',
-    example: 'customer',
-    default: 'customer',
-  })
-  @IsString()
-  @IsOptional()
-  role?: string;
 }

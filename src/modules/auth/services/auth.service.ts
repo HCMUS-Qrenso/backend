@@ -15,6 +15,8 @@ import {
   RefreshTokenDto,
   ForgotPasswordDto,
   ResetPasswordDto,
+  ResendEmailDto,
+  ResendEmailType,
 } from '../dto';
 import { EmailService } from './email.service';
 import { TokenService } from './token.service';
@@ -31,7 +33,7 @@ export class AuthService {
   ) {}
 
   async signup(signupDto: SignupDto): Promise<{ message: string }> {
-    const { email, password, fullName, phone, role } = signupDto;
+    const { email, password, fullName, phone } = signupDto;
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
@@ -51,7 +53,7 @@ export class AuthService {
         passwordHash,
         fullName,
         phone,
-        role: role || 'customer',
+        role: 'customer', // Default role set to 'customer', no signup for other roles
         emailVerified: false,
         status: 'active',
       },
@@ -85,6 +87,12 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException(
         t('auth.emailNotExists', 'Email address not found'),
+      );
+    }
+
+    if (user.emailVerified === false) {
+      throw new UnauthorizedException(
+        t('auth.emailNotVerified', 'Email address not verified'),
       );
     }
 
@@ -239,6 +247,82 @@ export class AuthService {
 
     return {
       message: t('auth.emailVerifiedSuccess', 'Email verified successfully'),
+    };
+  }
+
+  async resendEmail(
+    email: string,
+    type: ResendEmailType,
+  ): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      // Don't reveal if email exists or not for security
+      return {
+        message: t(
+          type === ResendEmailType.PASSWORD_RESET
+            ? 'auth.passwordResetSent'
+            : 'auth.verificationEmailSent',
+          type === ResendEmailType.PASSWORD_RESET
+            ? 'If the email exists, a password reset link has been sent.'
+            : 'If the email exists and is not verified, a verification link has been sent.',
+        ),
+      };
+    }
+
+    // For email verification, check if already verified
+    if (type === ResendEmailType.EMAIL_VERIFICATION && user.emailVerified) {
+      throw new BadRequestException(
+        t('auth.emailAlreadyVerified', 'Email is already verified'),
+      );
+    }
+
+    // Invalidate old tokens for this user
+    await this.prisma.userVerificationToken.updateMany({
+      where: {
+        userId: user.id,
+        type: type,
+        usedAt: null,
+      },
+      data: {
+        usedAt: new Date(),
+      },
+    });
+
+    // Create new token
+    const verificationToken = await this.tokenService.createVerificationToken(
+      user.id,
+      type,
+    );
+
+    // Send appropriate email based on type
+    if (type === ResendEmailType.PASSWORD_RESET) {
+      await this.emailService.sendPasswordResetEmail(
+        email,
+        verificationToken,
+        user.fullName,
+      );
+      this.logger.log(`Password reset email resent for: ${email}`);
+    } else {
+      await this.emailService.sendVerificationEmail(
+        email,
+        verificationToken,
+        user.fullName,
+      );
+      this.logger.log(`Verification email resent for: ${email}`);
+    }
+
+    return {
+      message: t(
+        type === ResendEmailType.PASSWORD_RESET
+          ? 'auth.passwordResetSent'
+          : 'auth.verificationEmailSent',
+        type === ResendEmailType.PASSWORD_RESET
+          ? 'If the email exists, a password reset link has been sent.'
+          : 'Verification email sent successfully. Please check your inbox.',
+      ),
     };
   }
 

@@ -14,7 +14,10 @@
     "emailVerifiedSuccess": "Xác thực email thành công",
     "logoutSuccess": "Đăng xuất thành công",
     "refreshTokenNotFound": "Không tìm thấy refresh token",
-    "userNotFoundOrInactive": "Không tìm thấy người dùng hoặc tài khoản đã bị vô hiệu hóa"
+    "userNotFoundOrInactive": "Không tìm thấy người dùng hoặc tài khoản đã bị vô hiệu hóa",
+    "emailNotVerified": "Email chưa được xác thực. Vui lòng kiểm tra email để lấy liên kết xác thực hoặc yêu cầu gửi lại.",
+    "emailAlreadyVerified": "Email đã được xác thực",
+    "verificationEmailSent": "Email xác thực đã được gửi thành công. Vui lòng kiểm tra hộp thư của bạn."
   },
   "tables": {
     "tableNameExists": "Một bàn với tên này đã tồn tại trong nhà hàng",

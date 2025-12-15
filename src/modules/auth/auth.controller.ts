@@ -27,6 +27,7 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   VerifyEmailDto,
+  ResendEmailDto,
   AuthResponseDto,
   MessageResponseDto,
 } from './dto';
@@ -63,18 +64,18 @@ export class AuthController {
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: 'Register a new user account',
+    summary: 'Register a new customer account',
     description:
-      'Create a new user account and send verification email. Supports localization via Accept-Language header for response messages.',
+      'Create a new customer account and send verification email. Supports localization via Accept-Language header for response messages.',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'User registered successfully. Verification email sent.',
+    description: 'Customer registered successfully. Verification email sent.',
     type: MessageResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.CONFLICT,
-    description: 'User with this email already exists',
+    description: 'Customer with this email already exists',
     type: ErrorResponseDto,
   })
   @ApiResponse({
@@ -247,6 +248,33 @@ export class AuthController {
     return this.authService.verifyEmail(
       verifyEmailDto.email,
       verifyEmailDto.token,
+    );
+  }
+
+  @Public()
+  @Post('resend-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Resend email for email verification or password reset',
+    description:
+      'Request a new verification or password reset email. Supports both email_verification and password_reset types. ' +
+      'Can be used if the original email was not received, expired, or accidentally deleted.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description:
+      'Email sent successfully (if email exists and meets requirements)',
+    type: MessageResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Email is already verified (only for email_verification type)',
+    type: ErrorResponseDto,
+  })
+  async resendEmail(@Body() resendDto: ResendEmailDto) {
+    return this.authService.resendEmail(
+      resendDto.email,
+      resendDto.type,
     );
   }
 

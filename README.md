@@ -513,12 +513,21 @@ Register a new user account.
 ```json
 {
   "email": "user@example.com",
-  "password": "SecurePass123!",
+  "password": "SecurePass@123!",
   "fullName": "John Doe",
-  "phone": "+84901234567",
-  "role": "customer"
+  "phone": "+84901234567"
 }
 ```
+
+**Validation Rules:**
+- **Email**: Must be a valid email format
+- **Password**: Minimum 8 characters, must include:
+  - At least one uppercase letter (A-Z)
+  - At least one lowercase letter (a-z)
+  - At least one number (0-9)
+  - At least one special character (@, #, $, !, %, etc.)
+- **Full Name**: 2-255 characters
+- **Phone**: Valid international phone number format (e.g., +84901234567)
 
 **Response:** `201 Created`
 ```json
@@ -529,7 +538,7 @@ Register a new user account.
 
 **Errors:**
 - `409 Conflict` - Email already exists
-- `400 Bad Request` - Validation errors
+- `400 Bad Request` - Validation errors (weak password, invalid email, invalid phone)
 
 ---
 
@@ -540,7 +549,7 @@ Login with email and password.
 ```json
 {
   "email": "user@example.com",
-  "password": "SecurePass123!"
+  "password": "SecurePass@123!"
 }
 ```
 
@@ -561,6 +570,7 @@ Login with email and password.
 
 **Errors:**
 - `401 Unauthorized` - Email address not found
+- `401 Unauthorized` - Email address not verified (must verify email before login)
 - `401 Unauthorized` - Incorrect password
 - `401 Unauthorized` - Account inactive
 
@@ -617,9 +627,13 @@ Reset password with token.
 ```json
 {
   "token": "abc123def456ghi789",
-  "newPassword": "NewSecurePass123!"
+  "newPassword": "NewSecurePass@123!"
 }
 ```
+
+**Password Requirements:**
+- Minimum 8 characters
+- Must include uppercase, lowercase, number, and special character
 
 **Response:** `200 OK`
 ```json
@@ -630,6 +644,7 @@ Reset password with token.
 
 **Errors:**
 - `400 Bad Request` - Invalid or expired token
+- `400 Bad Request` - Weak password (doesn't meet requirements)
 
 ---
 
@@ -654,6 +669,64 @@ Verify email address.
 **Errors:**
 - `400 Bad Request` - Invalid verification token
 - `400 Bad Request` - Token expired
+
+---
+
+#### 📧 POST /auth/resend-email
+Resend verification or password reset email.
+
+**Use Cases**: 
+- Resend email verification link if not received or expired
+- Resend password reset link if not received or expired
+
+**Request:**
+```json
+{
+  "email": "user@example.com",
+  "type": "email_verification"
+}
+```
+
+**Type Options:**
+- `email_verification` - Resend email verification link
+- `password_reset` - Resend password reset link
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Verification email sent successfully. Please check your inbox."
+}
+```
+OR
+```json
+{
+  "message": "If the email exists, a password reset link has been sent."
+}
+```
+
+**Errors:**
+- `400 Bad Request` - Email is already verified (only for `email_verification` type)
+
+**Security Note**: 
+- For `email_verification`: Returns success only if email exists and is not verified
+- For `password_reset`: Doesn't reveal whether email exists (returns generic message)
+
+**Examples:**
+```bash
+# Resend email verification
+POST /auth/resend-email
+{
+  "email": "user@example.com",
+  "type": "email_verification"
+}
+
+# Resend password reset
+POST /auth/resend-email
+{
+  "email": "user@example.com",
+  "type": "password_reset"
+}
+```
 
 ---
 

@@ -14,7 +14,10 @@
     "emailVerifiedSuccess": "Email verified successfully",
     "logoutSuccess": "Logged out successfully",
     "refreshTokenNotFound": "Refresh token not found",
-    "userNotFoundOrInactive": "User not found or inactive"
+    "userNotFoundOrInactive": "User not found or inactive",
+    "emailNotVerified": "Email address not verified. Please check your email for the verification link or request a new one.",
+    "emailAlreadyVerified": "Email is already verified",
+    "verificationEmailSent": "Verification email sent successfully. Please check your inbox."
   },
   "tables": {
     "tableNameExists": "A table with this name already exists in this restaurant",
