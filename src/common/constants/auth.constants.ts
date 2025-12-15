@@ -17,3 +17,12 @@ export const TOKEN_CONFIG = {
   VERIFICATION_TOKEN_EXPIRY_HOURS: 24,
   PASSWORD_RESET_TOKEN_EXPIRY_HOURS: 1,
 } as const;
+
+export const ROLES = {
+  SUPER_ADMIN: 'super_admin',
+  OWNER: 'owner',
+  ADMIN: 'admin',
+  WAITER: 'waiter',
+  KITCHEN: 'kitchen_staff',
+  CUSTOMER: 'customer',
+} as const;

@@ -174,7 +174,13 @@ npm run prisma:generate
 # Run migrations
 npm run prisma:migrate
 
-# (Optional) Seed database
+# (Optional) Seed database with sample data
+# Creates:
+# - Super admin account
+# - Owner account (with NULL tenantId)
+# - Sample tenant (restaurant)
+# - Staff users (admin, waiter, kitchen_staff)
+# - Zones and tables with QR codes
 npm run prisma:seed
 
 # (Optional) Open Prisma Studio
@@ -1263,15 +1269,40 @@ Batch update table positions (for drag-and-drop).
 
 ### Database Schema
 
+#### User & Tenant Relationship
+```typescript
+// Owner Multi-Tenancy Model
+User {
+  id: UUID
+  email: string
+  role: 'super_admin' | 'owner' | 'admin' | 'waiter' | 'kitchen_staff' | 'customer'
+  tenantId: UUID? // NULL for super_admin and owner roles
+  ownedTenants: Tenant[] // Owners can own multiple tenants
+}
+
+Tenant {
+  id: UUID
+  name: string
+  ownerId: UUID // References User.id (must be owner role)
+  owner: User
+}
+```
+
+**Key Points:**
+- Owners have `tenantId = NULL` to support multi-tenant ownership
+- Each tenant has exactly one owner
+- Other roles (admin, waiter, etc.) belong to one tenant
+- Owners use `x-tenant-id` header to select which tenant to manage
+
 #### Tables Table
 ```sql
 CREATE TABLE tables (
   id UUID PRIMARY KEY,
   tenant_id UUID NOT NULL REFERENCES tenants(id),
+  zone_id UUID NOT NULL REFERENCES zones(id),
   table_number VARCHAR(20) NOT NULL,
-  capacity INT NOT NULL,
+  capacity INT NOT NULL CHECK (capacity BETWEEN 1 AND 20),
   position VARCHAR(100),  -- JSON: {"x": 100, "y": 200}
-  floor VARCHAR(100),
   shape VARCHAR(100),     -- circle, rectangle, oval
   status VARCHAR(20) DEFAULT 'available',
   qr_code_token TEXT UNIQUE,
@@ -1283,6 +1314,22 @@ CREATE TABLE tables (
   updated_at TIMESTAMP DEFAULT NOW(),
   
   UNIQUE(tenant_id, table_number)
+);
+```
+
+#### Zones Table
+```sql
+CREATE TABLE zones (
+  id UUID PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES tenants(id),
+  name VARCHAR(100) NOT NULL,
+  description TEXT,
+  display_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  
+  UNIQUE(tenant_id, name)
 );
 ```
 
@@ -1633,10 +1680,31 @@ export const COOKIE_CONFIG = {
 async getAllUsers() { }
 ```
 
+**Available Roles:**
+- `super_admin` - Full system access
+- `owner` - Can own and manage multiple restaurant tenants
+- `admin` - Full access within a single tenant
+- `waiter` - Table and order management
+- `kitchen_staff` - Kitchen operations
+- `customer` - Customer ordering
+
+**Owner Multi-Tenancy:**
+Owners have `tenantId = NULL` in the database and can own multiple restaurant tenants. When accessing tenant-specific endpoints, owners must specify which tenant they're working with using the `x-tenant-id` header:
+
+```bash
+# Example: Owner accessing tables for a specific tenant
+curl -H "Authorization: Bearer <owner_jwt>" \
+     -H "x-tenant-id: <tenant_uuid>" \
+     http://localhost:3000/tables
+```
+
+The `TenantOwnershipGuard` validates that the owner actually owns the specified tenant before allowing access.
+
 ✅ **Protected Endpoints**
 - JWT validation on protected routes
 - User status checking (active/inactive)
-- Email verification requirements (optional)
+- Email verification requirements (login blocked until verified)
+- Tenant ownership validation for owners
 
 ### Input Validation
 

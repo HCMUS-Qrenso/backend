@@ -102,11 +102,7 @@ async function main() {
   });
   console.log(`✓ Created Tenant: ${tenant.name}\n`);
 
-  // Update owner's tenantId
-  await prisma.user.update({
-    where: { id: owner.id },
-    data: { tenantId: tenant.id },
-  });
+  // Note: Owner's tenantId remains NULL to allow ownership of multiple tenants
 
   // 4. Create Staff Users
   console.log('👥 Creating Staff Users...');

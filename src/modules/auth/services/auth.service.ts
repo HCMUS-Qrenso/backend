@@ -19,6 +19,7 @@ import {
 } from '../dto';
 import { EmailService } from './email.service';
 import { TokenService } from './token.service';
+import { ROLES } from 'src/common/constants';
 
 @Injectable()
 export class AuthService {
@@ -52,7 +53,7 @@ export class AuthService {
         passwordHash,
         fullName,
         phone,
-        role: 'customer', // Default role set to 'customer', no signup for other roles
+        role: ROLES.CUSTOMER, // Default role set to 'customer', no signup for other roles
         emailVerified: false,
         status: 'active',
       },
@@ -375,7 +376,7 @@ export class AuthService {
             email,
             fullName,
             avatarUrl,
-            role: 'customer',
+            role: ROLES.CUSTOMER,
             emailVerified: true,
             status: 'active',
             oauthProviders: {
