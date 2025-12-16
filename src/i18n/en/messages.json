@@ -1,0 +1,65 @@
+{
+  "auth": {
+    "userExists": "User with this email already exists",
+    "emailNotExists": "Email address not found",
+    "wrongPassword": "Incorrect password",
+    "invalidCredentials": "Invalid credentials",
+    "accountInactive": "Account is inactive",
+    "invalidRefreshToken": "Invalid or expired refresh token",
+    "invalidToken": "Invalid or expired token",
+    "invalidEmail": "Invalid email address",
+    "userRegistered": "User registered successfully. Please check your email to verify your account.",
+    "passwordResetSent": "If the email exists, a password reset link has been sent.",
+    "passwordResetSuccess": "Password reset successfully",
+    "emailVerifiedSuccess": "Email verified successfully",
+    "logoutSuccess": "Logged out successfully",
+    "refreshTokenNotFound": "Refresh token not found",
+    "userNotFoundOrInactive": "User not found or inactive",
+    "emailNotVerified": "Email address not verified. Please check your email for the verification link or request a new one.",
+    "emailAlreadyVerified": "Email is already verified",
+    "verificationEmailSent": "Verification email sent successfully. Please check your inbox."
+  },
+  "tables": {
+    "tableNameExists": "A table with this name already exists in this restaurant",
+    "tableCreatedSuccess": "Table created successfully",
+    "tableNotFoundOrDenied": "Table not found or access denied",
+    "tableUpdatedSuccess": "Table updated successfully",
+    "cannotDeleteActiveOrders": "Cannot delete table with active orders",
+    "tableDeletedSuccess": "Table deleted successfully",
+    "tablePositionUpdatedSuccess": "Table position updated successfully",
+    "layoutUpdatedSuccess": "Layout updated successfully",
+    "invalidTableIdsFormat": "Invalid tableIds format. Expected array of numbers.",
+    "qrAlreadyExists": "QR code already exists",
+    "qrGeneratedSuccess": "QR code generated successfully",
+    "qrNotGenerated": "QR code not generated for this table",
+    "invalidTableStatus": "Invalid table status. Must be available or unavailable.",
+    "tableStatusUpdatedSuccess": "Table status updated successfully",
+    "tableNotFound": "Table not found",
+    "noTablesWithQr": "No tables with QR codes found",
+    "invalidTokenFormat": "Invalid token format",
+    "qrInvalid": "This QR code is invalid. Please ask staff for assistance.",
+    "qrNoLongerValid": "This QR code is no longer valid. Please ask staff for assistance.",
+    "tableUnavailable": "This table is currently unavailable. Please ask staff for assistance.",
+    "qrOutdated": "This QR code is outdated. Please scan the current QR code on the table.",
+    "qrExpired": "This QR code has expired. Please ask staff for a new one.",
+    "tokenVerificationFailed": "Token verification failed"
+  },
+  "zones": {
+    "zoneNotFound": "Zone not found",
+    "zoneNameExists": "A zone with this name already exists",
+    "zoneHasTables": "Cannot delete zone with {count} tables assigned to it",
+    "zoneDeleted": "Zone deleted successfully",
+    "zoneCreatedSuccess": "Zone created successfully",
+    "zoneUpdatedSuccess": "Zone updated successfully"
+  },
+  "tenants": {
+    "tenantNotFound": "Tenant not found"
+  },
+  "common": {
+    "notFound": "Resource not found",
+    "badRequest": "Bad request",
+    "unauthorized": "Unauthorized",
+    "forbidden": "Forbidden",
+    "internalServerError": "Internal server error"
+  }
+}
