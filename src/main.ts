@@ -49,6 +49,7 @@ async function bootstrap() {
     )
     .setVersion('1.0')
     .addTag('auth', 'Authentication endpoints')
+    .addTag('tenants', 'Tenant management endpoints for owners')
     .addTag('users', 'User management endpoints')
     .addTag('tables', 'Table management endpoints')
     .addBearerAuth(
@@ -83,7 +84,8 @@ async function bootstrap() {
         in: 'header',
         required: false,
         name: 'x-tenant-id',
-        description: 'Tenant ID that the owner wants to operate on',
+        description:
+          'Tenant ID that the owner wants to operate on - If not owner, ignore this header',
         schema: {
           type: 'string',
         },

@@ -1,6 +1,6 @@
 # Backend API - Complete Documentation
 
-> **Last Updated:** December 15, 2025  
+> **Last Updated:** December 16, 2025  
 > **Version:** 1.0  
 > **Framework:** NestJS 11 with TypeScript
 
@@ -88,6 +88,13 @@ npm run start:dev
 - Zone statistics and table counts
 - Display order management for zones
 - Active/inactive zone toggling
+
+✅ **Tenant Management API**
+- Owner dashboard for all owned restaurants
+- Tenant listing with pagination and filtering
+- Statistics per tenant (users, tables, zones, orders)
+- Tenant status and subscription tier tracking
+- Search by name or slug
 
 ✅ **API Documentation**
 - Interactive Swagger UI
@@ -1275,6 +1282,161 @@ Batch update table positions (for drag-and-drop).
 
 ---
 
+## Tenant Management API
+
+### Overview
+
+The Tenant Management API allows restaurant owners to view and manage all their restaurant tenants from a centralized dashboard. Owners can see statistics, status, and detailed information about each restaurant they own.
+
+### Key Features
+
+✅ **Multi-Tenant Dashboard**
+- View all owned restaurants in one place
+- Pagination and filtering support
+- Search by restaurant name or slug
+- Filter by status and subscription tier
+
+✅ **Tenant Statistics**
+- Total users per tenant
+- Total tables per tenant
+- Total zones per tenant
+- Total orders per tenant
+
+✅ **Owner Analytics**
+- Aggregate statistics across all tenants
+- Status breakdown (active/inactive/suspended)
+- Subscription tier distribution
+
+### Tenant Endpoints
+
+#### 🏢 GET /tenants
+Get all tenants owned by the authenticated owner. **[Protected - Owner only]**
+
+**Headers:**
+```
+Authorization: Bearer <access-token>
+```
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 10)
+- `search` (optional): Search by tenant name or slug
+- `status` (optional): Filter by status (`active`, `inactive`, `suspended`)
+- `subscription_tier` (optional): Filter by tier (`basic`, `premium`, `enterprise`)
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "tenants": [
+      {
+        "id": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "Pizza Palace",
+        "slug": "pizza-palace",
+        "address": "123 Main St, City",
+        "status": "active",
+        "subscription_tier": "premium",
+        "settings": {},
+        "statistics": {
+          "total_users": 15,
+          "total_tables": 25,
+          "total_zones": 3,
+          "total_orders": 1250
+        },
+        "created_at": "2024-01-15T10:00:00Z",
+        "updated_at": "2024-12-15T14:30:00Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 5,
+      "total_pages": 1
+    }
+  }
+}
+```
+
+**Examples:**
+```bash
+# Get all tenants with pagination
+curl -X GET "http://localhost:3000/tenants?page=1&limit=10" \
+  -H "Authorization: Bearer <token>"
+
+# Search for tenants
+curl -X GET "http://localhost:3000/tenants?search=pizza" \
+  -H "Authorization: Bearer <token>"
+
+# Filter by status
+curl -X GET "http://localhost:3000/tenants?status=active" \
+  -H "Authorization: Bearer <token>"
+
+# Filter by subscription tier
+curl -X GET "http://localhost:3000/tenants?subscription_tier=premium" \
+  -H "Authorization: Bearer <token>"
+```
+
+**Errors:**
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - User is not an owner
+
+---
+
+#### 📊 GET /tenants/stats
+Get summary statistics for all tenants owned by the authenticated owner. **[Protected - Owner only]**
+
+**Headers:**
+```
+Authorization: Bearer <access-token>
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "total_tenants": 5,
+    "active_tenants": 4,
+    "inactive_tenants": 0,
+    "suspended_tenants": 1,
+    "subscription_breakdown": {
+      "basic": 2,
+      "premium": 2,
+      "enterprise": 1
+    }
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X GET "http://localhost:3000/tenants/stats" \
+  -H "Authorization: Bearer <token>"
+```
+
+**Errors:**
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - User is not an owner
+
+---
+
+### Role-Based Access
+
+**Owner Role Requirements:**
+- Only users with `role: 'owner'` can access tenant endpoints
+- Owners have `tenantId = NULL` in the database
+- Owners can own multiple tenants
+- Each request is scoped to the authenticated owner's ID
+
+**Security Features:**
+- JWT authentication required
+- Role guard ensures only owners can access
+- Automatic filtering by owner ID
+- No cross-owner data access possible
+
+---
+
 ### Database Schema
 
 #### User & Tenant Relationship
@@ -1410,6 +1572,7 @@ const config = new DocumentBuilder()
   .setDescription('API documentation for the backend application')
   .setVersion('1.0')
   .addTag('auth', 'Authentication endpoints')
+  .addTag('tenants', 'Tenant management endpoints for owners')
   .addTag('tables', 'Table management and QR code endpoints')
   .addTag('users', 'User management endpoints')
   .addBearerAuth()
@@ -1577,14 +1740,26 @@ backend/
 │   │   │   ├── auth.controller.ts
 │   │   │   └── auth.module.ts
 │   │   │
+│   │   ├── tenant/           # Tenant module
+│   │   │   ├── dto/          # Tenant DTOs
+│   │   │   ├── tenant.controller.ts
+│   │   │   ├── tenant.service.ts
+│   │   │   └── tenant.module.ts
+│   │   │
+│   │   ├── tables/           # Tables module
+│   │   │   ├── dto/          # Table DTOs
+│   │   │   ├── tables.controller.ts
+│   │   │   ├── tables.service.ts
+│   │   │   └── tables.module.ts
+│   │   │
+│   │   ├── zones/            # Zones module
+│   │   │   ├── dto/          # Zone DTOs
+│   │   │   ├── zones.controller.ts
+│   │   │   ├── zones.service.ts
+│   │   │   └── zones.module.ts
+│   │   │
 │   │   └── user/             # User module
 │   │       ├── user.controller.ts
-│   │
-│   │   └── tables/           # Tables module
-│   │       ├── dto/          # Table DTOs
-│   │       ├── tables.controller.ts
-│   │       ├── tables.service.ts
-│   │       └── tables.module.ts
 │   │       ├── user.service.ts
 │   │       └── user.module.ts
 │   │
@@ -1966,4 +2141,4 @@ npm run test:cov           # Test coverage
 
 **Built with ❤️ using NestJS**
 
-*Last Updated: December 13, 2025*
+*Last Updated: December 16, 2025*
