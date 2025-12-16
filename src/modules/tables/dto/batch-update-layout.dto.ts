@@ -1,27 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsArray,
-  ValidateNested,
-  IsUUID,
-  IsObject,
-  IsInt,
-  IsDecimal,
-} from 'class-validator';
+import { IsArray, ValidateNested, IsUUID, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
-
-class PositionDataDto {
-  @ApiProperty({ example: 100 })
-  @IsInt()
-  x: number;
-
-  @ApiProperty({ example: 200 })
-  @IsInt()
-  y: number;
-
-  @ApiProperty({ example: -45 })
-  @IsDecimal()
-  rotation: number;
-}
+import { PositionDto } from './position.dto';
 
 class TableUpdateDto {
   @ApiProperty({
@@ -31,11 +11,11 @@ class TableUpdateDto {
   @IsUUID()
   table_id: string;
 
-  @ApiProperty({ type: PositionDataDto })
+  @ApiProperty({ type: PositionDto })
   @IsObject()
   @ValidateNested()
-  @Type(() => PositionDataDto)
-  position: PositionDataDto;
+  @Type(() => PositionDto)
+  position: PositionDto;
 }
 
 export class BatchUpdateLayoutDto {
