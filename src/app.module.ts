@@ -29,7 +29,7 @@ import { JwtAuthGuard } from './modules/auth/guards';
         path: path.join(__dirname, 'i18n'),
         watch: true,
       },
-      resolvers: [AcceptLanguageResolver],
+      resolvers: [new AcceptLanguageResolver()],
     }),
     AuthModule,
     UserModule,
