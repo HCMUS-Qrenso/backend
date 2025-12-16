@@ -41,7 +41,7 @@ import { RolesGuard, TenantOwnershipGuard } from 'src/common/guards';
 
 @ApiTags('tables')
 @Controller('tables')
-@UseGuards(JwtAuthGuard, TenantOwnershipGuard)
+@UseGuards(JwtAuthGuard, TenantOwnershipGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class TablesController {
   constructor(private readonly tablesService: TablesService) {}
@@ -51,7 +51,6 @@ export class TablesController {
   // ============================================
 
   @Get()
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get paginated list of tables with filtering' })
   @ApiResponse({
@@ -66,7 +65,6 @@ export class TablesController {
   }
 
   @Get('stats')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get table statistics' })
   @ApiResponse({
@@ -82,7 +80,6 @@ export class TablesController {
   // ============================================
 
   @Get('layout')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get layout by zone' })
   @ApiResponse({
@@ -97,7 +94,6 @@ export class TablesController {
   }
 
   @Get('zones')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get available zones' })
   @ApiResponse({
@@ -109,7 +105,6 @@ export class TablesController {
   }
 
   @Post('layout/batch-update')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Batch update table positions' })
@@ -129,7 +124,6 @@ export class TablesController {
   // ============================================
 
   @Get('qr')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER)
   @ApiOperation({ summary: 'Get all QR codes' })
   @ApiResponse({
@@ -144,7 +138,6 @@ export class TablesController {
   }
 
   @Post('qr/batch-generate')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Batch generate QR codes' })
@@ -164,7 +157,6 @@ export class TablesController {
   // ============================================
 
   @Post()
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new table' })
@@ -184,7 +176,6 @@ export class TablesController {
   }
 
   @Get(':id')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get table details by ID' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
@@ -201,7 +192,6 @@ export class TablesController {
   }
 
   @Put(':id')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN)
   @ApiOperation({ summary: 'Update table' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
@@ -222,7 +212,6 @@ export class TablesController {
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete table' })
@@ -244,7 +233,6 @@ export class TablesController {
   }
 
   @Patch(':id/status')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN)
   @ApiOperation({ summary: 'Update table status only' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
@@ -273,7 +261,6 @@ export class TablesController {
   }
 
   @Put(':id/position')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN)
   @ApiOperation({ summary: 'Update table position' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
@@ -290,7 +277,6 @@ export class TablesController {
   }
 
   @Post(':id/qr/generate')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Generate QR code for a table' })
@@ -312,7 +298,6 @@ export class TablesController {
   }
 
   @Get(':id/qr')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER)
   @ApiOperation({ summary: 'Get QR code for a specific table' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })
@@ -332,7 +317,6 @@ export class TablesController {
   // ============================================
 
   @Get('qr/download-all')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER)
   @ApiOperation({ summary: 'Download all QR codes as ZIP or PDF' })
   @ApiQuery({
@@ -357,7 +341,6 @@ export class TablesController {
   }
 
   @Get(':id/qr/download')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER)
   @ApiOperation({ summary: 'Download QR code for a specific table' })
   @ApiParam({ name: 'id', description: 'Table ID (UUID)' })

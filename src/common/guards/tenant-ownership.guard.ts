@@ -41,7 +41,7 @@ export class TenantOwnershipGuard implements CanActivate {
     const tenant = await this.prisma.tenant.findFirst({
       where: {
         id: tenantId,
-        ownerId: user.sub,
+        ownerId: user.id,
       },
     });
 

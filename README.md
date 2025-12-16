@@ -1197,7 +1197,7 @@ Verify QR code token (public endpoint for customers).
 
 ---
 
-### Floor Layout Endpoints
+### Zone Layout Endpoints
 
 #### 🗺️ GET /tables/layout?zone_id=zone-uuid
 Get table layout for a specific zone.
@@ -1282,40 +1282,10 @@ Batch update table positions (for drag-and-drop).
 
 ---
 
-## Tenant Management API
-
-### Overview
-
-The Tenant Management API allows restaurant owners to view and manage all their restaurant tenants from a centralized dashboard. Owners can see statistics, status, and detailed information about each restaurant they own.
-
-### Key Features
-
-✅ **Multi-Tenant Dashboard**
-- View all owned restaurants in one place
-- Pagination and filtering support
-- Search by restaurant name or slug
-- Filter by status and subscription tier
-
-✅ **Tenant Statistics**
-- Total users per tenant
-- Total tables per tenant
-- Total zones per tenant
-- Total orders per tenant
-
-✅ **Owner Analytics**
-- Aggregate statistics across all tenants
-- Status breakdown (active/inactive/suspended)
-- Subscription tier distribution
-
 ### Tenant Endpoints
 
 #### 🏢 GET /tenants
 Get all tenants owned by the authenticated owner. **[Protected - Owner only]**
-
-**Headers:**
-```
-Authorization: Bearer <access-token>
-```
 
 **Query Parameters:**
 - `page` (optional): Page number (default: 1)
@@ -1358,25 +1328,6 @@ Authorization: Bearer <access-token>
 }
 ```
 
-**Examples:**
-```bash
-# Get all tenants with pagination
-curl -X GET "http://localhost:3000/tenants?page=1&limit=10" \
-  -H "Authorization: Bearer <token>"
-
-# Search for tenants
-curl -X GET "http://localhost:3000/tenants?search=pizza" \
-  -H "Authorization: Bearer <token>"
-
-# Filter by status
-curl -X GET "http://localhost:3000/tenants?status=active" \
-  -H "Authorization: Bearer <token>"
-
-# Filter by subscription tier
-curl -X GET "http://localhost:3000/tenants?subscription_tier=premium" \
-  -H "Authorization: Bearer <token>"
-```
-
 **Errors:**
 - `401 Unauthorized` - Not authenticated
 - `403 Forbidden` - User is not an owner
@@ -1385,11 +1336,6 @@ curl -X GET "http://localhost:3000/tenants?subscription_tier=premium" \
 
 #### 📊 GET /tenants/stats
 Get summary statistics for all tenants owned by the authenticated owner. **[Protected - Owner only]**
-
-**Headers:**
-```
-Authorization: Bearer <access-token>
-```
 
 **Response:** `200 OK`
 ```json
@@ -1409,99 +1355,57 @@ Authorization: Bearer <access-token>
 }
 ```
 
-**Example:**
-```bash
-curl -X GET "http://localhost:3000/tenants/stats" \
-  -H "Authorization: Bearer <token>"
-```
-
 **Errors:**
 - `401 Unauthorized` - Not authenticated
 - `403 Forbidden` - User is not an owner
 
 ---
 
-### Role-Based Access
+#### 🏢 GET /tenants/current
+Get detailed information about the current tenant. **[Protected - Owner, Admin, Waiter, Kitchen]**
 
-**Owner Role Requirements:**
-- Only users with `role: 'owner'` can access tenant endpoints
-- Owners have `tenantId = NULL` in the database
-- Owners can own multiple tenants
-- Each request is scoped to the authenticated owner's ID
+**Access Control:**
+- **Owners**: Can view any tenant they own
+- **Staff (Admin, Waiter, Kitchen)**: Can view their assigned tenant only
 
-**Security Features:**
-- JWT authentication required
-- Role guard ensures only owners can access
-- Automatic filtering by owner ID
-- No cross-owner data access possible
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "name": "Pizza Palace",
+    "slug": "pizza-palace",
+    "address": "123 Main St, City",
+    "status": "active",
+    "subscription_tier": "premium",
+    "settings": {
+      "currency": "USD",
+      "timezone": "America/New_York"
+    },
+    "owner": {
+      "id": "owner-uuid",
+      "full_name": "John Doe",
+      "email": "owner@example.com"
+    },
+    "statistics": {
+      "total_users": 15,
+      "total_tables": 25,
+      "total_zones": 3,
+      "total_orders": 1250,
+      "total_categories": 8,
+      "total_menu_items": 45
+    },
+    "created_at": "2024-01-15T10:00:00Z",
+    "updated_at": "2024-12-15T14:30:00Z"
+  }
+}
+```
+
+**Errors:**
+- `404 Not Found` - Tenant does not exist
 
 ---
-
-### Database Schema
-
-#### User & Tenant Relationship
-```typescript
-// Owner Multi-Tenancy Model
-User {
-  id: UUID
-  email: string
-  role: 'super_admin' | 'owner' | 'admin' | 'waiter' | 'kitchen_staff' | 'customer'
-  tenantId: UUID? // NULL for super_admin and owner roles
-  ownedTenants: Tenant[] // Owners can own multiple tenants
-}
-
-Tenant {
-  id: UUID
-  name: string
-  ownerId: UUID // References User.id (must be owner role)
-  owner: User
-}
-```
-
-**Key Points:**
-- Owners have `tenantId = NULL` to support multi-tenant ownership
-- Each tenant has exactly one owner
-- Other roles (admin, waiter, etc.) belong to one tenant
-- Owners use `x-tenant-id` header to select which tenant to manage
-
-#### Tables Table
-```sql
-CREATE TABLE tables (
-  id UUID PRIMARY KEY,
-  tenant_id UUID NOT NULL REFERENCES tenants(id),
-  zone_id UUID NOT NULL REFERENCES zones(id),
-  table_number VARCHAR(20) NOT NULL,
-  capacity INT NOT NULL CHECK (capacity BETWEEN 1 AND 20),
-  position VARCHAR(100),  -- JSON: {"x": 100, "y": 200, "rotation": -45}
-  shape VARCHAR(100),     -- circle, rectangle, oval
-  status VARCHAR(20) DEFAULT 'available',
-  qr_code_token TEXT UNIQUE,
-  qr_code_url TEXT,       -- External QR image URL
-  ordering_url TEXT,      -- Actual ordering link
-  qr_code_generated_at TIMESTAMP,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  
-  UNIQUE(tenant_id, table_number)
-);
-```
-
-#### Zones Table
-```sql
-CREATE TABLE zones (
-  id UUID PRIMARY KEY,
-  tenant_id UUID NOT NULL REFERENCES tenants(id),
-  name VARCHAR(100) NOT NULL,
-  description TEXT,
-  display_order INT DEFAULT 0,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  
-  UNIQUE(tenant_id, name)
-);
-```
 
 ### Additional Documentation
 
@@ -1509,10 +1413,6 @@ For complete API documentation with all endpoints, see:
 - Frontend API Documentation: `/frontend/API_DOC_FOR_TABLES/TABLES_API_DOCUMENTATION.md`
 - Database Design: `/docs/database/DATABASE_DESIGN.dbml`
 - Database Description: `/docs/database/DATABASE_DESCRIPTION.md`
-
----
-**Errors:**
-- `403 Forbidden` - Insufficient permissions
 
 ---
 

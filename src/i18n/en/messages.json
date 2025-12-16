@@ -52,6 +52,9 @@
     "zoneCreatedSuccess": "Zone created successfully",
     "zoneUpdatedSuccess": "Zone updated successfully"
   },
+  "tenants": {
+    "tenantNotFound": "Tenant not found"
+  },
   "common": {
     "notFound": "Resource not found",
     "badRequest": "Bad request",

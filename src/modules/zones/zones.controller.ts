@@ -27,7 +27,7 @@ import { ROLES } from 'src/common/constants';
 
 @ApiTags('zones')
 @Controller('zones')
-@UseGuards(JwtAuthGuard, TenantOwnershipGuard)
+@UseGuards(JwtAuthGuard, TenantOwnershipGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class ZonesController {
   constructor(private readonly zonesService: ZonesService) {}
@@ -37,7 +37,6 @@ export class ZonesController {
   // ============================================
 
   @Get()
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get paginated list of zones with filtering' })
   @ApiResponse({
@@ -52,7 +51,6 @@ export class ZonesController {
   }
 
   @Get('stats')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get zone statistics' })
   @ApiResponse({
@@ -68,7 +66,6 @@ export class ZonesController {
   // ============================================
 
   @Get(':id')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
   @ApiOperation({ summary: 'Get a single zone by ID' })
   @ApiParam({ name: 'id', description: 'Zone UUID' })
@@ -85,7 +82,6 @@ export class ZonesController {
   }
 
   @Post()
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN)
   @ApiOperation({ summary: 'Create a new zone' })
   @ApiResponse({
@@ -104,7 +100,6 @@ export class ZonesController {
   }
 
   @Put(':id')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN)
   @ApiOperation({ summary: 'Update a zone' })
   @ApiParam({ name: 'id', description: 'Zone UUID' })
@@ -129,7 +124,6 @@ export class ZonesController {
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
   @Roles(ROLES.OWNER, ROLES.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete a zone' })

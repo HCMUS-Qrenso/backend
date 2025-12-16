@@ -1,6 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { QueryTenantsDto } from './dto';
+import { t } from '../../common/utils';
 
 @Injectable()
 export class TenantService {
@@ -142,6 +148,69 @@ export class TenantService {
         inactive_tenants: inactiveTenants,
         suspended_tenants: suspendedTenants,
         subscription_breakdown: subscriptionBreakdown,
+      },
+    };
+  }
+
+  /**
+   * Get detailed information about a specific tenant
+   */
+  async findOne(tenantId: string) {
+    // Fetch tenant with all details
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+        _count: {
+          select: {
+            users: true,
+            tables: true,
+            zones: true,
+            orders: true,
+            categories: true,
+            menuItems: true,
+          },
+        },
+      },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(
+        t('tenants.tenantNotFound', 'Tenant not found'),
+      );
+    }
+
+    return {
+      success: true,
+      data: {
+        id: tenant.id,
+        name: tenant.name,
+        slug: tenant.slug,
+        address: tenant.address,
+        status: tenant.status,
+        subscription_tier: tenant.subscriptionTier,
+        settings: tenant.settings,
+        owner: {
+          id: tenant.owner.id,
+          full_name: tenant.owner.fullName,
+          email: tenant.owner.email,
+        },
+        statistics: {
+          total_users: tenant._count.users,
+          total_tables: tenant._count.tables,
+          total_zones: tenant._count.zones,
+          total_orders: tenant._count.orders,
+          total_categories: tenant._count.categories,
+          total_menu_items: tenant._count.menuItems,
+        },
+        created_at: tenant.createdAt,
+        updated_at: tenant.updatedAt,
       },
     };
   }

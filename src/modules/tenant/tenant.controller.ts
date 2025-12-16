@@ -8,13 +8,13 @@ import {
 import { TenantService } from './tenant.service';
 import { QueryTenantsDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
-import { Roles, CurrentUser } from '../../common/decorators';
-import { RolesGuard } from '../../common/guards';
+import { Roles, CurrentUser, TenantContext } from '../../common/decorators';
+import { RolesGuard, TenantOwnershipGuard } from '../../common/guards';
 import { ROLES } from '../../common/constants';
 
 @ApiTags('tenants')
 @Controller('tenants')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantOwnershipGuard)
 @ApiBearerAuth('JWT-auth')
 export class TenantController {
   constructor(private readonly tenantService: TenantService) {}
@@ -118,5 +118,56 @@ export class TenantController {
   })
   async getStats(@CurrentUser('id') ownerId: string) {
     return this.tenantService.getOwnerStats(ownerId);
+  }
+
+  @Get('current')
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
+  @ApiOperation({
+    summary: 'Get detailed information about the current tenant',
+    description:
+      'Owners can view any tenant they own by specifying the x-tenant-id header. Staff members (admin, waiter, kitchen) can view only the tenant assigned to them via the JWT.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns detailed tenant information',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          id: '123e4567-e89b-12d3-a456-426614174000',
+          name: 'Pizza Palace',
+          slug: 'pizza-palace',
+          address: '123 Main St, City',
+          status: 'active',
+          subscription_tier: 'premium',
+          settings: {
+            currency: 'USD',
+            timezone: 'America/New_York',
+          },
+          owner: {
+            id: 'owner-uuid',
+            full_name: 'John Doe',
+            email: 'owner@example.com',
+          },
+          statistics: {
+            total_users: 15,
+            total_tables: 25,
+            total_zones: 3,
+            total_orders: 1250,
+            total_categories: 8,
+            total_menu_items: 45,
+          },
+          created_at: '2024-01-15T10:00:00Z',
+          updated_at: '2024-12-15T14:30:00Z',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Tenant not found',
+  })
+  async findOne(@TenantContext() tenantId: string) {
+    return this.tenantService.findOne(tenantId);
   }
 }

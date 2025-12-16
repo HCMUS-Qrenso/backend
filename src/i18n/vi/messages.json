@@ -52,6 +52,9 @@
     "zoneCreatedSuccess": "Tạo khu vực thành công",
     "zoneUpdatedSuccess": "Cập nhật khu vực thành công"
   },
+  "tenants": {
+    "tenantNotFound": "Không tìm thấy tenant"
+  },
   "common": {
     "notFound": "Không tìm thấy tài nguyên",
     "badRequest": "Yêu cầu không hợp lệ",
