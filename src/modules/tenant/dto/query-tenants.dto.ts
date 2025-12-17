@@ -50,4 +50,29 @@ export class QueryTenantsDto {
   @IsOptional()
   @IsIn(['basic', 'premium', 'enterprise'])
   subscription_tier?: string;
+
+  @ApiPropertyOptional({
+    example: 'name',
+    description: 'Sort by field',
+    enum: [
+      'name',
+      'slug',
+      'status',
+      'subscriptionTier',
+      'createdAt',
+      'updatedAt',
+    ],
+  })
+  @IsOptional()
+  @IsString()
+  sort_by?: string = 'createdAt';
+
+  @ApiPropertyOptional({
+    example: 'desc',
+    description: 'Sort order',
+    enum: ['asc', 'desc'],
+  })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sort_order?: 'asc' | 'desc' = 'desc';
 }

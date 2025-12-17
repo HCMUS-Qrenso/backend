@@ -1,6 +1,6 @@
 # Backend API - Complete Documentation
 
-> **Last Updated:** December 16, 2025  
+> **Last Updated:** December 17, 2025  
 > **Version:** 1.0  
 > **Framework:** NestJS 11 with TypeScript
 
@@ -95,6 +95,14 @@ npm run start:dev
 - Statistics per tenant (users, tables, zones, orders)
 - Tenant status and subscription tier tracking
 - Search by name or slug
+
+✅ **Menu Management API**
+- CRUD operations for menu items with categories
+- Modifier groups and modifiers with display ordering
+- Price management and allergen information
+- Image uploads and status management
+- Advanced filtering and pagination
+- Multi-tenant menu customization
 
 ✅ **API Documentation**
 - Interactive Swagger UI
@@ -917,6 +925,8 @@ Get paginated list of tables with filtering.
 - `zone_id` - Filter by zone
 - `status` - Filter by status
 - `is_active` - Filter by active status
+- `sort_by` (default: 'tableNumber') - Sort by field: 'tableNumber', 'status', 'createdAt', 'updatedAt'
+- `sort_order` (default: 'asc') - Sort order: 'asc' or 'desc'
 
 **Response:** `200 OK`
 ```json
@@ -1300,6 +1310,48 @@ Batch update table positions (for drag-and-drop).
 
 ---
 
+### Zone Endpoints
+
+#### 🏢 GET /zones
+Get paginated list of zones with filtering.
+
+**Query Parameters:**
+- `page` (default: 1)
+- `limit` (default: 10)
+- `search` - Search by zone name
+- `is_active` - Filter by active status
+- `sort_by` (default: 'displayOrder') - Sort by field: 'name', 'displayOrder', 'createdAt', 'updatedAt'
+- `sort_order` (default: 'asc') - Sort order: 'asc' or 'desc'
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "zones": [
+      {
+        "id": "zone-uuid",
+        "name": "VIP Area",
+        "description": "Premium seating area",
+        "display_order": 1,
+        "is_active": true,
+        "table_count": 5,
+        "created_at": "2025-12-14T...",
+        "updated_at": "2025-12-14T..."
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 3,
+      "total_pages": 1
+    }
+  }
+}
+```
+
+---
+
 ### Tenant Endpoints
 
 #### 🏢 GET /tenants
@@ -1311,6 +1363,8 @@ Get all tenants owned by the authenticated owner. **[Protected - Owner only]**
 - `search` (optional): Search by tenant name or slug
 - `status` (optional): Filter by status (`active`, `inactive`, `suspended`)
 - `subscription_tier` (optional): Filter by tier (`basic`, `premium`, `enterprise`)
+- `sort_by` (default: 'createdAt') - Sort by field: 'name', 'slug', 'status', 'subscriptionTier', 'createdAt', 'updatedAt'
+- `sort_order` (default: 'desc') - Sort order: 'asc' or 'desc'
 
 **Response:** `200 OK`
 ```json
@@ -1422,6 +1476,227 @@ Get detailed information about the current tenant. **[Protected - Owner, Admin, 
 
 **Errors:**
 - `404 Not Found` - Tenant does not exist
+
+---
+
+### Menu Endpoints
+
+#### 📋 GET /menu
+Get paginated list of menu items with filtering and search.
+
+**Query Parameters:**
+```typescript
+{
+  page?: number;        // Default: 1
+  limit?: number;       // Default: 10, Max: 100
+  search?: string;      // Search by menu item name
+  category_id?: string; // Filter by category
+  status?: 'active' | 'inactive';
+  sort_by?: 'name' | 'base_price' | 'created_at' | 'display_order';
+  sort_order?: 'asc' | 'desc'; // Default: 'asc'
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "menu_items": [
+      {
+        "id": "uuid",
+        "name": "Margherita Pizza",
+        "description": "Fresh tomato sauce, mozzarella, basil",
+        "base_price": 15.99,
+        "status": "active",
+        "allergens": ["dairy", "gluten"],
+        "category": {
+          "id": "uuid",
+          "name": "Pizza"
+        },
+        "images": ["https://..."],
+        "created_at": "2025-12-17T10:00:00Z",
+        "updated_at": "2025-12-17T10:00:00Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 25,
+      "total_pages": 3
+    }
+  }
+}
+```
+
+---
+
+#### 📊 GET /menu/stats
+Get menu statistics for the tenant.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "total_menu_items": 45,
+    "active_menu_items": 42,
+    "inactive_menu_items": 3,
+    "total_categories": 8,
+    "items_by_category": [
+      {
+        "category_id": "uuid",
+        "category_name": "Pizza",
+        "item_count": 12
+      }
+    ]
+  }
+}
+```
+
+---
+
+#### ➕ POST /menu
+Create a new menu item.
+
+**Request:**
+```json
+{
+  "name": "Margherita Pizza",
+  "description": "Fresh tomato sauce, mozzarella, basil",
+  "base_price": 15.99,
+  "status": "active",
+  "allergens": ["dairy", "gluten"],
+  "category_id": "uuid",
+  "images": ["https://example.com/pizza.jpg"]
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "name": "Margherita Pizza",
+    "description": "Fresh tomato sauce, mozzarella, basil",
+    "base_price": 15.99,
+    "status": "active",
+    "allergens": ["dairy", "gluten"],
+    "category": {
+      "id": "uuid",
+      "name": "Pizza"
+    },
+    "images": ["https://example.com/pizza.jpg"],
+    "created_at": "2025-12-17T10:00:00Z",
+    "updated_at": "2025-12-17T10:00:00Z"
+  }
+}
+```
+
+**Errors:**
+- `409 Conflict` - Menu item name already exists
+
+---
+
+#### 👁️ GET /menu/{id}
+Get detailed menu item information including modifiers.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "name": "Margherita Pizza",
+    "description": "Fresh tomato sauce, mozzarella, basil",
+    "base_price": 15.99,
+    "status": "active",
+    "allergens": ["dairy", "gluten"],
+    "category": {
+      "id": "uuid",
+      "name": "Pizza"
+    },
+    "modifier_groups": [
+      {
+        "id": "uuid",
+        "name": "Size",
+        "type": "single",
+        "min_selections": 1,
+        "display_order": 1,
+        "modifiers": [
+          {
+            "id": "uuid",
+            "name": "Small",
+            "price": 0,
+            "display_order": 1
+          },
+          {
+            "id": "uuid",
+            "name": "Large",
+            "price": 5.00,
+            "display_order": 2
+          }
+        ]
+      }
+    ],
+    "images": ["https://example.com/pizza.jpg"],
+    "created_at": "2025-12-17T10:00:00Z",
+    "updated_at": "2025-12-17T10:00:00Z"
+  }
+}
+```
+
+**Errors:**
+- `404 Not Found` - Menu item not found
+
+---
+
+#### ✏️ PUT /menu/{id}
+Update an existing menu item.
+
+**Request:** (All fields optional)
+```json
+{
+  "name": "Updated Pizza Name",
+  "base_price": 16.99,
+  "status": "active"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "name": "Updated Pizza Name",
+    "base_price": 16.99,
+    "updated_at": "2025-12-17T11:00:00Z"
+  }
+}
+```
+
+**Errors:**
+- `404 Not Found` - Menu item not found
+- `409 Conflict` - Menu item name already exists
+
+---
+
+#### 🗑️ DELETE /menu/{id}
+Delete a menu item.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Menu item deleted successfully"
+}
+```
+
+**Errors:**
+- `404 Not Found` - Menu item not found
+- `409 Conflict` - Cannot delete menu item with active orders
 
 ---
 

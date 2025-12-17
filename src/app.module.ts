@@ -15,6 +15,7 @@ import { UserModule } from './modules/user/user.module';
 import { TablesModule } from './modules/tables/tables.module';
 import { ZonesModule } from './modules/zones/zones.module';
 import { TenantModule } from './modules/tenant/tenant.module';
+import { MenuModule } from './modules/menu/menu.module';
 import { JwtAuthGuard } from './modules/auth/guards';
 
 @Module({
@@ -36,6 +37,7 @@ import { JwtAuthGuard } from './modules/auth/guards';
     TablesModule,
     ZonesModule,
     TenantModule,
+    MenuModule,
   ],
   controllers: [AppController],
   providers: [

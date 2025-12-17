@@ -52,6 +52,14 @@
     "zoneCreatedSuccess": "Zone created successfully",
     "zoneUpdatedSuccess": "Zone updated successfully"
   },
+  "menu": {
+    "menuItemNotFound": "Menu item not found",
+    "menuItemNameExists": "A menu item with this name already exists",
+    "menuItemCreatedSuccess": "Menu item created successfully",
+    "menuItemUpdatedSuccess": "Menu item updated successfully",
+    "cannotDeleteActiveOrders": "Cannot delete menu item with active orders",
+    "menuItemDeletedSuccess": "Menu item deleted successfully"
+  },
   "tenants": {
     "tenantNotFound": "Tenant not found"
   },

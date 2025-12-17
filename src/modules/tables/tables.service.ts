@@ -40,7 +40,16 @@ export class TablesService {
    * Get paginated list of tables with filtering
    */
   async findAll(tenantId: string, query: QueryTablesDto) {
-    const { page = 1, limit = 10, search, zone_id, status, is_active } = query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      zone_id,
+      status,
+      is_active,
+      sort_by = 'tableNumber',
+      sort_order = 'asc',
+    } = query;
     const skip = (page - 1) * limit;
 
     // Build where clause
@@ -64,6 +73,13 @@ export class TablesService {
       where.isActive = is_active;
     }
 
+    // Validate and set orderBy
+    const validSortFields = ['tableNumber', 'status', 'createdAt', 'updatedAt'];
+    const orderByField = validSortFields.includes(sort_by)
+      ? sort_by
+      : 'tableNumber';
+    const orderBy = { [orderByField]: sort_order };
+
     // Get total count
     const total = await this.prisma.table.count({ where });
 
@@ -72,7 +88,7 @@ export class TablesService {
       where,
       skip,
       take: limit,
-      orderBy: { tableNumber: 'asc' },
+      orderBy,
       include: {
         zone: {
           select: {
@@ -887,6 +903,12 @@ export class TablesService {
     const table = await this.prisma.table.findUnique({
       where: { id, tenantId },
       include: {
+        zone: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         tenant: {
           select: {
             slug: true,
@@ -906,6 +928,7 @@ export class TablesService {
       data: {
         id: table.id,
         table_number: table.tableNumber,
+        tableZone: table.zone?.name || null,
         qr_code_token: table.qrCodeToken,
         qr_code_url: table.qrCodeUrl,
         ordering_url: table.orderingUrl,
