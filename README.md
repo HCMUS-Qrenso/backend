@@ -1,7 +1,7 @@
 # Backend API - Complete Documentation
 
 > **Last Updated:** December 17, 2025  
-> **Version:** 1.0  
+> **Version:** 1.1  
 > **Framework:** NestJS 11 with TypeScript
 
 ---
@@ -103,6 +103,23 @@ npm run start:dev
 - Image uploads and status management
 - Advanced filtering and pagination
 - Multi-tenant menu customization
+
+✅ **Categories Management API**
+- Full CRUD operations for menu categories
+- Display order management with drag-and-drop reordering
+- Category status toggling (active/inactive)
+- Multi-tenant isolation with tenant context
+- Bulk operations for reordering categories
+- Validation to prevent deletion of categories with associated menu items
+
+✅ **Modifiers Management API**
+- Modifier groups with selection constraints (min/max selections)
+- Individual modifiers within groups with pricing
+- Display order management for both groups and modifiers
+- Bulk reordering operations
+- Multi-tenant isolation
+- Validation for selection constraints and unique display orders
+- Protection against deleting groups with associated menu items
 
 ✅ **API Documentation**
 - Interactive Swagger UI
@@ -480,6 +497,16 @@ return {
 throw new NotFoundException(
   t('tables.tableNotFound', 'Table not found'),
 );
+
+// Categories operations
+throw new ConflictException(
+  t('categories.categoryNameExists', 'A category with this name already exists'),
+);
+
+// Modifiers operations
+return {
+  message: t('modifiers.modifierGroupCreatedSuccess', 'Modifier group created successfully'),
+};
 ```
 
 **Note:** 
@@ -1700,6 +1727,494 @@ Delete a menu item.
 
 ---
 
+### Category Endpoints
+
+#### 📂 GET /categories
+Get paginated list of categories with filtering.
+
+**Query Parameters:**
+- `page` (default: 1)
+- `limit` (default: 10)
+- `search` - Search by category name
+- `is_active` - Filter by active status
+- `sort_by` (default: 'displayOrder') - Sort by: 'name', 'displayOrder', 'createdAt', 'updatedAt'
+- `sort_order` (default: 'asc') - Sort order: 'asc' or 'desc'
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "categories": [
+      {
+        "id": "category-uuid",
+        "name": "Pizza",
+        "description": "Italian pizzas",
+        "display_order": 1,
+        "is_active": true,
+        "menu_item_count": 12,
+        "created_at": "2025-12-14T...",
+        "updated_at": "2025-12-14T..."
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 8,
+      "total_pages": 1
+    }
+  }
+}
+```
+
+---
+
+#### 🍕 POST /categories
+Create a new category.
+
+**Request Body:**
+```json
+{
+  "name": "Beverages",
+  "description": "Drinks and refreshments",
+  "is_active": true
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "category": {
+      "id": "category-uuid",
+      "name": "Beverages",
+      "description": "Drinks and refreshments",
+      "display_order": 3,
+      "is_active": true,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Category created successfully"
+  }
+}
+```
+
+---
+
+#### 📝 PUT /categories/{id}
+Update an existing category.
+
+**Request Body:**
+```json
+{
+  "name": "Hot Beverages",
+  "description": "Coffee, tea, and hot drinks",
+  "is_active": true
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "category": {
+      "id": "category-uuid",
+      "name": "Hot Beverages",
+      "description": "Coffee, tea, and hot drinks",
+      "display_order": 3,
+      "is_active": true,
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Category updated successfully"
+  }
+}
+```
+
+---
+
+#### 🗑️ DELETE /categories/{id}
+Delete a category (only if no menu items are associated).
+
+**Query Parameters:**
+- `force` (optional): Force delete even with associated menu items
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Category deleted successfully",
+    "deleted_at": "2025-12-14T..."
+  }
+}
+```
+
+---
+
+#### 🔄 PUT /categories/reorder
+Reorder categories display order.
+
+**Request Body:**
+```json
+{
+  "categories": [
+    { "id": "category-1", "display_order": 1 },
+    { "id": "category-2", "display_order": 2 },
+    { "id": "category-3", "display_order": 3 }
+  ]
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Category order updated successfully",
+    "updated_count": 3
+  }
+}
+```
+
+---
+
+#### 🔄 PATCH /categories/{id}/status
+Toggle category active status.
+
+**Request Body:**
+```json
+{
+  "is_active": false
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "category": {
+      "id": "category-uuid",
+      "is_active": false,
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Category status updated successfully"
+  }
+}
+```
+
+---
+
+### Modifier Group Endpoints
+
+#### 🛠️ GET /modifier-groups
+Get paginated list of modifier groups.
+
+**Query Parameters:**
+- `page` (default: 1)
+- `limit` (default: 10)
+- `search` - Search by group name
+- `is_required` - Filter by required status
+- `sort_by` (default: 'displayOrder') - Sort by: 'name', 'displayOrder', 'createdAt', 'updatedAt'
+- `sort_order` (default: 'asc') - Sort order: 'asc' or 'desc'
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "modifier_groups": [
+      {
+        "id": "group-uuid",
+        "name": "Pizza Toppings",
+        "description": "Extra toppings for pizza",
+        "type": "multiple",
+        "is_required": false,
+        "min_selections": 0,
+        "max_selections": 3,
+        "display_order": 1,
+        "modifier_count": 8,
+        "created_at": "2025-12-14T...",
+        "updated_at": "2025-12-14T..."
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 5,
+      "total_pages": 1
+    }
+  }
+}
+```
+
+---
+
+#### ➕ POST /modifier-groups
+Create a new modifier group.
+
+**Request Body:**
+```json
+{
+  "name": "Spice Level",
+  "description": "Choose your spice preference",
+  "type": "single",
+  "is_required": true,
+  "min_selections": 1,
+  "max_selections": 1
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "modifier_group": {
+      "id": "group-uuid",
+      "name": "Spice Level",
+      "description": "Choose your spice preference",
+      "type": "single",
+      "is_required": true,
+      "min_selections": 1,
+      "max_selections": 1,
+      "display_order": 2,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Modifier group created successfully"
+  }
+}
+```
+
+---
+
+#### 📝 PUT /modifier-groups/{id}
+Update a modifier group.
+
+**Request Body:**
+```json
+{
+  "name": "Heat Level",
+  "description": "Select your preferred heat level",
+  "min_selections": 1,
+  "max_selections": 1
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "modifier_group": {
+      "id": "group-uuid",
+      "name": "Heat Level",
+      "description": "Select your preferred heat level",
+      "min_selections": 1,
+      "max_selections": 1,
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Modifier group updated successfully"
+  }
+}
+```
+
+---
+
+#### 🗑️ DELETE /modifier-groups/{id}
+Delete a modifier group (only if no menu items are associated).
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Modifier group deleted successfully",
+    "deleted_at": "2025-12-14T..."
+  }
+}
+```
+
+---
+
+#### 🔄 PUT /modifier-groups/reorder
+Reorder modifier groups display order.
+
+**Request Body:**
+```json
+{
+  "modifier_groups": [
+    { "id": "group-1", "display_order": 1 },
+    { "id": "group-2", "display_order": 2 }
+  ]
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Modifier groups reordered successfully",
+    "updated_count": 2
+  }
+}
+```
+
+---
+
+### Individual Modifier Endpoints
+
+#### 🛠️ GET /modifier-groups/{groupId}/modifiers
+Get modifiers within a specific group.
+
+**Query Parameters:**
+- `page` (default: 1)
+- `limit` (default: 10)
+- `search` - Search by modifier name
+- `is_active` - Filter by active status
+- `sort_by` (default: 'displayOrder') - Sort by: 'name', 'price', 'displayOrder', 'createdAt', 'updatedAt'
+- `sort_order` (default: 'asc') - Sort order: 'asc' or 'desc'
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "modifiers": [
+      {
+        "id": "modifier-uuid",
+        "name": "Extra Cheese",
+        "description": "Additional cheese topping",
+        "price": 2.50,
+        "display_order": 1,
+        "is_active": true,
+        "created_at": "2025-12-14T...",
+        "updated_at": "2025-12-14T..."
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 8,
+      "total_pages": 1
+    }
+  }
+}
+```
+
+---
+
+#### ➕ POST /modifier-groups/{groupId}/modifiers
+Create a new modifier in a group.
+
+**Request Body:**
+```json
+{
+  "name": "Mild",
+  "description": "Mild spice level",
+  "price": 0.00,
+  "is_active": true
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "modifier": {
+      "id": "modifier-uuid",
+      "name": "Mild",
+      "description": "Mild spice level",
+      "price": 0.00,
+      "display_order": 1,
+      "is_active": true,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Modifier created successfully"
+  }
+}
+```
+
+---
+
+#### 📝 PUT /modifier-groups/{groupId}/modifiers/{id}
+Update a modifier.
+
+**Request Body:**
+```json
+{
+  "name": "Medium Spice",
+  "description": "Medium heat level",
+  "price": 0.50
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "modifier": {
+      "id": "modifier-uuid",
+      "name": "Medium Spice",
+      "description": "Medium heat level",
+      "price": 0.50,
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Modifier updated successfully"
+  }
+}
+```
+
+---
+
+#### 🗑️ DELETE /modifier-groups/{groupId}/modifiers/{id}
+Delete a modifier.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Modifier deleted successfully"
+  }
+}
+```
+
+---
+
+#### 🔄 PUT /modifier-groups/{groupId}/modifiers/reorder
+Reorder modifiers within a group.
+
+**Request Body:**
+```json
+{
+  "modifiers": [
+    { "id": "mod-1", "display_order": 1 },
+    { "id": "mod-2", "display_order": 2 }
+  ]
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Modifiers reordered successfully",
+    "updated_count": 2
+  }
+}
+```
+
+---
+
 ### Additional Documentation
 
 For complete API documentation with all endpoints, see:
@@ -1732,6 +2247,12 @@ http://localhost:3000/docs
 
 ✅ **Organized by Tags**
 - **auth** - Authentication endpoints
+- **tenants** - Tenant management for owners
+- **tables** - Table management and QR codes
+- **zones** - Zone management endpoints
+- **categories** - Category management endpoints
+- **modifiers** - Modifier groups and modifiers
+- **menu** - Menu item management
 - **users** - User management
 
 ### How to Use Swagger
@@ -1767,6 +2288,10 @@ const config = new DocumentBuilder()
   .addTag('auth', 'Authentication endpoints')
   .addTag('tenants', 'Tenant management endpoints for owners')
   .addTag('tables', 'Table management and QR code endpoints')
+  .addTag('zones', 'Zone management endpoints')
+  .addTag('categories', 'Category management endpoints')
+  .addTag('modifiers', 'Modifier groups and modifiers management endpoints')
+  .addTag('menu', 'Menu item management endpoints')
   .addTag('users', 'User management endpoints')
   .addBearerAuth()
   .addCookieAuth('refreshToken')
@@ -1951,6 +2476,18 @@ backend/
 │   │   │   ├── zones.service.ts
 │   │   │   └── zones.module.ts
 │   │   │
+│   │   ├── categories/       # Categories module
+│   │   │   ├── dto/          # Category DTOs
+│   │   │   ├── categories.controller.ts
+│   │   │   ├── categories.service.ts
+│   │   │   └── categories.module.ts
+│   │   │
+│   │   ├── modifiers/        # Modifiers module
+│   │   │   ├── dto/          # Modifier DTOs
+│   │   │   ├── modifiers.controller.ts
+│   │   │   ├── modifiers.service.ts
+│   │   │   └── modifiers.module.ts
+│   │   │
 │   │   └── user/             # User module
 │   │       ├── user.controller.ts
 │   │       ├── user.service.ts
@@ -1988,6 +2525,9 @@ constructor(
 - **AuthService** - Authentication business logic
 - **TokenService** - Token management (creation, validation, deletion)
 - **EmailService** - Email operations (Brevo SMTP via nodemailer)
+- **TablesService** - Table and QR code management
+- **CategoriesService** - Category CRUD operations and ordering
+- **ModifiersService** - Modifier groups and modifiers management
 
 #### 3. Separation of Concerns
 - Controllers handle HTTP requests/responses
@@ -2334,4 +2874,4 @@ npm run test:cov           # Test coverage
 
 **Built with ❤️ using NestJS**
 
-*Last Updated: December 16, 2025*
+*Last Updated: December 17, 2025*

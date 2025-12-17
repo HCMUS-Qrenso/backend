@@ -60,6 +60,38 @@
     "cannotDeleteActiveOrders": "Cannot delete menu item with active orders",
     "menuItemDeletedSuccess": "Menu item deleted successfully"
   },
+  "categories": {
+    "categoryNotFound": "Category not found",
+    "categoryNameExists": "A category with this name already exists",
+    "categoryCreatedSuccess": "Category created successfully",
+    "categoryUpdatedSuccess": "Category updated successfully",
+    "categoryDeletedSuccess": "Category deleted successfully",
+    "categoryOrderUpdatedSuccess": "Category order updated successfully",
+    "categoryStatusUpdatedSuccess": "Category status updated successfully",
+    "displayOrdersMustBeUnique": "Display orders must be unique",
+    "cannotDeleteCategoryWithMenuItems": "Cannot delete category with associated menu items",
+    "categoriesNotFoundOrInvalid": "One or more categories not found or do not belong to this tenant"
+  },
+  "modifiers": {
+    "modifierGroupNotFound": "Modifier group not found",
+    "modifierGroupNameExists": "A modifier group with this name already exists",
+    "modifierGroupCreatedSuccess": "Modifier group created successfully",
+    "modifierGroupUpdatedSuccess": "Modifier group updated successfully",
+    "modifierGroupDeletedSuccess": "Modifier group deleted successfully",
+    "modifierGroupsReorderedSuccess": "Modifier groups reordered successfully",
+    "modifierNotFound": "Modifier not found",
+    "modifierNameExists": "A modifier with this name already exists in this group",
+    "modifierCreatedSuccess": "Modifier created successfully",
+    "modifierUpdatedSuccess": "Modifier updated successfully",
+    "modifierDeletedSuccess": "Modifier deleted successfully",
+    "modifiersReorderedSuccess": "Modifiers reordered successfully",
+    "displayOrdersMustBeUnique": "Display orders must be unique",
+    "invalidSelectionConstraints": "Invalid selection constraints (min > max or min < 0 or max < 0)",
+    "cannotDeleteModifierGroupWithModifiers": "Cannot delete modifier group with associated modifiers",
+    "cannotDeleteModifierGroupWithMenuItems": "Cannot delete modifier group used by menu items",
+    "modifierGroupsNotFoundOrInvalid": "One or more modifier groups not found or do not belong to this tenant",
+    "modifiersNotFoundOrInvalid": "One or more modifiers not found or do not belong to this group"
+  },
   "tenants": {
     "tenantNotFound": "Tenant not found"
   },

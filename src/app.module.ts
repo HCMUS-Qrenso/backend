@@ -16,6 +16,8 @@ import { TablesModule } from './modules/tables/tables.module';
 import { ZonesModule } from './modules/zones/zones.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { MenuModule } from './modules/menu/menu.module';
+import { CategoriesModule } from './modules/categories/categories.module';
+import { ModifiersModule } from './modules/modifiers/modifiers.module';
 import { JwtAuthGuard } from './modules/auth/guards';
 
 @Module({
@@ -38,6 +40,8 @@ import { JwtAuthGuard } from './modules/auth/guards';
     ZonesModule,
     TenantModule,
     MenuModule,
+    CategoriesModule,
+    ModifiersModule,
   ],
   controllers: [AppController],
   providers: [

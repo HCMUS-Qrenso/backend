@@ -60,6 +60,38 @@
     "cannotDeleteActiveOrders": "Không thể xóa món ăn có đơn hàng đang hoạt động",
     "menuItemDeletedSuccess": "Xóa món ăn thành công"
   },
+  "categories": {
+    "categoryNotFound": "Không tìm thấy danh mục",
+    "categoryNameExists": "Danh mục với tên này đã tồn tại",
+    "categoryCreatedSuccess": "Tạo danh mục thành công",
+    "categoryUpdatedSuccess": "Cập nhật danh mục thành công",
+    "categoryDeletedSuccess": "Xóa danh mục thành công",
+    "categoryOrderUpdatedSuccess": "Cập nhật thứ tự danh mục thành công",
+    "categoryStatusUpdatedSuccess": "Cập nhật trạng thái danh mục thành công",
+    "displayOrdersMustBeUnique": "Thứ tự hiển thị phải là duy nhất",
+    "cannotDeleteCategoryWithMenuItems": "Không thể xóa danh mục có món ăn liên quan",
+    "categoriesNotFoundOrInvalid": "Một hoặc nhiều danh mục không tìm thấy hoặc không thuộc về tenant này"
+  },
+  "modifiers": {
+    "modifierGroupNotFound": "Không tìm thấy nhóm modifier",
+    "modifierGroupNameExists": "Nhóm modifier với tên này đã tồn tại",
+    "modifierGroupCreatedSuccess": "Tạo nhóm modifier thành công",
+    "modifierGroupUpdatedSuccess": "Cập nhật nhóm modifier thành công",
+    "modifierGroupDeletedSuccess": "Xóa nhóm modifier thành công",
+    "modifierGroupsReorderedSuccess": "Sắp xếp lại nhóm modifier thành công",
+    "modifierNotFound": "Không tìm thấy modifier",
+    "modifierNameExists": "Modifier với tên này đã tồn tại trong nhóm này",
+    "modifierCreatedSuccess": "Tạo modifier thành công",
+    "modifierUpdatedSuccess": "Cập nhật modifier thành công",
+    "modifierDeletedSuccess": "Xóa modifier thành công",
+    "modifiersReorderedSuccess": "Sắp xếp lại modifier thành công",
+    "displayOrdersMustBeUnique": "Thứ tự hiển thị phải là duy nhất",
+    "invalidSelectionConstraints": "Ràng buộc lựa chọn không hợp lệ (tối thiểu > tối đa hoặc tối thiểu < 0 hoặc tối đa < 0)",
+    "cannotDeleteModifierGroupWithModifiers": "Không thể xóa nhóm modifier có modifier liên quan",
+    "cannotDeleteModifierGroupWithMenuItems": "Không thể xóa nhóm modifier được sử dụng bởi món ăn",
+    "modifierGroupsNotFoundOrInvalid": "Một hoặc nhiều nhóm modifier không tìm thấy hoặc không thuộc về tenant này",
+    "modifiersNotFoundOrInvalid": "Một hoặc nhiều modifier không tìm thấy hoặc không thuộc về nhóm này"
+  },
   "tenants": {
     "tenantNotFound": "Không tìm thấy tenant"
   },
