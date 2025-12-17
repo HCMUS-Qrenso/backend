@@ -195,6 +195,10 @@ QR_API_URL=https://api.qrserver.com/v1/create-qr-code/
 BREVO_SMTP_KEY=your-brevo-smtp-key
 BREVO_FROM_EMAIL=noreply@yourdomain.com
 BREVO_FROM_NAME=Your App Name
+
+# QR Code & Ordering Configuration
+APP_ORDER_URL=http://localhost:3002
+QR_API_URL=https://api.qrserver.com/v1/create-qr-code/
 ```
 
 ### 3. Database Setup
@@ -1376,6 +1380,153 @@ Get paginated list of zones with filtering.
   }
 }
 ```
+
+---
+
+#### 📊 GET /zones/stats
+Get zone statistics for the current tenant.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "total_zones": 5,
+    "active_zones": 4,
+    "inactive_zones": 1,
+    "total_tables_in_zones": 25,
+    "zones_with_tables": 4
+  }
+}
+```
+
+---
+
+#### 🏢 GET /zones/{id}
+Get a single zone by ID.
+
+**Path Parameters:**
+- `id` - Zone UUID
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "zone": {
+      "id": "zone-uuid",
+      "name": "VIP Area",
+      "description": "Premium seating area",
+      "display_order": 1,
+      "is_active": true,
+      "table_count": 5,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T..."
+    }
+  }
+}
+```
+
+**Errors:**
+- `404 Not Found` - Zone not found
+
+---
+
+#### ➕ POST /zones
+Create a new zone. **[Protected - Owner/Admin only]**
+
+**Request Body:**
+```json
+{
+  "name": "Outdoor Patio",
+  "description": "Outdoor seating area",
+  "is_active": true
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "zone": {
+      "id": "zone-uuid",
+      "name": "Outdoor Patio",
+      "description": "Outdoor seating area",
+      "display_order": 2,
+      "is_active": true,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Zone created successfully"
+  }
+}
+```
+
+**Errors:**
+- `409 Conflict` - Zone name already exists
+
+---
+
+#### 📝 PUT /zones/{id}
+Update an existing zone. **[Protected - Owner/Admin only]**
+
+**Path Parameters:**
+- `id` - Zone UUID
+
+**Request Body:**
+```json
+{
+  "name": "VIP Lounge",
+  "description": "Premium lounge area",
+  "is_active": true
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "zone": {
+      "id": "zone-uuid",
+      "name": "VIP Lounge",
+      "description": "Premium lounge area",
+      "display_order": 1,
+      "is_active": true,
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Zone updated successfully"
+  }
+}
+```
+
+**Errors:**
+- `404 Not Found` - Zone not found
+- `409 Conflict` - Zone name already exists
+
+---
+
+#### 🗑️ DELETE /zones/{id}
+Delete a zone (only if no tables are assigned). **[Protected - Owner/Admin only]**
+
+**Path Parameters:**
+- `id` - Zone UUID
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Zone deleted successfully",
+    "deleted_at": "2025-12-14T..."
+  }
+}
+```
+
+**Errors:**
+- `404 Not Found` - Zone not found
+- `409 Conflict` - Zone has tables assigned and cannot be deleted
 
 ---
 
