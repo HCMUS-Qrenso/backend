@@ -56,6 +56,7 @@ export class QueryMenuItemsDto {
   @ApiPropertyOptional({
     example: 'available',
     description: 'Filter by status (available, unavailable)',
+    enum: ['available', 'unavailable'],
   })
   @IsOptional()
   @IsString()

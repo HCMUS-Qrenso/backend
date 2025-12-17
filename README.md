@@ -925,6 +925,8 @@ Get paginated list of tables with filtering.
 - `zone_id` - Filter by zone
 - `status` - Filter by status
 - `is_active` - Filter by active status
+- `sort_by` (default: 'tableNumber') - Sort by field: 'tableNumber', 'status', 'createdAt', 'updatedAt'
+- `sort_order` (default: 'asc') - Sort order: 'asc' or 'desc'
 
 **Response:** `200 OK`
 ```json
@@ -1308,6 +1310,48 @@ Batch update table positions (for drag-and-drop).
 
 ---
 
+### Zone Endpoints
+
+#### 🏢 GET /zones
+Get paginated list of zones with filtering.
+
+**Query Parameters:**
+- `page` (default: 1)
+- `limit` (default: 10)
+- `search` - Search by zone name
+- `is_active` - Filter by active status
+- `sort_by` (default: 'displayOrder') - Sort by field: 'name', 'displayOrder', 'createdAt', 'updatedAt'
+- `sort_order` (default: 'asc') - Sort order: 'asc' or 'desc'
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "zones": [
+      {
+        "id": "zone-uuid",
+        "name": "VIP Area",
+        "description": "Premium seating area",
+        "display_order": 1,
+        "is_active": true,
+        "table_count": 5,
+        "created_at": "2025-12-14T...",
+        "updated_at": "2025-12-14T..."
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 3,
+      "total_pages": 1
+    }
+  }
+}
+```
+
+---
+
 ### Tenant Endpoints
 
 #### 🏢 GET /tenants
@@ -1319,6 +1363,8 @@ Get all tenants owned by the authenticated owner. **[Protected - Owner only]**
 - `search` (optional): Search by tenant name or slug
 - `status` (optional): Filter by status (`active`, `inactive`, `suspended`)
 - `subscription_tier` (optional): Filter by tier (`basic`, `premium`, `enterprise`)
+- `sort_by` (default: 'createdAt') - Sort by field: 'name', 'slug', 'status', 'subscriptionTier', 'createdAt', 'updatedAt'
+- `sort_order` (default: 'desc') - Sort order: 'asc' or 'desc'
 
 **Response:** `200 OK`
 ```json

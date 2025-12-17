@@ -1,5 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsBoolean, IsInt, Min } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsBoolean,
+  IsInt,
+  IsIn,
+  Min,
+} from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
 export class QueryZonesDto {
@@ -45,4 +52,22 @@ export class QueryZonesDto {
   })
   @IsBoolean()
   is_active?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'name',
+    description: 'Sort by field',
+    enum: ['name', 'displayOrder', 'createdAt', 'updatedAt'],
+  })
+  @IsOptional()
+  @IsString()
+  sort_by?: string = 'displayOrder';
+
+  @ApiPropertyOptional({
+    example: 'asc',
+    description: 'Sort order',
+    enum: ['asc', 'desc'],
+  })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sort_order?: 'asc' | 'desc' = 'asc';
 }
