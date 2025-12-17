@@ -1880,16 +1880,35 @@ Delete a menu item.
 
 ### Category Endpoints
 
-#### 📂 GET /categories
+#### � GET /categories/stats
+Get category statistics.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "total_categories": 8,
+    "active_categories": 6,
+    "inactive_categories": 2,
+    "total_menu_items": 45
+  }
+}
+```
+
+---
+
+#### �📂 GET /categories
 Get paginated list of categories with filtering.
 
 **Query Parameters:**
 - `page` (default: 1)
 - `limit` (default: 10)
 - `search` - Search by category name
-- `is_active` - Filter by active status
+- `status` - Filter by status: 'active', 'inactive', 'all'
 - `sort_by` (default: 'displayOrder') - Sort by: 'name', 'displayOrder', 'createdAt', 'updatedAt'
 - `sort_order` (default: 'asc') - Sort order: 'asc' or 'desc'
+- `include_item_count` (default: true) - Include menu item count per category
 
 **Response:** `200 OK`
 ```json
@@ -1953,7 +1972,35 @@ Create a new category.
 
 ---
 
-#### 📝 PUT /categories/{id}
+#### � GET /categories/{id}
+Get a specific category by ID.
+
+**Query Parameters:**
+- `include_menu_items` (default: false) - Include associated menu items
+- `include_item_count` (default: true) - Include total count of menu items
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "category": {
+      "id": "category-uuid",
+      "name": "Pizza",
+      "description": "Italian pizzas",
+      "display_order": 1,
+      "is_active": true,
+      "menu_item_count": 12,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T..."
+    }
+  }
+}
+```
+
+---
+
+#### �📝 PATCH /categories/{id}
 Update an existing category.
 
 **Request Body:**
@@ -2067,9 +2114,9 @@ Get paginated list of modifier groups.
 - `page` (default: 1)
 - `limit` (default: 10)
 - `search` - Search by group name
-- `is_required` - Filter by required status
 - `sort_by` (default: 'displayOrder') - Sort by: 'name', 'displayOrder', 'createdAt', 'updatedAt'
 - `sort_order` (default: 'asc') - Sort order: 'asc' or 'desc'
+- `include_usage_count` (default: true) - Include usage count (used by menu items)
 
 **Response:** `200 OK`
 ```json
@@ -2142,7 +2189,46 @@ Create a new modifier group.
 
 ---
 
-#### 📝 PUT /modifier-groups/{id}
+#### � GET /modifier-groups/{group_id}
+Get a specific modifier group by ID with its modifiers.
+
+**Query Parameters:**
+- `include_modifiers` (default: true) - Include list of modifiers
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "modifier_group": {
+      "id": "group-uuid",
+      "name": "Pizza Toppings",
+      "description": "Extra toppings for pizza",
+      "type": "multiple",
+      "is_required": false,
+      "min_selections": 0,
+      "max_selections": 3,
+      "display_order": 1,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T...",
+      "modifiers": [
+        {
+          "id": "modifier-uuid",
+          "name": "Extra Cheese",
+          "description": "Additional cheese topping",
+          "price": 2.50,
+          "display_order": 1,
+          "is_active": true
+        }
+      ]
+    }
+  }
+}
+```
+
+---
+
+#### �📝 PATCH /modifier-groups/{group_id}
 Update a modifier group.
 
 **Request Body:**
@@ -2175,7 +2261,7 @@ Update a modifier group.
 
 ---
 
-#### 🗑️ DELETE /modifier-groups/{id}
+#### 🗑️ DELETE /modifier-groups/{group_id}
 Delete a modifier group (only if no menu items are associated).
 
 **Response:** `200 OK`
@@ -2219,15 +2305,12 @@ Reorder modifier groups display order.
 
 ### Individual Modifier Endpoints
 
-#### 🛠️ GET /modifier-groups/{groupId}/modifiers
+#### 🛠️ GET /modifier-groups/{group_id}/modifiers
 Get modifiers within a specific group.
 
 **Query Parameters:**
-- `page` (default: 1)
-- `limit` (default: 10)
-- `search` - Search by modifier name
-- `is_active` - Filter by active status
-- `sort_by` (default: 'displayOrder') - Sort by: 'name', 'price', 'displayOrder', 'createdAt', 'updatedAt'
+- `include_unavailable` (default: true) - Include unavailable modifiers
+- `sort_by` (default: 'display_order') - Sort by: 'name', 'display_order', 'price_adjustment', 'created_at'
 - `sort_order` (default: 'asc') - Sort order: 'asc' or 'desc'
 
 **Response:** `200 OK`
@@ -2246,20 +2329,14 @@ Get modifiers within a specific group.
         "created_at": "2025-12-14T...",
         "updated_at": "2025-12-14T..."
       }
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 10,
-      "total": 8,
-      "total_pages": 1
-    }
+    ]
   }
 }
 ```
 
 ---
 
-#### ➕ POST /modifier-groups/{groupId}/modifiers
+#### ➕ POST /modifier-groups/{group_id}/modifiers
 Create a new modifier in a group.
 
 **Request Body:**
@@ -2294,7 +2371,7 @@ Create a new modifier in a group.
 
 ---
 
-#### 📝 PUT /modifier-groups/{groupId}/modifiers/{id}
+#### 📝 PATCH /modifiers/{modifier_id}
 Update a modifier.
 
 **Request Body:**
@@ -2325,7 +2402,7 @@ Update a modifier.
 
 ---
 
-#### 🗑️ DELETE /modifier-groups/{groupId}/modifiers/{id}
+#### 🗑️ DELETE /modifiers/{modifier_id}
 Delete a modifier.
 
 **Response:** `200 OK`
@@ -2340,7 +2417,7 @@ Delete a modifier.
 
 ---
 
-#### 🔄 PUT /modifier-groups/{groupId}/modifiers/reorder
+#### 🔄 PUT /modifier-groups/{group_id}/modifiers/reorder
 Reorder modifiers within a group.
 
 **Request Body:**
