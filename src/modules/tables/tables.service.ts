@@ -903,6 +903,12 @@ export class TablesService {
     const table = await this.prisma.table.findUnique({
       where: { id, tenantId },
       include: {
+        zone: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         tenant: {
           select: {
             slug: true,
@@ -922,6 +928,7 @@ export class TablesService {
       data: {
         id: table.id,
         table_number: table.tableNumber,
+        tableZone: table.zone?.name || null,
         qr_code_token: table.qrCodeToken,
         qr_code_url: table.qrCodeUrl,
         ordering_url: table.orderingUrl,
