@@ -44,12 +44,19 @@ export class AuthController {
 
   constructor(private readonly authService: AuthService) {}
 
-  private setRefreshTokenCookie(res: Response, token: string): void {
-    res.cookie(
-      COOKIE_CONFIG.REFRESH_TOKEN.name,
-      token,
-      COOKIE_CONFIG.REFRESH_TOKEN.options,
-    );
+  private setRefreshTokenCookie(
+    res: Response,
+    token: string,
+    rememberMe: boolean = true,
+  ): void {
+    const cookieOptions = {
+      ...COOKIE_CONFIG.REFRESH_TOKEN.options,
+      // Nếu rememberMe=true: persistent cookie (7 days)
+      // Nếu rememberMe=false: session cookie (expires when browser closes)
+      ...(rememberMe ? {} : { maxAge: undefined, expires: undefined }),
+    };
+
+    res.cookie(COOKIE_CONFIG.REFRESH_TOKEN.name, token, cookieOptions);
   }
 
   private clearRefreshTokenCookie(res: Response): void {
@@ -142,8 +149,12 @@ export class AuthController {
       authResponse.user.id,
     );
 
-    this.setRefreshTokenCookie(res, refreshToken);
-    this.logger.log(`User logged in: ${loginDto.email}`);
+    // Use rememberMe from loginDto (defaults to true)
+    const rememberMe = loginDto.rememberMe ?? true;
+    this.setRefreshTokenCookie(res, refreshToken, rememberMe);
+    this.logger.log(
+      `User logged in: ${loginDto.email} (rememberMe: ${rememberMe})`,
+    );
 
     return authResponse;
   }
