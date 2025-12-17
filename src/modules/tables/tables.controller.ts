@@ -152,6 +152,17 @@ export class TablesController {
     return this.tablesService.batchGenerateQrCodes(tenantId, batchGenerateDto);
   }
 
+  @Get('qr/stats')
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER)
+  @ApiOperation({ summary: 'Get QR statistics' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns QR statistics',
+  })
+  async getQrStats(@TenantContext() tenantId: string) {
+    return this.tablesService.getQrStats(tenantId);
+  }
+
   // ============================================
   // Table CRUD
   // ============================================

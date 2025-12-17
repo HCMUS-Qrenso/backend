@@ -1371,4 +1371,50 @@ export class TablesService {
       );
     }
   }
+
+  /**
+   * Get QR stats
+   */
+  async getQrStats(tenantId: string) {
+    // Run queries in parallel for better performance
+    const [totalActiveTables, tablesWithQr, latestQrUpdate] = await Promise.all(
+      [
+        this.prisma.table.count({
+          where: {
+            tenantId,
+            isActive: true,
+          },
+        }),
+        this.prisma.table.count({
+          where: {
+            tenantId,
+            isActive: true,
+            qrCodeToken: { not: null },
+          },
+        }),
+        this.prisma.table.findFirst({
+          where: {
+            tenantId,
+            isActive: true,
+            qrCodeGeneratedAt: { not: null },
+          },
+          orderBy: { qrCodeGeneratedAt: 'desc' },
+          select: { qrCodeGeneratedAt: true },
+        }),
+      ],
+    );
+
+    // Calculate tables without QR
+    const tablesWithoutQr = totalActiveTables - tablesWithQr;
+
+    return {
+      success: true,
+      data: {
+        total_active_tables: totalActiveTables,
+        tables_with_qr: tablesWithQr,
+        tables_without_qr: tablesWithoutQr,
+        latest_qr_update: latestQrUpdate?.qrCodeGeneratedAt || null,
+      },
+    };
+  }
 }

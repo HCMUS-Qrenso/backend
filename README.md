@@ -1197,6 +1197,24 @@ Verify QR code token (public endpoint for customers).
 
 ---
 
+#### 📊 GET /tables/qr/stats
+Get QR statistics.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "total_active_tables": 18,
+    "tables_with_qr": 5,
+    "tables_without_qr": 13,
+    "latest_qr_update": "2025-12-17T03:55:23.903Z"
+  }
+}
+```
+
+---
+
 ### Zone Layout Endpoints
 
 #### 🗺️ GET /tables/layout?zone_id=zone-uuid
