@@ -52,6 +52,14 @@
     "zoneCreatedSuccess": "Tạo khu vực thành công",
     "zoneUpdatedSuccess": "Cập nhật khu vực thành công"
   },
+  "menu": {
+    "menuItemNotFound": "Không tìm thấy món ăn",
+    "menuItemNameExists": "Món ăn với tên này đã tồn tại",
+    "menuItemCreatedSuccess": "Tạo món ăn thành công",
+    "menuItemUpdatedSuccess": "Cập nhật món ăn thành công",
+    "cannotDeleteActiveOrders": "Không thể xóa món ăn có đơn hàng đang hoạt động",
+    "menuItemDeletedSuccess": "Xóa món ăn thành công"
+  },
   "tenants": {
     "tenantNotFound": "Không tìm thấy tenant"
   },

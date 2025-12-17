@@ -53,6 +53,8 @@ async function bootstrap() {
       .addTag('tenants', 'Tenant management endpoints for owners')
       .addTag('users', 'User management endpoints')
       .addTag('tables', 'Table management endpoints')
+      .addTag('zones', 'Zone management endpoints')
+      .addTag('menu', 'Menu management endpoints')
       .addBearerAuth(
         {
           type: 'http',
