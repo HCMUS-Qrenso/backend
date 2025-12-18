@@ -7,7 +7,7 @@ import {
   Max,
   IsIn,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class QueryModifierGroupsDto {
@@ -73,6 +73,10 @@ export class QueryModifierGroupsDto {
   })
   @IsOptional()
   @IsBoolean()
-  @Type(() => Boolean)
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   include_usage_count?: boolean = true;
 }

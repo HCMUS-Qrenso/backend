@@ -8,6 +8,7 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
+import { ROLES } from '../../common/constants';
 import { t } from '../../common/utils';
 import {
   CreateTableDto,
@@ -1009,19 +1010,23 @@ export class TablesService {
       throw new NotFoundException(t('tables.tableNotFound', 'Table not found'));
     }
 
-    // Create JWT token with table and tenant information
+    // Create QR token with GUEST role
+    // Frontend will send this token in x-qr-token header for verification
     const payload = {
-      tenant_id: tenantId,
-      table_id: tableId,
-      table_number: table.tableNumber,
-      issued_at: new Date().toISOString(),
+      sub: `guest_table_${tableId}`, // Subject: unique guest identifier
+      role: ROLES.GUEST, // Guest role for authorization control
+      tenantId: tenantId, // Match JwtPayload interface field name
+      tableId: tableId, // Table context for QrTokenGuard
+      tableNumber: table.tableNumber, // Table number for convenience
+      iat: Math.floor(Date.now() / 1000), // Issued at timestamp
     };
 
-    const token = jwt.sign(payload, this.JWT_SECRET, { expiresIn: '365d' });
+    // No expiration - QR codes remain valid until regenerated
+    const token = jwt.sign(payload, this.JWT_SECRET);
 
-    // Generate ordering URL with tenant slug and table info
-    // This is the actual URL that will be embedded in QR code
-    const orderingUrl = `${this.APP_ORDER_URL}/${table.tenant.slug}/menu?table=${tableId}&token=${token}`;
+    // Generate ordering URL with QR token as query parameter
+    // Frontend extracts token from URL and stores it for API requests
+    const orderingUrl = `${this.APP_ORDER_URL}/${table.tenant.slug}?table=${tableId}&token=${token}`;
 
     // Generate external QR image URL for frontend display
     const qrCodeUrl = `${this.QR_API_URL}?size=200x200&data=${encodeURIComponent(orderingUrl)}`;
@@ -1293,105 +1298,6 @@ export class TablesService {
           );
         });
       });
-    }
-  }
-
-  /**
-   * Verify QR code token
-   */
-  async verifyToken(token: string) {
-    try {
-      // Verify and decode token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret-key');
-
-      if (typeof decoded === 'string') {
-        throw new UnauthorizedException(
-          t('tables.invalidTokenFormat', 'Invalid token format'),
-        );
-      }
-
-      const { table_id, tenant_id } = decoded as {
-        table_id: string;
-        tenant_id: string;
-        table_number: string;
-        issued_at: number;
-      };
-
-      // Verify table still exists and is active
-      const table = await this.prisma.table.findUnique({
-        where: { id: table_id, tenantId: tenant_id },
-      });
-
-      if (!table) {
-        return {
-          valid: false,
-          error: 'Table not found',
-          message: t(
-            'tables.qrNoLongerValid',
-            'This QR code is no longer valid. Please ask staff for assistance.',
-          ),
-        };
-      }
-
-      if (!table.isActive) {
-        return {
-          valid: false,
-          error: 'Table is inactive',
-          message: t(
-            'tables.tableUnavailable',
-            'This table is currently unavailable. Please ask staff for assistance.',
-          ),
-        };
-      }
-
-      // Check if token has been regenerated (current token doesn't match)
-      if (table.qrCodeToken !== token) {
-        return {
-          valid: false,
-          error: 'Token has been regenerated',
-          message: t(
-            'tables.qrOutdated',
-            'This QR code is outdated. Please scan the current QR code on the table.',
-          ),
-        };
-      }
-
-      return {
-        valid: true,
-        table: {
-          id: table.id,
-          tableNumber: table.tableNumber,
-          capacity: table.capacity,
-          status: table.status,
-          zoneId: table.zoneId,
-        },
-      };
-    } catch (error) {
-      if (error.name === 'TokenExpiredError') {
-        return {
-          valid: false,
-          error: 'Token expired',
-          message: t(
-            'tables.qrExpired',
-            'This QR code has expired. Please ask staff for a new one.',
-          ),
-        };
-      }
-
-      if (error.name === 'JsonWebTokenError') {
-        return {
-          valid: false,
-          error: 'Invalid token',
-          message: t(
-            'tables.qrInvalid',
-            'This QR code is invalid. Please ask staff for assistance.',
-          ),
-        };
-      }
-
-      throw new UnauthorizedException(
-        t('tables.tokenVerificationFailed', 'Token verification failed'),
-      );
     }
   }
 

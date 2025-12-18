@@ -17,7 +17,13 @@
     "userNotFoundOrInactive": "User not found or inactive",
     "emailNotVerified": "Email address not verified. Please check your email for the verification link or request a new one.",
     "emailAlreadyVerified": "Email is already verified",
-    "verificationEmailSent": "Verification email sent successfully. Please check your inbox."
+    "verificationEmailSent": "Verification email sent successfully. Please check your inbox.",
+    "qrTokenOutdated": "QR code has been regenerated",
+    "invalidQrToken": "Invalid QR token signature",
+    "qrTokenExpired": "QR token expired",
+    "qrTokenVerificationFailed": "QR token verification failed",
+    "qrScanRequired": "Please scan the QR code on your table to access this feature",
+    "tableInactive": "This table is currently unavailable. Please ask staff for assistance."
   },
   "tables": {
     "tableNameExists": "A table with this name already exists in this restaurant",
@@ -35,14 +41,7 @@
     "invalidTableStatus": "Invalid table status. Must be available or unavailable.",
     "tableStatusUpdatedSuccess": "Table status updated successfully",
     "tableNotFound": "Table not found",
-    "noTablesWithQr": "No tables with QR codes found",
-    "invalidTokenFormat": "Invalid token format",
-    "qrInvalid": "This QR code is invalid. Please ask staff for assistance.",
-    "qrNoLongerValid": "This QR code is no longer valid. Please ask staff for assistance.",
-    "tableUnavailable": "This table is currently unavailable. Please ask staff for assistance.",
-    "qrOutdated": "This QR code is outdated. Please scan the current QR code on the table.",
-    "qrExpired": "This QR code has expired. Please ask staff for a new one.",
-    "tokenVerificationFailed": "Token verification failed"
+    "noTablesWithQr": "No tables with QR codes found"
   },
   "zones": {
     "zoneNotFound": "Zone not found",

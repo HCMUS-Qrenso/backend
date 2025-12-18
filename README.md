@@ -12,15 +12,16 @@
 2. [Project Overview](#project-overview)
 3. [Setup & Installation](#setup--installation)
 4. [Authentication System](#authentication-system)
-5. [Localization (i18n)](#localization-i18n)
-6. [API Documentation](#api-documentation)
-7. [Swagger UI](#swagger-ui)
-8. [Error Handling](#error-handling)
-9. [Architecture & Code Organization](#architecture--code-organization)
-10. [Security Features](#security-features)
-11. [Testing](#testing)
-12. [Deployment](#deployment)
-13. [Troubleshooting](#troubleshooting)
+5. [QR Validation Flow](#qr-validation-flow)
+6. [Localization (i18n)](#localization-i18n)
+7. [API Documentation](#api-documentation)
+8. [Swagger UI](#swagger-ui)
+9. [Error Handling](#error-handling)
+10. [Architecture & Code Organization](#architecture--code-organization)
+11. [Security Features](#security-features)
+12. [Testing](#testing)
+13. [Deployment](#deployment)
+14. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -385,6 +386,57 @@ Professional HTML email templates with:
 1. **Verification Email** - Welcome + verification link
 2. **Password Reset** - Reset instructions + link
 3. **Welcome Email** - Post-verification greeting
+
+---
+
+## QR Validation Flow
+
+### Overview
+
+The QR validation system enables customers to securely access restaurant menus by scanning table-specific QR codes. QR codes contain JWT tokens with GUEST role and table context.
+
+### How It Works
+
+#### QR Code Generation
+- **JWT Token**: Contains GUEST role, tableId, tenantId, tableNumber
+- **No Expiration**: QR codes remain valid until regenerated
+- **URLs**: 
+  - `ordering_url`: Frontend URL with token as query parameter
+  - `qr_code_url`: External QR image for display
+
+#### Token Validation (QrTokenGuard)
+
+**Token Source:**
+- **GUEST users** (unauthenticated): QR token from `Authorization: Bearer <token>` header
+- **CUSTOMER users** (authenticated): QR token from `x-qr-token` header
+
+**Validation Steps:**
+1. Extract token based on user role
+2. Verify JWT signature and GUEST role
+3. Check table exists and is active
+4. Verify token matches current table QR token
+5. Attach table context to request
+
+**Protected Endpoints:**
+```typescript
+@UseGuards(QrTokenGuard)
+@Get('menu/categories')
+async getCategories(@Req() request) {
+  // request.qrContext contains { tableId, tableNumber, tenantId }
+}
+```
+
+**Error Responses:**
+- `403 Forbidden` - Missing QR token (scan required)
+- `401 Unauthorized` - Invalid/expired token
+- `403 Forbidden` - Table inactive or token outdated
+
+### Security Features
+
+✅ JWT-based authentication with GUEST role isolation  
+✅ Database validation of table existence and status  
+✅ Token regeneration invalidates old QR codes  
+✅ Multi-tenant context isolation  
 
 ---
 

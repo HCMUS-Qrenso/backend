@@ -20,6 +20,7 @@ import {
   ApiBearerAuth,
   ApiParam,
   ApiQuery,
+  ApiHeader,
 } from '@nestjs/swagger';
 import { ModifiersService } from './modifiers.service';
 import {
@@ -34,7 +35,11 @@ import {
 import { JwtAuthGuard } from '../auth/guards';
 import { Roles, TenantContext } from '../../common/decorators';
 import { ROLES } from '../../common/constants';
-import { RolesGuard, TenantOwnershipGuard } from '../../common/guards';
+import {
+  RolesGuard,
+  TenantOwnershipGuard,
+  QrTokenGuard,
+} from '../../common/guards';
 
 @ApiTags('modifiers')
 @Controller()
@@ -48,8 +53,21 @@ export class ModifiersController {
   // ============================================
 
   @Get('modifier-groups')
-  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN, ROLES.CUSTOMER)
+  @Roles(
+    ROLES.OWNER,
+    ROLES.ADMIN,
+    ROLES.WAITER,
+    ROLES.KITCHEN,
+    ROLES.CUSTOMER,
+    ROLES.GUEST,
+  )
+  @UseGuards(QrTokenGuard) // Ensure GUEST/CUSTOMER have table context
   @ApiOperation({ summary: 'Get paginated list of modifier groups' })
+  @ApiHeader({
+    name: 'x-qr-token',
+    required: false,
+    description: 'QR token for CUSTOMER roles to establish table context',
+  })
   @ApiResponse({
     status: 200,
     description: 'Modifier groups retrieved successfully',
@@ -62,8 +80,21 @@ export class ModifiersController {
   }
 
   @Get('modifier-groups/:group_id')
-  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN, ROLES.CUSTOMER)
+  @Roles(
+    ROLES.OWNER,
+    ROLES.ADMIN,
+    ROLES.WAITER,
+    ROLES.KITCHEN,
+    ROLES.CUSTOMER,
+    ROLES.GUEST,
+  )
+  @UseGuards(QrTokenGuard) // Ensure GUEST/CUSTOMER have table context
   @ApiOperation({ summary: 'Get modifier group by ID with its modifiers' })
+  @ApiHeader({
+    name: 'x-qr-token',
+    required: false,
+    description: 'QR token for CUSTOMER roles to establish table context',
+  })
   @ApiParam({ name: 'group_id', description: 'Modifier group ID' })
   @ApiQuery({
     name: 'include_modifiers',
@@ -194,8 +225,21 @@ export class ModifiersController {
   // ============================================
 
   @Get('modifier-groups/:group_id/modifiers')
-  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN, ROLES.CUSTOMER)
+  @Roles(
+    ROLES.OWNER,
+    ROLES.ADMIN,
+    ROLES.WAITER,
+    ROLES.KITCHEN,
+    ROLES.CUSTOMER,
+    ROLES.GUEST,
+  )
+  @UseGuards(QrTokenGuard) // Ensure GUEST/CUSTOMER have table context
   @ApiOperation({ summary: 'Get modifiers for a specific modifier group' })
+  @ApiHeader({
+    name: 'x-qr-token',
+    required: false,
+    description: 'QR token for CUSTOMER roles to establish table context',
+  })
   @ApiParam({ name: 'group_id', description: 'Modifier group ID' })
   @ApiQuery({
     name: 'include_unavailable',

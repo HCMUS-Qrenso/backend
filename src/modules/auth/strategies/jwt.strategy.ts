@@ -20,6 +20,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: JwtPayload) {
+    // Allow GUEST users without checking database
+    if (payload.role === 'guest') {
+      return payload;
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       select: {

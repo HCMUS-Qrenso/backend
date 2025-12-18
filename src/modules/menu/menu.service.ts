@@ -3,10 +3,15 @@ import {
   NotFoundException,
   ConflictException,
   Logger,
+  BadRequestException,
+  StreamableFile,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { t } from '../../common/utils';
 import { CreateMenuItemDto, UpdateMenuItemDto, QueryMenuItemsDto } from './dto';
+import * as ExcelJS from 'exceljs';
+import csvParser from 'csv-parser';
+import { Readable } from 'stream';
 
 @Injectable()
 export class MenuService {
@@ -534,5 +539,329 @@ export class MenuService {
         chef_recommendations: chefRecommendations,
       },
     };
+  }
+
+  // ============================================
+  // Import / Export Implementation
+  // ============================================
+
+  private parseBoolean(value: any) {
+    if (value === true || value === 'true' || value === '1' || value === 1) {
+      return true;
+    }
+    return false;
+  }
+
+  async import(
+    tenantId: string,
+    file: Express.Multer.File,
+    mode: string,
+    dataTypes: string[],
+  ) {
+    if (!file || !file.buffer) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    const ext = (file.originalname || '').toLowerCase();
+    let rows: Record<string, any>[] = [];
+
+    if (ext.endsWith('.csv') || file.mimetype.includes('csv')) {
+      // parse CSV
+      const stream = Readable.from(file.buffer);
+      rows = await new Promise((resolve, reject) => {
+        const data: Record<string, any>[] = [];
+        stream
+          .pipe(csvParser({ mapHeaders: ({ header }) => header.trim() }))
+          .on('data', (row) => data.push(row))
+          .on('end', () => resolve(data))
+          .on('error', (err) => reject(err));
+      });
+    } else {
+      // parse Excel
+      const workbook = new ExcelJS.Workbook();
+      const buf = Buffer.isBuffer(file.buffer)
+        ? (file.buffer as Buffer)
+        : Buffer.from(file.buffer as any);
+      await workbook.xlsx.load(buf as any);
+      // pick first sheet
+      const sheet = workbook.worksheets[0];
+      const headers: string[] = [];
+      sheet.eachRow((row, rowNumber) => {
+        const values = row.values as any[];
+        if (rowNumber === 1) {
+          headers.push(...values.slice(1).map((v) => String(v || '').trim()));
+        } else {
+          const obj: Record<string, any> = {};
+          headers.forEach((h, i) => {
+            obj[h] = values[i + 1] || '';
+          });
+          rows.push(obj);
+        }
+      });
+    }
+
+    // Only handle 'items' for now (front-end may send multiple dataTypes)
+    const result = { created: 0, updated: 0 };
+
+    if (dataTypes.includes('items') || dataTypes.length === 0) {
+      for (const r of rows) {
+        const name = (r.name || r.Name || '').toString().trim();
+        if (!name) continue; // skip rows without a name
+
+        const basePrice = r.base_price ?? r.BasePrice ?? r['base price'] ?? '';
+        const categoryName =
+          r.category || r.Category || r.category_name || r['category name'];
+        const description = r.description || r.Description || '';
+        const status = r.status || 'available';
+        const isChef = this.parseBoolean(
+          r.is_chef_recommendation ||
+            r.IsChefRecommendation ||
+            r['is_chef_recommendation'],
+        );
+
+        // resolve or create category if provided
+        let categoryId: string | null = null;
+        if (categoryName && String(categoryName).trim()) {
+          const exists = await this.prisma.category.findFirst({
+            where: { tenantId, name: String(categoryName).trim() },
+          });
+          if (exists) {
+            categoryId = exists.id;
+          } else if (mode !== 'update') {
+            const createdCat = await this.prisma.category.create({
+              data: { tenantId, name: String(categoryName).trim() },
+            });
+            categoryId = createdCat.id;
+          }
+        }
+
+        // find existing menu item by name
+        const existing = await this.prisma.menuItem.findFirst({
+          where: { tenantId, name },
+        });
+
+        if (existing) {
+          if (mode === 'create') {
+            // skip
+            continue;
+          }
+
+          // update
+          await this.prisma.menuItem.update({
+            where: { id: existing.id },
+            data: {
+              description: description || existing.description,
+              basePrice:
+                basePrice !== '' ? Number(basePrice) : existing.basePrice,
+              status: status || existing.status,
+              isChefRecommendation: isChef,
+              categoryId: categoryId || existing.categoryId,
+            },
+          });
+          result.updated += 1;
+        } else {
+          if (mode === 'update') {
+            continue; // nothing to update
+          }
+
+          // create
+          await this.prisma.menuItem.create({
+            data: {
+              tenantId,
+              name,
+              description,
+              basePrice: basePrice !== '' ? Number(basePrice) : 0,
+              status: status || 'available',
+              isChefRecommendation: isChef,
+              categoryId: categoryId || undefined,
+            },
+          });
+          result.created += 1;
+        }
+      }
+    }
+
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  async export(tenantId: string, opts: any) {
+    const format = opts.format || 'csv';
+    const where: any = { tenantId };
+    if (opts.scope === 'category' && opts.categoryId) {
+      where.categoryId = opts.categoryId;
+    }
+
+    const include: any = {
+      category: { select: { id: true, name: true } },
+    };
+
+    if (opts.includeImages) {
+      include.images = {
+        select: { imageUrl: true, displayOrder: true },
+        orderBy: { displayOrder: 'asc' },
+      };
+    }
+
+    if (opts.includeModifiers) {
+      include.modifierGroups = {
+        include: {
+          modifierGroup: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+              isRequired: true,
+              minSelections: true,
+              maxSelections: true,
+              displayOrder: true,
+              modifiers: {
+                select: { name: true, priceAdjustment: true },
+                orderBy: { displayOrder: 'asc' },
+              },
+            },
+          },
+        },
+        orderBy: { modifierGroup: { displayOrder: 'asc' } },
+      };
+    }
+
+    const items = await this.prisma.menuItem.findMany({
+      where,
+      include,
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const rows = items.map((it: any) => ({
+      name: it.name,
+      description: it.description,
+      base_price: it.basePrice,
+      preparation_time: it.preparationTime,
+      status: it.status,
+      is_chef_recommendation: it.isChefRecommendation,
+      allergen_info: it.allergenInfo,
+      category: it.category ? it.category.name : '',
+      images: it.images ? it.images.map((i: any) => i.imageUrl).join(';') : '',
+      modifiers: it.modifierGroups
+        ? it.modifierGroups
+            .map(
+              (mg: any) =>
+                `${mg.modifierGroup.name}:${mg.modifierGroup.modifiers.map((m: any) => m.name).join('|')}`,
+            )
+            .join(';')
+        : '',
+    }));
+
+    if (format === 'xlsx') {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Items');
+      const header = Object.keys(
+        rows[0] || {
+          name: '',
+          description: '',
+          base_price: '',
+          preparation_time: '',
+          status: '',
+          is_chef_recommendation: '',
+          category: '',
+          images: '',
+          modifiers: '',
+        },
+      );
+      sheet.addRow(header);
+      for (const r of rows) {
+        sheet.addRow(header.map((h) => r[h]));
+      }
+      const buffer = await workbook.xlsx.writeBuffer();
+      const filename = `menu-export-${new Date().toISOString().split('T')[0]}.xlsx`;
+      return new StreamableFile(Buffer.from(buffer as any), {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        disposition: `attachment; filename="${filename}"`,
+      });
+    }
+
+    // default CSV
+    const escapeCsv = (v: any) => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      // Don't quote numbers
+      if (!isNaN(Number(s)) && s.trim() === s) {
+        return s;
+      }
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    };
+
+    const header = Object.keys(
+      rows[0] || {
+        name: '',
+        description: '',
+        base_price: '',
+        preparation_time: '',
+        status: '',
+        is_chef_recommendation: '',
+        category: '',
+        images: '',
+        modifiers: '',
+      },
+    );
+    const csvLines = [header.join(',')];
+    for (const r of rows) {
+      csvLines.push(header.map((h) => escapeCsv(r[h])).join(','));
+    }
+    const csv = csvLines.join('\n');
+    const filename = `menu-export-${new Date().toISOString().split('T')[0]}.csv`;
+    return new StreamableFile(Buffer.from(csv, 'utf-8'), {
+      type: 'text/csv',
+      disposition: `attachment; filename="${filename}"`,
+    });
+  }
+
+  async getTemplate(name: string) {
+    const lower = name.toLowerCase();
+    if (lower.includes('items') && lower.endsWith('.xlsx')) {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Items');
+      const header = [
+        'name',
+        'description',
+        'base_price',
+        'preparation_time',
+        'status',
+        'is_chef_recommendation',
+        'category',
+        'images',
+      ];
+      sheet.addRow(header);
+      const buffer = await workbook.xlsx.writeBuffer();
+      const filename = 'items-template.xlsx';
+      return new StreamableFile(Buffer.from(buffer as any), {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        disposition: `attachment; filename="${filename}"`,
+      });
+    }
+
+    if (lower.includes('categories') && lower.endsWith('.csv')) {
+      const csv = 'name,description,display_order,is_active\n';
+      return new StreamableFile(Buffer.from(csv, 'utf-8'), {
+        type: 'text/csv',
+        disposition: 'attachment; filename="categories-template.csv"',
+      });
+    }
+
+    if (lower.includes('modifiers') && lower.endsWith('.csv')) {
+      const csv =
+        'group_name,modifier_name,price_adjustment,is_available,display_order\n';
+      return new StreamableFile(Buffer.from(csv, 'utf-8'), {
+        type: 'text/csv',
+        disposition: 'attachment; filename="modifiers-template.csv"',
+      });
+    }
+
+    throw new NotFoundException('Template not found');
   }
 }
