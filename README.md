@@ -1,7 +1,7 @@
 # Backend API - Complete Documentation
 
 > **Last Updated:** December 17, 2025  
-> **Version:** 1.0  
+> **Version:** 1.1  
 > **Framework:** NestJS 11 with TypeScript
 
 ---
@@ -104,6 +104,23 @@ npm run start:dev
 - Advanced filtering and pagination
 - Multi-tenant menu customization
 
+✅ **Categories Management API**
+- Full CRUD operations for menu categories
+- Display order management with drag-and-drop reordering
+- Category status toggling (active/inactive)
+- Multi-tenant isolation with tenant context
+- Bulk operations for reordering categories
+- Validation to prevent deletion of categories with associated menu items
+
+✅ **Modifiers Management API**
+- Modifier groups with selection constraints (min/max selections)
+- Individual modifiers within groups with pricing
+- Display order management for both groups and modifiers
+- Bulk reordering operations
+- Multi-tenant isolation
+- Validation for selection constraints and unique display orders
+- Protection against deleting groups with associated menu items
+
 ✅ **API Documentation**
 - Interactive Swagger UI
 - Complete request/response schemas
@@ -178,6 +195,10 @@ QR_API_URL=https://api.qrserver.com/v1/create-qr-code/
 BREVO_SMTP_KEY=your-brevo-smtp-key
 BREVO_FROM_EMAIL=noreply@yourdomain.com
 BREVO_FROM_NAME=Your App Name
+
+# QR Code & Ordering Configuration
+APP_ORDER_URL=http://localhost:3002
+QR_API_URL=https://api.qrserver.com/v1/create-qr-code/
 ```
 
 ### 3. Database Setup
@@ -480,6 +501,16 @@ return {
 throw new NotFoundException(
   t('tables.tableNotFound', 'Table not found'),
 );
+
+// Categories operations
+throw new ConflictException(
+  t('categories.categoryNameExists', 'A category with this name already exists'),
+);
+
+// Modifiers operations
+return {
+  message: t('modifiers.modifierGroupCreatedSuccess', 'Modifier group created successfully'),
+};
 ```
 
 **Note:** 
@@ -1352,6 +1383,153 @@ Get paginated list of zones with filtering.
 
 ---
 
+#### 📊 GET /zones/stats
+Get zone statistics for the current tenant.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "total_zones": 5,
+    "active_zones": 4,
+    "inactive_zones": 1,
+    "total_tables_in_zones": 25,
+    "zones_with_tables": 4
+  }
+}
+```
+
+---
+
+#### 🏢 GET /zones/{id}
+Get a single zone by ID.
+
+**Path Parameters:**
+- `id` - Zone UUID
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "zone": {
+      "id": "zone-uuid",
+      "name": "VIP Area",
+      "description": "Premium seating area",
+      "display_order": 1,
+      "is_active": true,
+      "table_count": 5,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T..."
+    }
+  }
+}
+```
+
+**Errors:**
+- `404 Not Found` - Zone not found
+
+---
+
+#### ➕ POST /zones
+Create a new zone. **[Protected - Owner/Admin only]**
+
+**Request Body:**
+```json
+{
+  "name": "Outdoor Patio",
+  "description": "Outdoor seating area",
+  "is_active": true
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "zone": {
+      "id": "zone-uuid",
+      "name": "Outdoor Patio",
+      "description": "Outdoor seating area",
+      "display_order": 2,
+      "is_active": true,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Zone created successfully"
+  }
+}
+```
+
+**Errors:**
+- `409 Conflict` - Zone name already exists
+
+---
+
+#### 📝 PUT /zones/{id}
+Update an existing zone. **[Protected - Owner/Admin only]**
+
+**Path Parameters:**
+- `id` - Zone UUID
+
+**Request Body:**
+```json
+{
+  "name": "VIP Lounge",
+  "description": "Premium lounge area",
+  "is_active": true
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "zone": {
+      "id": "zone-uuid",
+      "name": "VIP Lounge",
+      "description": "Premium lounge area",
+      "display_order": 1,
+      "is_active": true,
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Zone updated successfully"
+  }
+}
+```
+
+**Errors:**
+- `404 Not Found` - Zone not found
+- `409 Conflict` - Zone name already exists
+
+---
+
+#### 🗑️ DELETE /zones/{id}
+Delete a zone (only if no tables are assigned). **[Protected - Owner/Admin only]**
+
+**Path Parameters:**
+- `id` - Zone UUID
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Zone deleted successfully",
+    "deleted_at": "2025-12-14T..."
+  }
+}
+```
+
+**Errors:**
+- `404 Not Found` - Zone not found
+- `409 Conflict` - Zone has tables assigned and cannot be deleted
+
+---
+
 ### Tenant Endpoints
 
 #### 🏢 GET /tenants
@@ -1700,6 +1878,571 @@ Delete a menu item.
 
 ---
 
+### Category Endpoints
+
+#### � GET /categories/stats
+Get category statistics.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "total_categories": 8,
+    "active_categories": 6,
+    "inactive_categories": 2,
+    "total_menu_items": 45
+  }
+}
+```
+
+---
+
+#### �📂 GET /categories
+Get paginated list of categories with filtering.
+
+**Query Parameters:**
+- `page` (default: 1)
+- `limit` (default: 10)
+- `search` - Search by category name
+- `status` - Filter by status: 'active', 'inactive', 'all'
+- `sort_by` (default: 'displayOrder') - Sort by: 'name', 'displayOrder', 'createdAt', 'updatedAt'
+- `sort_order` (default: 'asc') - Sort order: 'asc' or 'desc'
+- `include_item_count` (default: true) - Include menu item count per category
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "categories": [
+      {
+        "id": "category-uuid",
+        "name": "Pizza",
+        "description": "Italian pizzas",
+        "display_order": 1,
+        "is_active": true,
+        "menu_item_count": 12,
+        "created_at": "2025-12-14T...",
+        "updated_at": "2025-12-14T..."
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 8,
+      "total_pages": 1
+    }
+  }
+}
+```
+
+---
+
+#### 🍕 POST /categories
+Create a new category.
+
+**Request Body:**
+```json
+{
+  "name": "Beverages",
+  "description": "Drinks and refreshments",
+  "is_active": true
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "category": {
+      "id": "category-uuid",
+      "name": "Beverages",
+      "description": "Drinks and refreshments",
+      "display_order": 3,
+      "is_active": true,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Category created successfully"
+  }
+}
+```
+
+---
+
+#### � GET /categories/{id}
+Get a specific category by ID.
+
+**Query Parameters:**
+- `include_menu_items` (default: false) - Include associated menu items
+- `include_item_count` (default: true) - Include total count of menu items
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "category": {
+      "id": "category-uuid",
+      "name": "Pizza",
+      "description": "Italian pizzas",
+      "display_order": 1,
+      "is_active": true,
+      "menu_item_count": 12,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T..."
+    }
+  }
+}
+```
+
+---
+
+#### �📝 PATCH /categories/{id}
+Update an existing category.
+
+**Request Body:**
+```json
+{
+  "name": "Hot Beverages",
+  "description": "Coffee, tea, and hot drinks",
+  "is_active": true
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "category": {
+      "id": "category-uuid",
+      "name": "Hot Beverages",
+      "description": "Coffee, tea, and hot drinks",
+      "display_order": 3,
+      "is_active": true,
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Category updated successfully"
+  }
+}
+```
+
+---
+
+#### 🗑️ DELETE /categories/{id}
+Delete a category (only if no menu items are associated).
+
+**Query Parameters:**
+- `force` (optional): Force delete even with associated menu items
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Category deleted successfully",
+    "deleted_at": "2025-12-14T..."
+  }
+}
+```
+
+---
+
+#### 🔄 PUT /categories/reorder
+Reorder categories display order.
+
+**Request Body:**
+```json
+{
+  "categories": [
+    { "id": "category-1", "display_order": 1 },
+    { "id": "category-2", "display_order": 2 },
+    { "id": "category-3", "display_order": 3 }
+  ]
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Category order updated successfully",
+    "updated_count": 3
+  }
+}
+```
+
+---
+
+#### 🔄 PATCH /categories/{id}/status
+Toggle category active status.
+
+**Request Body:**
+```json
+{
+  "is_active": false
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "category": {
+      "id": "category-uuid",
+      "is_active": false,
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Category status updated successfully"
+  }
+}
+```
+
+---
+
+### Modifier Group Endpoints
+
+#### 🛠️ GET /modifier-groups
+Get paginated list of modifier groups.
+
+**Query Parameters:**
+- `page` (default: 1)
+- `limit` (default: 10)
+- `search` - Search by group name
+- `sort_by` (default: 'displayOrder') - Sort by: 'name', 'displayOrder', 'createdAt', 'updatedAt'
+- `sort_order` (default: 'asc') - Sort order: 'asc' or 'desc'
+- `include_usage_count` (default: true) - Include usage count (used by menu items)
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "modifier_groups": [
+      {
+        "id": "group-uuid",
+        "name": "Pizza Toppings",
+        "description": "Extra toppings for pizza",
+        "type": "multiple",
+        "is_required": false,
+        "min_selections": 0,
+        "max_selections": 3,
+        "display_order": 1,
+        "modifier_count": 8,
+        "created_at": "2025-12-14T...",
+        "updated_at": "2025-12-14T..."
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 5,
+      "total_pages": 1
+    }
+  }
+}
+```
+
+---
+
+#### ➕ POST /modifier-groups
+Create a new modifier group.
+
+**Request Body:**
+```json
+{
+  "name": "Spice Level",
+  "description": "Choose your spice preference",
+  "type": "single",
+  "is_required": true,
+  "min_selections": 1,
+  "max_selections": 1
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "modifier_group": {
+      "id": "group-uuid",
+      "name": "Spice Level",
+      "description": "Choose your spice preference",
+      "type": "single",
+      "is_required": true,
+      "min_selections": 1,
+      "max_selections": 1,
+      "display_order": 2,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Modifier group created successfully"
+  }
+}
+```
+
+---
+
+#### � GET /modifier-groups/{group_id}
+Get a specific modifier group by ID with its modifiers.
+
+**Query Parameters:**
+- `include_modifiers` (default: true) - Include list of modifiers
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "modifier_group": {
+      "id": "group-uuid",
+      "name": "Pizza Toppings",
+      "description": "Extra toppings for pizza",
+      "type": "multiple",
+      "is_required": false,
+      "min_selections": 0,
+      "max_selections": 3,
+      "display_order": 1,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T...",
+      "modifiers": [
+        {
+          "id": "modifier-uuid",
+          "name": "Extra Cheese",
+          "description": "Additional cheese topping",
+          "price": 2.50,
+          "display_order": 1,
+          "is_active": true
+        }
+      ]
+    }
+  }
+}
+```
+
+---
+
+#### �📝 PATCH /modifier-groups/{group_id}
+Update a modifier group.
+
+**Request Body:**
+```json
+{
+  "name": "Heat Level",
+  "description": "Select your preferred heat level",
+  "min_selections": 1,
+  "max_selections": 1
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "modifier_group": {
+      "id": "group-uuid",
+      "name": "Heat Level",
+      "description": "Select your preferred heat level",
+      "min_selections": 1,
+      "max_selections": 1,
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Modifier group updated successfully"
+  }
+}
+```
+
+---
+
+#### 🗑️ DELETE /modifier-groups/{group_id}
+Delete a modifier group (only if no menu items are associated).
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Modifier group deleted successfully",
+    "deleted_at": "2025-12-14T..."
+  }
+}
+```
+
+---
+
+#### 🔄 PUT /modifier-groups/reorder
+Reorder modifier groups display order.
+
+**Request Body:**
+```json
+{
+  "modifier_groups": [
+    { "id": "group-1", "display_order": 1 },
+    { "id": "group-2", "display_order": 2 }
+  ]
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Modifier groups reordered successfully",
+    "updated_count": 2
+  }
+}
+```
+
+---
+
+### Individual Modifier Endpoints
+
+#### 🛠️ GET /modifier-groups/{group_id}/modifiers
+Get modifiers within a specific group.
+
+**Query Parameters:**
+- `include_unavailable` (default: true) - Include unavailable modifiers
+- `sort_by` (default: 'display_order') - Sort by: 'name', 'display_order', 'price_adjustment', 'created_at'
+- `sort_order` (default: 'asc') - Sort order: 'asc' or 'desc'
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "modifiers": [
+      {
+        "id": "modifier-uuid",
+        "name": "Extra Cheese",
+        "description": "Additional cheese topping",
+        "price": 2.50,
+        "display_order": 1,
+        "is_active": true,
+        "created_at": "2025-12-14T...",
+        "updated_at": "2025-12-14T..."
+      }
+    ]
+  }
+}
+```
+
+---
+
+#### ➕ POST /modifier-groups/{group_id}/modifiers
+Create a new modifier in a group.
+
+**Request Body:**
+```json
+{
+  "name": "Mild",
+  "description": "Mild spice level",
+  "price": 0.00,
+  "is_active": true
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "modifier": {
+      "id": "modifier-uuid",
+      "name": "Mild",
+      "description": "Mild spice level",
+      "price": 0.00,
+      "display_order": 1,
+      "is_active": true,
+      "created_at": "2025-12-14T...",
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Modifier created successfully"
+  }
+}
+```
+
+---
+
+#### 📝 PATCH /modifiers/{modifier_id}
+Update a modifier.
+
+**Request Body:**
+```json
+{
+  "name": "Medium Spice",
+  "description": "Medium heat level",
+  "price": 0.50
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "modifier": {
+      "id": "modifier-uuid",
+      "name": "Medium Spice",
+      "description": "Medium heat level",
+      "price": 0.50,
+      "updated_at": "2025-12-14T..."
+    },
+    "message": "Modifier updated successfully"
+  }
+}
+```
+
+---
+
+#### 🗑️ DELETE /modifiers/{modifier_id}
+Delete a modifier.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Modifier deleted successfully"
+  }
+}
+```
+
+---
+
+#### 🔄 PUT /modifier-groups/{group_id}/modifiers/reorder
+Reorder modifiers within a group.
+
+**Request Body:**
+```json
+{
+  "modifiers": [
+    { "id": "mod-1", "display_order": 1 },
+    { "id": "mod-2", "display_order": 2 }
+  ]
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Modifiers reordered successfully",
+    "updated_count": 2
+  }
+}
+```
+
+---
+
 ### Additional Documentation
 
 For complete API documentation with all endpoints, see:
@@ -1732,6 +2475,12 @@ http://localhost:3000/docs
 
 ✅ **Organized by Tags**
 - **auth** - Authentication endpoints
+- **tenants** - Tenant management for owners
+- **tables** - Table management and QR codes
+- **zones** - Zone management endpoints
+- **categories** - Category management endpoints
+- **modifiers** - Modifier groups and modifiers
+- **menu** - Menu item management
 - **users** - User management
 
 ### How to Use Swagger
@@ -1767,6 +2516,10 @@ const config = new DocumentBuilder()
   .addTag('auth', 'Authentication endpoints')
   .addTag('tenants', 'Tenant management endpoints for owners')
   .addTag('tables', 'Table management and QR code endpoints')
+  .addTag('zones', 'Zone management endpoints')
+  .addTag('categories', 'Category management endpoints')
+  .addTag('modifiers', 'Modifier groups and modifiers management endpoints')
+  .addTag('menu', 'Menu item management endpoints')
   .addTag('users', 'User management endpoints')
   .addBearerAuth()
   .addCookieAuth('refreshToken')
@@ -1951,6 +2704,18 @@ backend/
 │   │   │   ├── zones.service.ts
 │   │   │   └── zones.module.ts
 │   │   │
+│   │   ├── categories/       # Categories module
+│   │   │   ├── dto/          # Category DTOs
+│   │   │   ├── categories.controller.ts
+│   │   │   ├── categories.service.ts
+│   │   │   └── categories.module.ts
+│   │   │
+│   │   ├── modifiers/        # Modifiers module
+│   │   │   ├── dto/          # Modifier DTOs
+│   │   │   ├── modifiers.controller.ts
+│   │   │   ├── modifiers.service.ts
+│   │   │   └── modifiers.module.ts
+│   │   │
 │   │   └── user/             # User module
 │   │       ├── user.controller.ts
 │   │       ├── user.service.ts
@@ -1988,6 +2753,9 @@ constructor(
 - **AuthService** - Authentication business logic
 - **TokenService** - Token management (creation, validation, deletion)
 - **EmailService** - Email operations (Brevo SMTP via nodemailer)
+- **TablesService** - Table and QR code management
+- **CategoriesService** - Category CRUD operations and ordering
+- **ModifiersService** - Modifier groups and modifiers management
 
 #### 3. Separation of Concerns
 - Controllers handle HTTP requests/responses
@@ -2334,4 +3102,4 @@ npm run test:cov           # Test coverage
 
 **Built with ❤️ using NestJS**
 
-*Last Updated: December 16, 2025*
+*Last Updated: December 17, 2025*

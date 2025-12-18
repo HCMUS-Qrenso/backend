@@ -55,6 +55,8 @@ async function bootstrap() {
       .addTag('tables', 'Table management endpoints')
       .addTag('zones', 'Zone management endpoints')
       .addTag('menu', 'Menu management endpoints')
+      .addTag('categories', 'Category management endpoints')
+      .addTag('modifiers', 'Modifier management endpoints')
       .addBearerAuth(
         {
           type: 'http',
