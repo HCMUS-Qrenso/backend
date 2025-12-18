@@ -126,18 +126,8 @@ export class MenuController {
     @UploadedFile() file: Express.Request['file'],
     @Body() importDto: ImportMenuDto,
   ) {
-    const { mode, dataTypes } = importDto as any;
-    const types = Array.isArray(dataTypes)
-      ? dataTypes
-      : dataTypes
-        ? [dataTypes]
-        : [];
-    return this.menuService.import(
-      tenantId,
-      file as any,
-      mode || 'create',
-      types,
-    );
+    const { mode } = importDto as any;
+    return this.menuService.import(tenantId, file as any, mode || 'create');
   }
 
   @Get('export')
@@ -174,19 +164,6 @@ export class MenuController {
     } as any;
 
     return this.menuService.export(tenantId, opts);
-  }
-
-  @Get('templates/:name')
-  @Roles(ROLES.OWNER, ROLES.ADMIN)
-  @ApiOperation({ summary: 'Download a template file for import' })
-  @ApiResponse({ status: 200, description: 'Template file returned' })
-  @ApiResponse({ status: 404, description: 'Template not found' })
-  @ApiParam({
-    name: 'name',
-    description: 'Template filename (e.g., items.xlsx, categories.csv)',
-  })
-  async getTemplate(@Param('name') name: string) {
-    return this.menuService.getTemplate(name);
   }
 
   @Get(':id')
