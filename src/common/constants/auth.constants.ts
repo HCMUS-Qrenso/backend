@@ -25,4 +25,5 @@ export const ROLES = {
   WAITER: 'waiter',
   KITCHEN: 'kitchen_staff',
   CUSTOMER: 'customer',
+  GUEST: 'guest',
 } as const;

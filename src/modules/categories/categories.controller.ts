@@ -20,6 +20,7 @@ import {
   ApiBearerAuth,
   ApiParam,
   ApiQuery,
+  ApiHeader,
 } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
 import {
@@ -32,7 +33,11 @@ import {
 import { JwtAuthGuard } from '../auth/guards';
 import { Roles, TenantContext } from '../../common/decorators';
 import { ROLES } from '../../common/constants';
-import { RolesGuard, TenantOwnershipGuard } from '../../common/guards';
+import {
+  RolesGuard,
+  TenantOwnershipGuard,
+  QrTokenGuard,
+} from '../../common/guards';
 
 @ApiTags('categories')
 @Controller('categories')
@@ -61,8 +66,21 @@ export class CategoriesController {
   // ============================================
 
   @Get()
-  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN, ROLES.CUSTOMER)
+  @Roles(
+    ROLES.OWNER,
+    ROLES.ADMIN,
+    ROLES.WAITER,
+    ROLES.KITCHEN,
+    ROLES.CUSTOMER,
+    ROLES.GUEST,
+  )
+  @UseGuards(QrTokenGuard) // Ensure GUEST/CUSTOMER have table context
   @ApiOperation({ summary: 'Get paginated list of categories' })
+  @ApiHeader({
+    name: 'x-qr-token',
+    required: false,
+    description: 'QR token for CUSTOMER roles to establish table context',
+  })
   @ApiResponse({
     status: 200,
     description: 'Categories retrieved successfully',
@@ -98,8 +116,21 @@ export class CategoriesController {
   }
 
   @Get(':id')
-  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN, ROLES.CUSTOMER)
+  @Roles(
+    ROLES.OWNER,
+    ROLES.ADMIN,
+    ROLES.WAITER,
+    ROLES.KITCHEN,
+    ROLES.CUSTOMER,
+    ROLES.GUEST,
+  )
+  @UseGuards(QrTokenGuard) // Ensure GUEST/CUSTOMER have table context
   @ApiOperation({ summary: 'Get category by ID' })
+  @ApiHeader({
+    name: 'x-qr-token',
+    required: false,
+    description: 'QR token for CUSTOMER roles to establish table context',
+  })
   @ApiParam({ name: 'id', description: 'Category ID' })
   @ApiQuery({
     name: 'include_menu_items',

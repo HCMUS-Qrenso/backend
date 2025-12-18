@@ -372,20 +372,4 @@ export class TablesController {
   ) {
     return this.tablesService.downloadQrCode(tenantId, id, format);
   }
-
-  // ============================================
-  // Token Verification (Public)
-  // ============================================
-
-  @Public()
-  @Post('verify-token')
-  @ApiOperation({ summary: 'Verify QR code token (public endpoint)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Token verification result',
-  })
-  @HttpCode(HttpStatus.OK)
-  async verifyToken(@Body() verifyTokenDto: VerifyTokenDto) {
-    return this.tablesService.verifyToken(verifyTokenDto.token);
-  }
 }

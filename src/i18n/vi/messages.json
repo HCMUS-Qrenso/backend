@@ -17,7 +17,13 @@
     "userNotFoundOrInactive": "Không tìm thấy người dùng hoặc tài khoản đã bị vô hiệu hóa",
     "emailNotVerified": "Email chưa được xác thực. Vui lòng kiểm tra email để lấy liên kết xác thực hoặc yêu cầu gửi lại.",
     "emailAlreadyVerified": "Email đã được xác thực",
-    "verificationEmailSent": "Email xác thực đã được gửi thành công. Vui lòng kiểm tra hộp thư của bạn."
+    "verificationEmailSent": "Email xác thực đã được gửi thành công. Vui lòng kiểm tra hộp thư của bạn.",
+    "qrTokenOutdated": "Mã QR đã được tạo lại",
+    "invalidQrToken": "Chữ ký token QR không hợp lệ",
+    "qrTokenExpired": "Token QR đã hết hạn",
+    "qrTokenVerificationFailed": "Xác thực token QR thất bại",
+    "qrScanRequired": "Vui lòng quét mã QR trên bàn để truy cập tính năng này",
+    "tableInactive": "Bàn này hiện không khả dụng. Vui lòng liên hệ nhân viên để được hỗ trợ."
   },
   "tables": {
     "tableNameExists": "Một bàn với tên này đã tồn tại trong nhà hàng",
@@ -35,14 +41,7 @@
     "invalidTableStatus": "Trạng thái bàn không hợp lệ. Phải là available hoặc unavailable.",
     "tableStatusUpdatedSuccess": "Cập nhật trạng thái bàn thành công",
     "tableNotFound": "Không tìm thấy bàn",
-    "noTablesWithQr": "Không tìm thấy bàn nào có mã QR",
-    "invalidTokenFormat": "Định dạng token không hợp lệ",
-    "qrInvalid": "Mã QR này không hợp lệ. Vui lòng liên hệ nhân viên để được hỗ trợ.",
-    "qrNoLongerValid": "Mã QR này không còn hợp lệ. Vui lòng liên hệ nhân viên để được hỗ trợ.",
-    "tableUnavailable": "Bàn này hiện không khả dụng. Vui lòng liên hệ nhân viên để được hỗ trợ.",
-    "qrOutdated": "Mã QR này đã lỗi thời. Vui lòng quét mã QR hiện tại trên bàn.",
-    "qrExpired": "Mã QR này đã hết hạn. Vui lòng yêu cầu nhân viên cung cấp mã mới.",
-    "tokenVerificationFailed": "Xác thực token thất bại"
+    "noTablesWithQr": "Không tìm thấy bàn nào có mã QR"
   },
   "zones": {
     "zoneNotFound": "Không tìm thấy khu vực",

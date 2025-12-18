@@ -3,10 +3,15 @@ import {
   NotFoundException,
   ConflictException,
   Logger,
+  BadRequestException,
+  StreamableFile,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { t } from '../../common/utils';
 import { CreateMenuItemDto, UpdateMenuItemDto, QueryMenuItemsDto } from './dto';
+import * as ExcelJS from 'exceljs';
+import csvParser from 'csv-parser';
+import { Readable } from 'stream';
 
 @Injectable()
 export class MenuService {
@@ -534,5 +539,381 @@ export class MenuService {
         chef_recommendations: chefRecommendations,
       },
     };
+  }
+
+  // ============================================
+  // Import / Export Implementation
+  // ============================================
+
+  private parseBoolean(value: any) {
+    if (value === true || value === 'true' || value === '1' || value === 1) {
+      return true;
+    }
+    return false;
+  }
+
+  private async processModifiersForMenuItem(
+    tenantId: string,
+    menuItemId: string,
+    modifiersStr: string,
+  ) {
+    if (!modifiersStr) return;
+
+    // First, remove all existing modifier groups for this menu item
+    await this.prisma.menuItemModifierGroup.deleteMany({
+      where: { menuItemId },
+    });
+
+    const groups = modifiersStr.split(';');
+    for (const groupStr of groups) {
+      const [groupName, modsStr] = groupStr.split(':');
+      if (!groupName) continue;
+
+      // Find or create modifier group
+      let modifierGroup = await this.prisma.modifierGroup.findFirst({
+        where: { tenantId, name: groupName.trim() },
+      });
+      if (!modifierGroup) {
+        modifierGroup = await this.prisma.modifierGroup.create({
+          data: {
+            tenantId,
+            name: groupName.trim(),
+            type: 'single',
+            isRequired: false,
+            minSelections: 0,
+            maxSelections: 1,
+            displayOrder: 0,
+          },
+        });
+      }
+
+      // Process modifiers
+      if (modsStr) {
+        const mods = modsStr.split('|');
+        for (const modStr of mods) {
+          const [modName, priceStr] = modStr.split(':');
+          if (!modName) continue;
+          const priceAdjustment = priceStr ? Number(priceStr) : 0;
+
+          // Find or create modifier
+          let modifier = await this.prisma.modifier.findFirst({
+            where: { modifierGroupId: modifierGroup.id, name: modName.trim() },
+          });
+          if (!modifier) {
+            modifier = await this.prisma.modifier.create({
+              data: {
+                modifierGroupId: modifierGroup.id,
+                name: modName.trim(),
+                priceAdjustment,
+                isAvailable: true,
+                displayOrder: 0,
+              },
+            });
+          }
+        }
+      }
+
+      // Link the modifier group to the menu item
+      await this.prisma.menuItemModifierGroup.create({
+        data: { menuItemId, modifierGroupId: modifierGroup.id },
+      });
+    }
+  }
+
+  async import(tenantId: string, file: Express.Multer.File, mode: string) {
+    if (!file || !file.buffer) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    const ext = (file.originalname || '').toLowerCase();
+    let rows: Record<string, any>[] = [];
+
+    if (ext.endsWith('.csv') || file.mimetype.includes('csv')) {
+      // parse CSV
+      const stream = Readable.from(file.buffer);
+      rows = await new Promise((resolve, reject) => {
+        const data: Record<string, any>[] = [];
+        stream
+          .pipe(csvParser({ mapHeaders: ({ header }) => header.trim() }))
+          .on('data', (row) => data.push(row))
+          .on('end', () => resolve(data))
+          .on('error', (err) => reject(err));
+      });
+    } else {
+      // parse Excel
+      const workbook = new ExcelJS.Workbook();
+      const buf = Buffer.isBuffer(file.buffer)
+        ? (file.buffer as Buffer)
+        : Buffer.from(file.buffer as any);
+      await workbook.xlsx.load(buf as any);
+      // pick first sheet
+      const sheet = workbook.worksheets[0];
+      const headers: string[] = [];
+      sheet.eachRow((row, rowNumber) => {
+        const values = row.values as any[];
+        if (rowNumber === 1) {
+          headers.push(...values.slice(1).map((v) => String(v || '').trim()));
+        } else {
+          const obj: Record<string, any> = {};
+          headers.forEach((h, i) => {
+            obj[h] = values[i + 1] || '';
+          });
+          rows.push(obj);
+        }
+      });
+    }
+
+    // Process menu items from the exported file
+    const result = { created: 0, updated: 0 };
+
+    for (const r of rows) {
+      const name = (r.name || r.Name || '').toString().trim();
+      if (!name) continue; // skip rows without a name
+
+      const basePrice = r.base_price ?? r.BasePrice ?? r['base price'] ?? '';
+      const categoryName =
+        r.category || r.Category || r.category_name || r['category name'];
+      const description = r.description || r.Description || '';
+      const status = r.status || 'available';
+      const isChef = this.parseBoolean(
+        r.is_chef_recommendation ||
+          r.IsChefRecommendation ||
+          r['is_chef_recommendation'],
+      );
+      const preparationTime =
+        r.preparation_time ?? r.preparationTime ?? r['preparation time'] ?? '';
+      const allergenInfo =
+        r.allergen_info ?? r.allergenInfo ?? r['allergen info'] ?? '';
+      const modifiers = r.modifiers || '';
+
+      // resolve or create category if provided
+      let categoryId: string | null = null;
+      if (categoryName && String(categoryName).trim()) {
+        const exists = await this.prisma.category.findFirst({
+          where: { tenantId, name: String(categoryName).trim() },
+        });
+        if (exists) {
+          categoryId = exists.id;
+        } else if (mode !== 'update') {
+          const createdCat = await this.prisma.category.create({
+            data: { tenantId, name: String(categoryName).trim() },
+          });
+          categoryId = createdCat.id;
+        }
+      }
+
+      // find existing menu item by name
+      const existing = await this.prisma.menuItem.findFirst({
+        where: { tenantId, name },
+      });
+
+      let menuItem: any;
+      if (existing) {
+        if (mode === 'create') {
+          // skip
+          continue;
+        }
+
+        // update
+        menuItem = await this.prisma.menuItem.update({
+          where: { id: existing.id },
+          data: {
+            description: description || existing.description,
+            basePrice:
+              basePrice !== '' ? Number(basePrice) : existing.basePrice,
+            preparationTime:
+              preparationTime !== ''
+                ? Number(preparationTime)
+                : existing.preparationTime,
+            status: status || existing.status,
+            isChefRecommendation: isChef,
+            allergenInfo: allergenInfo || existing.allergenInfo,
+            categoryId: categoryId || existing.categoryId,
+          },
+        });
+        result.updated += 1;
+      } else {
+        if (mode === 'update') {
+          continue; // nothing to update
+        }
+
+        // create
+        menuItem = await this.prisma.menuItem.create({
+          data: {
+            tenantId,
+            name,
+            description,
+            basePrice: basePrice !== '' ? Number(basePrice) : 0,
+            preparationTime:
+              preparationTime !== '' ? Number(preparationTime) : 0,
+            status: status || 'available',
+            isChefRecommendation: isChef,
+            allergenInfo: allergenInfo,
+            categoryId: categoryId || undefined,
+          },
+        });
+        result.created += 1;
+      }
+
+      // Process modifiers
+      await this.processModifiersForMenuItem(tenantId, menuItem.id, modifiers);
+
+      // Process images
+      if (r.images) {
+        const imageUrls = r.images.split(';').filter((url) => url.trim());
+        // First, delete existing images
+        await this.prisma.menuItemImage.deleteMany({
+          where: { menuItemId: menuItem.id },
+        });
+        for (let i = 0; i < imageUrls.length; i++) {
+          await this.prisma.menuItemImage.create({
+            data: {
+              menuItemId: menuItem.id,
+              imageUrl: imageUrls[i].trim(),
+              displayOrder: i,
+            },
+          });
+        }
+      }
+    }
+
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  async export(tenantId: string, opts: any) {
+    const format = opts.format || 'csv';
+    const where: any = { tenantId };
+    if (opts.scope === 'category' && opts.categoryId) {
+      where.categoryId = opts.categoryId;
+    }
+
+    const include: any = {
+      category: { select: { id: true, name: true } },
+    };
+
+    if (opts.includeImages) {
+      include.images = {
+        select: { imageUrl: true, displayOrder: true },
+        orderBy: { displayOrder: 'asc' },
+      };
+    }
+
+    if (opts.includeModifiers) {
+      include.modifierGroups = {
+        include: {
+          modifierGroup: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+              isRequired: true,
+              minSelections: true,
+              maxSelections: true,
+              displayOrder: true,
+              modifiers: {
+                select: { name: true, priceAdjustment: true },
+                orderBy: { displayOrder: 'asc' },
+              },
+            },
+          },
+        },
+        orderBy: { modifierGroup: { displayOrder: 'asc' } },
+      };
+    }
+
+    const items = await this.prisma.menuItem.findMany({
+      where,
+      include,
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const rows = items.map((it: any) => ({
+      name: it.name,
+      description: it.description,
+      base_price: Number(it.basePrice),
+      preparation_time: it.preparationTime,
+      status: it.status,
+      is_chef_recommendation: it.isChefRecommendation,
+      allergen_info: it.allergenInfo,
+      category: it.category ? it.category.name : '',
+      images: it.images ? it.images.map((i: any) => i.imageUrl).join(';') : '',
+      modifiers: it.modifierGroups
+        ? it.modifierGroups
+            .map(
+              (mg: any) =>
+                `${mg.modifierGroup.name}:${mg.modifierGroup.modifiers.map((m: any) => `${m.name}:${m.priceAdjustment}`).join('|')}`,
+            )
+            .join(';')
+        : '',
+    }));
+
+    if (format === 'xlsx') {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Items');
+      const header = Object.keys(
+        rows[0] || {
+          name: '',
+          description: '',
+          base_price: '',
+          preparation_time: '',
+          status: '',
+          is_chef_recommendation: '',
+          category: '',
+          images: '',
+          modifiers: '',
+        },
+      );
+      sheet.addRow(header);
+      for (const r of rows) {
+        sheet.addRow(header.map((h) => r[h]));
+      }
+      const buffer = await workbook.xlsx.writeBuffer();
+      const filename = `menu-export-${new Date().toISOString().split('T')[0]}.xlsx`;
+      return new StreamableFile(Buffer.from(buffer as any), {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        disposition: `attachment; filename="${filename}"`,
+      });
+    }
+
+    // default CSV
+    const escapeCsv = (v: any) => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      // Don't quote numbers
+      if (!isNaN(Number(s)) && s.trim() === s) {
+        return s;
+      }
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    };
+
+    const header = Object.keys(
+      rows[0] || {
+        name: '',
+        description: '',
+        base_price: '',
+        preparation_time: '',
+        status: '',
+        is_chef_recommendation: '',
+        category: '',
+        images: '',
+        modifiers: '',
+      },
+    );
+    const csvLines = [header.join(',')];
+    for (const r of rows) {
+      csvLines.push(header.map((h) => escapeCsv(r[h])).join(','));
+    }
+    const csv = csvLines.join('\n');
+    const filename = `menu-export-${new Date().toISOString().split('T')[0]}.csv`;
+    return new StreamableFile(Buffer.from(csv, 'utf-8'), {
+      type: 'text/csv',
+      disposition: `attachment; filename="${filename}"`,
+    });
   }
 }

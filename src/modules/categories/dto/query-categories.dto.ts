@@ -7,7 +7,7 @@ import {
   Max,
   IsIn,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class QueryCategoriesDto {
@@ -82,7 +82,11 @@ export class QueryCategoriesDto {
     default: true,
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
-  @Type(() => Boolean)
   include_item_count?: boolean = true;
 }
