@@ -122,6 +122,12 @@ npm run start:dev
 - Validation for selection constraints and unique display orders
 - Protection against deleting groups with associated menu items
 
+✅ **Uploads API**
+- S3-compatible storage (AWS S3, Cloudflare R2, MinIO)
+- Presigned URL generation for direct client-to-S3 uploads
+- Organized file storage with group/folder categorization
+- UUID-based unique file keys to prevent collisions
+
 ✅ **API Documentation**
 - Interactive Swagger UI
 - Complete request/response schemas
@@ -2729,6 +2735,117 @@ Reorder modifiers within a group. **[Protected - Owner/Admin only]**
 
 ---
 
+### Uploads API
+
+#### Overview
+
+The Uploads API provides presigned URL generation for direct file uploads to S3-compatible storage (AWS S3, Cloudflare R2, MinIO). This enables secure, scalable file uploads without routing files through the backend server.
+
+#### Key Features
+
+✅ **Presigned URL Generation**
+- Direct client-to-S3 uploads for performance
+- Configurable expiration time (default: 2 minutes)
+- Organized storage with group/folder categorization
+- UUID-based unique file keys to prevent collisions
+
+#### Environment Configuration
+
+Add these variables to your `.env`:
+
+```env
+# S3/R2 Storage Configuration
+S3_BUCKET_NAME=your-bucket-name
+S3_REGION=auto
+S3_ENDPOINT=https://xxx.r2.cloudflarestorage.com
+S3_ACCESS_KEY_ID=your-access-key
+S3_SECRET_ACCESS_KEY=your-secret-key
+S3_PRESIGNED_URL_EXPIRATION=2  # minutes
+```
+
+#### Upload Flow
+
+```
+1. Client calls POST /uploads/presign with file metadata
+2. Backend generates presigned S3 URL (expires in 2 min)
+3. Client uploads file directly to S3 using PUT request
+4. Client saves the `key` to reference the file later
+```
+
+---
+
+#### 📤 POST /uploads/presign
+Generate presigned URL for file upload. **[Protected - Owner/Admin only]**
+
+**Headers:**
+```
+Authorization: Bearer <access-token>
+```
+
+**Request Body:**
+```json
+{
+  "fileName": "image.jpg",
+  "contentType": "image/jpeg",
+  "group": "avatars",
+  "fileSize": 1024000
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `fileName` | string | ✅ | Original file name with extension |
+| `contentType` | string | ✅ | MIME type (e.g., `image/jpeg`, `application/pdf`) |
+| `group` | string | ❌ | Folder/category for organizing files (default: `uploads`) |
+| `fileSize` | number | ❌ | File size in bytes |
+
+**Response:** `200 OK`
+```json
+{
+  "uploadUrl": "https://bucket.s3.amazonaws.com/avatars/uuid-abc123.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&...",
+  "key": "avatars/uuid-abc123.jpg"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `uploadUrl` | Presigned URL to upload file directly to S3 (expires in 2 min) |
+| `key` | Object key/path in S3 bucket - save this to reference the file later |
+
+**Errors:**
+- `400 Bad Request` - Invalid request data (missing fileName, invalid contentType)
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - Not authorized (requires Owner or Admin role)
+- `500 Internal Server Error` - Failed to generate presigned URL
+
+---
+
+#### Usage Example (Frontend)
+
+```typescript
+// 1. Get presigned URL from backend
+const response = await apiClient.post('/uploads/presign', {
+  fileName: file.name,
+  contentType: file.type,
+  group: 'menu-images',
+  fileSize: file.size,
+});
+const { uploadUrl, key } = response.data;
+
+// 2. Upload file directly to S3
+await fetch(uploadUrl, {
+  method: 'PUT',
+  body: file,
+  headers: { 'Content-Type': file.type },
+});
+
+// 3. Construct public URL and save
+const publicUrl = `https://your-cdn.com/${key}`;
+// Save publicUrl to database (e.g., as menu item image)
+```
+
+---
+
 ### Additional Documentation
 
 For complete API documentation with all endpoints, see:
@@ -2767,6 +2884,7 @@ http://localhost:3000/docs
 - **categories** - Category management endpoints
 - **modifiers** - Modifier groups and modifiers
 - **menu** - Menu item management
+- **uploads** - File upload with presigned URLs
 - **users** - User management
 
 ### How to Use Swagger
