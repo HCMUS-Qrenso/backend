@@ -191,14 +191,14 @@ GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
 BREVO_SMTP_USER=your-smtp-login@smtp-brevo.com
 
 # QR Code & Ordering
-APP_ORDER_URL=http://localhost:3001
+CUSTOMER_FRONTEND_URL=http://localhost:3001
 QR_API_URL=https://api.qrserver.com/v1/create-qr-code/
 BREVO_SMTP_KEY=your-brevo-smtp-key
 BREVO_FROM_EMAIL=noreply@yourdomain.com
 BREVO_FROM_NAME=Your App Name
 
 # QR Code & Ordering Configuration
-APP_ORDER_URL=http://localhost:3002
+CUSTOMER_FRONTEND_URL=http://localhost:3002
 QR_API_URL=https://api.qrserver.com/v1/create-qr-code/
 ```
 
@@ -984,7 +984,7 @@ The Tables Management API provides comprehensive table and QR code management fo
 #### QR Generation Flow
 ```
 1. Create JWT token (365-day expiry)
-2. Generate ordering_url: ${APP_ORDER_URL}/${tenant.slug}/menu?table=${id}&token=${token}
+2. Generate ordering_url: ${CUSTOMER_FRONTEND_URL}/${tenant.slug}/menu?table=${id}&token=${token}
 3. Generate qr_code_url: ${QR_API_URL}?size=200x200&data=${encodeURIComponent(ordering_url)}
 4. Store all three in database
 5. Return data to client
