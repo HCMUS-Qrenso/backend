@@ -13,10 +13,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { UploadService } from './upload.service';
-import {
-  PresignUploadDto,
-  PresignUploadResponseDto,
-} from './dto';
+import { PresignUploadDto, PresignUploadResponseDto } from './dto';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { JwtAuthGuard } from '../auth/guards';
 import { Roles } from 'src/common/decorators';
