@@ -768,150 +768,148 @@ export class MenuService {
       }
 
       if (!Array.isArray(modifierGroups)) {
+        throw new BadRequestException(
+          t(
+            'menu.import.invalidModifiersFormat',
+            'Modifiers must be a JSON array of modifier groups',
+          ),
+        );
+      }
+
+      for (const group of modifierGroups) {
+        if (typeof group !== 'object' || group === null) {
           throw new BadRequestException(
             t(
-              'menu.import.invalidModifiersFormat',
-              'Modifiers must be a JSON array of modifier groups',
+              'menu.import.invalidModifierGroup',
+              'Each modifier group must be an object',
             ),
           );
         }
 
-        for (const group of modifierGroups) {
-          if (typeof group !== 'object' || group === null) {
+        // Required fields for modifier group
+        const requiredGroupFields = [
+          'name',
+          'type',
+          'isRequired',
+          'minSelections',
+          'maxSelections',
+          'modifiers',
+        ];
+        for (const field of requiredGroupFields) {
+          if (!(field in group)) {
             throw new BadRequestException(
               t(
-                'menu.import.invalidModifierGroup',
-                'Each modifier group must be an object',
+                'menu.import.missingModifierGroupField',
+                `Modifier group missing required field: ${field}`,
+                { args: { field } },
               ),
             );
-          }
-
-          // Required fields for modifier group
-          const requiredGroupFields = [
-            'name',
-            'type',
-            'isRequired',
-            'minSelections',
-            'maxSelections',
-            'modifiers',
-          ];
-          for (const field of requiredGroupFields) {
-            if (!(field in group)) {
-              throw new BadRequestException(
-                t(
-                  'menu.import.missingModifierGroupField',
-                  `Modifier group missing required field: ${field}`,
-                  { args: { field } },
-                ),
-              );
-          }
-
-            }
-
-          if (!['single_choice', 'multiple_choice'].includes(group.type)) {
-            throw new BadRequestException(
-              t(
-                'menu.import.invalidModifierGroupType',
-                'Modifier group type must be "single_choice" or "multiple_choice"',
-              ),
-            );
-          }
-
-          if (typeof group.isRequired !== 'boolean') {
-            throw new BadRequestException(
-              t(
-                'menu.import.invalidModifierGroupRequired',
-                'Modifier group isRequired must be a boolean',
-              ),
-            );
-          }
-
-          if (
-            typeof group.minSelections !== 'number' ||
-            group.minSelections < 0
-          ) {
-            throw new BadRequestException(
-              t(
-                'menu.import.invalidModifierGroupMinSelections',
-                'Modifier group minSelections must be a non-negative number',
-              ),
-            );
-          }
-
-          if (
-            typeof group.maxSelections !== 'number' ||
-            group.maxSelections < 0
-          ) {
-            throw new BadRequestException(
-              t(
-                'menu.import.invalidModifierGroupMaxSelections',
-                'Modifier group maxSelections must be a non-negative number',
-              ),
-            );
-          }
-
-          if (group.minSelections > group.maxSelections) {
-            throw new BadRequestException(
-              t(
-                'menu.import.invalidModifierGroupSelections',
-                'Modifier group minSelections cannot be greater than maxSelections',
-              ),
-            );
-          }
-
-          if (!Array.isArray(group.modifiers)) {
-            throw new BadRequestException(
-              t(
-                'menu.import.invalidModifierGroupModifiers',
-                'Modifier group modifiers must be an array',
-              ),
-            );
-          }
-
-          // Validate modifiers
-          for (const modifier of group.modifiers) {
-            if (typeof modifier !== 'object' || modifier === null) {
-              throw new BadRequestException(
-                t(
-                  'menu.import.invalidModifier',
-                  'Each modifier must be an object',
-                ),
-              );
-            }
-
-            const requiredModifierFields = ['name', 'priceAdjustment'];
-            for (const field of requiredModifierFields) {
-              if (!(field in modifier)) {
-                throw new BadRequestException(
-                  t(
-                    'menu.import.missingModifierField',
-                    `Modifier missing required field: ${field}`,
-                    { args: { field } },
-                  ),
-                );
-              }
-            }
-
-            if (typeof modifier.name !== 'string' || !modifier.name.trim()) {
-              throw new BadRequestException(
-                t(
-                  'menu.import.invalidModifierName',
-                  'Modifier name must be a non-empty string',
-                ),
-              );
-            }
-
-            if (typeof modifier.priceAdjustment !== 'number') {
-              throw new BadRequestException(
-                t(
-                  'menu.import.invalidModifierPrice',
-                  'Modifier priceAdjustment must be a number',
-                ),
-              );
-            }
           }
         }
 
+        if (!['single_choice', 'multiple_choice'].includes(group.type)) {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidModifierGroupType',
+              'Modifier group type must be "single_choice" or "multiple_choice"',
+            ),
+          );
+        }
+
+        if (typeof group.isRequired !== 'boolean') {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidModifierGroupRequired',
+              'Modifier group isRequired must be a boolean',
+            ),
+          );
+        }
+
+        if (
+          typeof group.minSelections !== 'number' ||
+          group.minSelections < 0
+        ) {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidModifierGroupMinSelections',
+              'Modifier group minSelections must be a non-negative number',
+            ),
+          );
+        }
+
+        if (
+          typeof group.maxSelections !== 'number' ||
+          group.maxSelections < 0
+        ) {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidModifierGroupMaxSelections',
+              'Modifier group maxSelections must be a non-negative number',
+            ),
+          );
+        }
+
+        if (group.minSelections > group.maxSelections) {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidModifierGroupSelections',
+              'Modifier group minSelections cannot be greater than maxSelections',
+            ),
+          );
+        }
+
+        if (!Array.isArray(group.modifiers)) {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidModifierGroupModifiers',
+              'Modifier group modifiers must be an array',
+            ),
+          );
+        }
+
+        // Validate modifiers
+        for (const modifier of group.modifiers) {
+          if (typeof modifier !== 'object' || modifier === null) {
+            throw new BadRequestException(
+              t(
+                'menu.import.invalidModifier',
+                'Each modifier must be an object',
+              ),
+            );
+          }
+
+          const requiredModifierFields = ['name', 'priceAdjustment'];
+          for (const field of requiredModifierFields) {
+            if (!(field in modifier)) {
+              throw new BadRequestException(
+                t(
+                  'menu.import.missingModifierField',
+                  `Modifier missing required field: ${field}`,
+                  { args: { field } },
+                ),
+              );
+            }
+          }
+
+          if (typeof modifier.name !== 'string' || !modifier.name.trim()) {
+            throw new BadRequestException(
+              t(
+                'menu.import.invalidModifierName',
+                'Modifier name must be a non-empty string',
+              ),
+            );
+          }
+
+          if (typeof modifier.priceAdjustment !== 'number') {
+            throw new BadRequestException(
+              t(
+                'menu.import.invalidModifierPrice',
+                'Modifier priceAdjustment must be a number',
+              ),
+            );
+          }
+        }
+      }
     }
   }
 
