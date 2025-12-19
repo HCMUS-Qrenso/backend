@@ -22,6 +22,7 @@ import {
   ApiParam,
   ApiConsumes,
   ApiHeader,
+  ApiBody,
 } from '@nestjs/swagger';
 import { MenuService } from './menu.service';
 import {
@@ -40,6 +41,7 @@ import {
   RolesGuard,
   TenantOwnershipGuard,
 } from '../../common/guards';
+import { t } from 'src/common/utils';
 
 @ApiTags('menu')
 @Controller('menu')
@@ -121,6 +123,23 @@ export class MenuController {
     description: 'Bad request or file missing/invalid',
   })
   @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        mode: {
+          type: 'string',
+          enum: ['create', 'update', 'upsert'],
+          default: 'create',
+        },
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'CSV or XLSX file',
+        },
+      },
+    },
+  })
   async importData(
     @TenantContext('id') tenantId: string,
     @UploadedFile() file: Express.Request['file'],
@@ -144,7 +163,10 @@ export class MenuController {
     // If scope==category, categoryId must be provided and be a valid UUID (validated by DTO), otherwise reject
     if (scope === 'category' && !exportDto.categoryId) {
       throw new BadRequestException(
-        'categoryId is required when scope=category',
+        t(
+          'menu.exportCategoryIdRequired',
+          'categoryId is required when scope is "category"',
+        ),
       );
     }
 
@@ -167,7 +189,15 @@ export class MenuController {
   }
 
   @Get(':id')
-  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN, ROLES.CUSTOMER)
+  @Roles(
+    ROLES.OWNER,
+    ROLES.ADMIN,
+    ROLES.WAITER,
+    ROLES.KITCHEN,
+    ROLES.CUSTOMER,
+    ROLES.GUEST,
+  )
+  @UseGuards(QrTokenGuard) // Ensure GUEST/CUSTOMER have table context
   @ApiOperation({ summary: 'Get menu item by ID' })
   @ApiResponse({ status: 200, description: 'Menu item retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
