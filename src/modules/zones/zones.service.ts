@@ -260,6 +260,7 @@ export class ZonesService {
         t(
           'zones.zoneHasTables',
           `Cannot delete zone with ${existing._count.tables} tables assigned to it`,
+          { args: { count: existing._count.tables } },
         ),
       );
     }

@@ -82,7 +82,7 @@
       "missingModifierField": "Modifier thiếu trường bắt buộc: {field}",
       "invalidModifierName": "Tên modifier phải là chuỗi không rỗng",
       "invalidModifierPrice": "Thuộc tính priceAdjustment của modifier phải là số",
-      "invalidModifierJson": "Cấu trúc JSON modifier không hợp lệ: {error}"
+      "invalidModifierJson": "Cấu trúc JSON modifier không hợp lệ"
     }
   },
   "categories": {

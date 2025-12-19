@@ -725,6 +725,7 @@ export class MenuService {
         t(
           'menu.import.missingRequiredColumns',
           `Missing required columns: ${missingHeaders.join(', ')}`,
+          { args: { columns: missingHeaders.join(', ') } },
         ),
       );
     }
@@ -754,10 +755,19 @@ export class MenuService {
       const modifiersStr = row[headers[modifierIndex]];
       if (!modifiersStr || modifiersStr.trim() === '') continue; // Skip empty modifiers
 
+      let modifierGroups: any;
       try {
-        const modifierGroups = JSON.parse(modifiersStr);
+        modifierGroups = JSON.parse(modifiersStr);
+      } catch (error) {
+        throw new BadRequestException(
+          t(
+            'menu.import.invalidModifierJson',
+            `Invalid modifier JSON structure: ${error.message}`,
+          ),
+        );
+      }
 
-        if (!Array.isArray(modifierGroups)) {
+      if (!Array.isArray(modifierGroups)) {
           throw new BadRequestException(
             t(
               'menu.import.invalidModifiersFormat',
@@ -791,19 +801,12 @@ export class MenuService {
                 t(
                   'menu.import.missingModifierGroupField',
                   `Modifier group missing required field: ${field}`,
+                  { args: { field } },
                 ),
               );
-            }
           }
 
-          if (typeof group.name !== 'string' || !group.name.trim()) {
-            throw new BadRequestException(
-              t(
-                'menu.import.invalidModifierGroupName',
-                'Modifier group name must be a non-empty string',
-              ),
-            );
-          }
+            }
 
           if (!['single_choice', 'multiple_choice'].includes(group.type)) {
             throw new BadRequestException(
@@ -883,6 +886,7 @@ export class MenuService {
                   t(
                     'menu.import.missingModifierField',
                     `Modifier missing required field: ${field}`,
+                    { args: { field } },
                   ),
                 );
               }
@@ -907,17 +911,7 @@ export class MenuService {
             }
           }
         }
-      } catch (error) {
-        if (error instanceof BadRequestException) {
-          throw error;
-        }
-        throw new BadRequestException(
-          t(
-            'menu.import.invalidModifierJson',
-            `Invalid modifier JSON structure: ${error.message}`,
-          ),
-        );
-      }
+
     }
   }
 
@@ -955,6 +949,7 @@ export class MenuService {
           t(
             'menu.import.missingRequiredColumns',
             `Missing required columns: ${missingHeaders.join(', ')}`,
+            { args: { columns: missingHeaders.join(', ') } },
           ),
         );
       }

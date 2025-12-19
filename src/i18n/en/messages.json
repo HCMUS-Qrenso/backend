@@ -82,7 +82,7 @@
       "missingModifierField": "Modifier missing required field: {field}",
       "invalidModifierName": "Modifier name must be a non-empty string",
       "invalidModifierPrice": "Modifier priceAdjustment must be a number",
-      "invalidModifierJson": "Invalid modifier JSON structure: {error}"
+      "invalidModifierJson": "Invalid modifier JSON structure"
     }
   },
   "categories": {
