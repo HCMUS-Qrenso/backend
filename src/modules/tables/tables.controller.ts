@@ -11,6 +11,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -19,6 +20,7 @@ import {
   ApiBearerAuth,
   ApiParam,
   ApiQuery,
+  ApiHeader,
 } from '@nestjs/swagger';
 import { TablesService } from './tables.service';
 import {
@@ -32,12 +34,15 @@ import {
   BatchGenerateQrDto,
   QueryQrDto,
   DownloadFormat,
-  VerifyTokenDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
-import { Public, Roles, TenantContext } from '../../common/decorators';
+import { Roles, TenantContext } from '../../common/decorators';
 import { ROLES } from 'src/common/constants';
-import { RolesGuard, TenantOwnershipGuard } from 'src/common/guards';
+import {
+  QrTokenGuard,
+  RolesGuard,
+  TenantOwnershipGuard,
+} from 'src/common/guards';
 
 @ApiTags('tables')
 @Controller('tables')
@@ -161,6 +166,26 @@ export class TablesController {
   })
   async getQrStats(@TenantContext() tenantId: string) {
     return this.tablesService.getQrStats(tenantId);
+  }
+
+  @Get('qr/verify-token')
+  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @UseGuards(QrTokenGuard)
+  @ApiOperation({ summary: 'Verify QR token and get table context' })
+  @ApiHeader({
+    name: 'x-qr-token',
+    required: false,
+    description: 'QR token from scanned QR code or Bearer token for GUEST',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns table context for valid QR token',
+  })
+  verifyQrToken(@Req() request: any) {
+    return {
+      success: true,
+      data: request.qrContext,
+    };
   }
 
   // ============================================

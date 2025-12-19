@@ -419,6 +419,25 @@ export class MenuService {
       updateData.categoryId = updateMenuItemDto.category_id;
     }
 
+    // Handle image_urls update
+    if (updateMenuItemDto.image_urls !== undefined) {
+      // Delete existing images
+      await this.prisma.menuItemImage.deleteMany({
+        where: { menuItemId: id },
+      });
+
+      // Create new images if any
+      if (updateMenuItemDto.image_urls.length > 0) {
+        await this.prisma.menuItemImage.createMany({
+          data: updateMenuItemDto.image_urls.map((url, index) => ({
+            menuItemId: id,
+            imageUrl: url,
+            displayOrder: index,
+          })),
+        });
+      }
+    }
+
     const updatedMenuItem = await this.prisma.menuItem.update({
       where: { id },
       data: updateData,
@@ -564,52 +583,80 @@ export class MenuService {
       where: { menuItemId },
     });
 
-    const groups = modifiersStr.split(';');
-    for (const groupStr of groups) {
-      const [groupName, modsStr] = groupStr.split(':');
-      if (!groupName) continue;
+    let modifierGroups: any[];
+    try {
+      modifierGroups = JSON.parse(modifiersStr);
+    } catch (error) {
+      this.logger.warn(`Failed to parse modifiers JSON: ${modifiersStr}`);
+      return;
+    }
+
+    for (const mg of modifierGroups) {
+      const {
+        name: groupName,
+        type = 'single_choice',
+        isRequired = false,
+        minSelections = 0,
+        maxSelections = 1,
+        modifiers = [],
+      } = mg;
 
       // Find or create modifier group
       let modifierGroup = await this.prisma.modifierGroup.findFirst({
-        where: { tenantId, name: groupName.trim() },
+        where: { tenantId, name: groupName },
       });
       if (!modifierGroup) {
         modifierGroup = await this.prisma.modifierGroup.create({
           data: {
             tenantId,
-            name: groupName.trim(),
-            type: 'single',
-            isRequired: false,
-            minSelections: 0,
-            maxSelections: 1,
+            name: groupName,
+            type,
+            isRequired,
+            minSelections,
+            maxSelections,
             displayOrder: 0,
+          },
+        });
+      } else {
+        // Update existing group with the imported values
+        modifierGroup = await this.prisma.modifierGroup.update({
+          where: { id: modifierGroup.id },
+          data: {
+            type,
+            isRequired,
+            minSelections,
+            maxSelections,
           },
         });
       }
 
       // Process modifiers
-      if (modsStr) {
-        const mods = modsStr.split('|');
-        for (const modStr of mods) {
-          const [modName, priceStr] = modStr.split(':');
-          if (!modName) continue;
-          const priceAdjustment = priceStr ? Number(priceStr) : 0;
+      for (const mod of modifiers) {
+        const { name: modName, priceAdjustment = 0 } = mod;
 
-          // Find or create modifier
-          let modifier = await this.prisma.modifier.findFirst({
-            where: { modifierGroupId: modifierGroup.id, name: modName.trim() },
+        // Find or create modifier
+        let modifier = await this.prisma.modifier.findFirst({
+          where: { modifierGroupId: modifierGroup.id, name: modName },
+        });
+        if (!modifier) {
+          modifier = await this.prisma.modifier.create({
+            data: {
+              modifierGroupId: modifierGroup.id,
+              name: modName,
+              priceAdjustment,
+              isAvailable: true,
+              displayOrder: 0,
+            },
           });
-          if (!modifier) {
-            modifier = await this.prisma.modifier.create({
-              data: {
-                modifierGroupId: modifierGroup.id,
-                name: modName.trim(),
-                priceAdjustment,
-                isAvailable: true,
-                displayOrder: 0,
-              },
-            });
-          }
+        } else {
+          // Update existing modifier with the imported values
+          modifier = await this.prisma.modifier.update({
+            where: { id: modifier.id },
+            data: {
+              name: modName,
+              priceAdjustment,
+            },
+          });
         }
       }
 
@@ -620,14 +667,359 @@ export class MenuService {
     }
   }
 
+  private async validateImportFile(file: Express.Multer.File) {
+    const ext = (file.originalname || '').toLowerCase();
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    // Check file size
+    if (file.size > maxSize) {
+      throw new BadRequestException(
+        t(
+          'menu.import.fileTooLarge',
+          `File size exceeds maximum limit of ${maxSize / (1024 * 1024)}MB`,
+        ),
+      );
+    }
+
+    // Check file type
+    const allowedTypes = ['.csv', '.xlsx', '.xls'];
+    const isAllowedType =
+      allowedTypes.some((type) => ext.endsWith(type)) ||
+      file.mimetype.includes('csv') ||
+      file.mimetype.includes('spreadsheet');
+
+    if (!isAllowedType) {
+      throw new BadRequestException(
+        t(
+          'menu.import.invalidFileType',
+          'Invalid file type. Only CSV and Excel files are allowed.',
+        ),
+      );
+    }
+
+    // Validate file content
+    if (ext.endsWith('.csv') || file.mimetype.includes('csv')) {
+      await this.validateCsvFile(file);
+    } else {
+      await this.validateExcelFile(file);
+    }
+  }
+
+  private async validateCsvFile(file: Express.Multer.File) {
+    const stream = Readable.from(file.buffer);
+    let headers: string[] = [];
+    let data: Record<string, any>[] = [];
+    let rowCount = 0;
+    const maxRows = 1000; // Check first 1000 rows
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        stream
+          .pipe(csvParser({ mapHeaders: ({ header }) => header.trim() }))
+          .on('headers', (headerList: string[]) => {
+            headers = headerList;
+          })
+          .on('data', (row) => {
+            rowCount++;
+            data.push(row);
+            if (rowCount > maxRows) {
+              stream.destroy();
+              resolve();
+            }
+          })
+          .on('end', () => resolve())
+          .on('error', (err) => reject(err));
+      });
+    } catch (error) {
+      throw new BadRequestException(
+        t('menu.import.invalidCsvFormat', 'Invalid CSV file format'),
+      );
+    }
+
+    // Check required headers
+    const requiredHeaders = ['name'];
+    const missingHeaders = requiredHeaders.filter((h) => !headers.includes(h));
+    if (missingHeaders.length > 0) {
+      throw new BadRequestException(
+        t(
+          'menu.import.missingRequiredColumns',
+          `Missing required columns: ${missingHeaders.join(', ')}`,
+          { args: { columns: missingHeaders.join(', ') } },
+        ),
+      );
+    }
+
+    if (rowCount === 0) {
+      throw new BadRequestException(
+        t(
+          'menu.import.emptyCsvFile',
+          'CSV file is empty or contains no valid data rows',
+        ),
+      );
+    }
+
+    // Validate modifier structure in sample rows
+    if (headers.includes('modifiers')) {
+      await this.validateModifierStructure(headers, data.slice(0, 5)); // Check first 5 rows
+    }
+  }
+
+  private async validateModifierStructure(
+    headers: string[],
+    sampleRows: Record<string, any>[],
+  ) {
+    const modifierIndex = headers.indexOf('modifiers');
+
+    for (const row of sampleRows) {
+      const modifiersStr = row[headers[modifierIndex]];
+      if (!modifiersStr || modifiersStr.trim() === '') continue; // Skip empty modifiers
+
+      let modifierGroups: any;
+      try {
+        modifierGroups = JSON.parse(modifiersStr);
+      } catch (error) {
+        throw new BadRequestException(
+          t(
+            'menu.import.invalidModifierJson',
+            `Invalid modifier JSON structure: ${error.message}`,
+          ),
+        );
+      }
+
+      if (!Array.isArray(modifierGroups)) {
+        throw new BadRequestException(
+          t(
+            'menu.import.invalidModifiersFormat',
+            'Modifiers must be a JSON array of modifier groups',
+          ),
+        );
+      }
+
+      for (const group of modifierGroups) {
+        if (typeof group !== 'object' || group === null) {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidModifierGroup',
+              'Each modifier group must be an object',
+            ),
+          );
+        }
+
+        // Required fields for modifier group
+        const requiredGroupFields = [
+          'name',
+          'type',
+          'isRequired',
+          'minSelections',
+          'maxSelections',
+          'modifiers',
+        ];
+        for (const field of requiredGroupFields) {
+          if (!(field in group)) {
+            throw new BadRequestException(
+              t(
+                'menu.import.missingModifierGroupField',
+                `Modifier group missing required field: ${field}`,
+                { args: { field } },
+              ),
+            );
+          }
+        }
+
+        if (!['single_choice', 'multiple_choice'].includes(group.type)) {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidModifierGroupType',
+              'Modifier group type must be "single_choice" or "multiple_choice"',
+            ),
+          );
+        }
+
+        if (typeof group.isRequired !== 'boolean') {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidModifierGroupRequired',
+              'Modifier group isRequired must be a boolean',
+            ),
+          );
+        }
+
+        if (
+          typeof group.minSelections !== 'number' ||
+          group.minSelections < 0
+        ) {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidModifierGroupMinSelections',
+              'Modifier group minSelections must be a non-negative number',
+            ),
+          );
+        }
+
+        if (
+          typeof group.maxSelections !== 'number' ||
+          group.maxSelections < 0
+        ) {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidModifierGroupMaxSelections',
+              'Modifier group maxSelections must be a non-negative number',
+            ),
+          );
+        }
+
+        if (group.minSelections > group.maxSelections) {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidModifierGroupSelections',
+              'Modifier group minSelections cannot be greater than maxSelections',
+            ),
+          );
+        }
+
+        if (!Array.isArray(group.modifiers)) {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidModifierGroupModifiers',
+              'Modifier group modifiers must be an array',
+            ),
+          );
+        }
+
+        // Validate modifiers
+        for (const modifier of group.modifiers) {
+          if (typeof modifier !== 'object' || modifier === null) {
+            throw new BadRequestException(
+              t(
+                'menu.import.invalidModifier',
+                'Each modifier must be an object',
+              ),
+            );
+          }
+
+          const requiredModifierFields = ['name', 'priceAdjustment'];
+          for (const field of requiredModifierFields) {
+            if (!(field in modifier)) {
+              throw new BadRequestException(
+                t(
+                  'menu.import.missingModifierField',
+                  `Modifier missing required field: ${field}`,
+                  { args: { field } },
+                ),
+              );
+            }
+          }
+
+          if (typeof modifier.name !== 'string' || !modifier.name.trim()) {
+            throw new BadRequestException(
+              t(
+                'menu.import.invalidModifierName',
+                'Modifier name must be a non-empty string',
+              ),
+            );
+          }
+
+          if (typeof modifier.priceAdjustment !== 'number') {
+            throw new BadRequestException(
+              t(
+                'menu.import.invalidModifierPrice',
+                'Modifier priceAdjustment must be a number',
+              ),
+            );
+          }
+        }
+      }
+    }
+  }
+
+  private async validateExcelFile(file: Express.Multer.File) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const buf = Buffer.isBuffer(file.buffer)
+        ? file.buffer
+        : Buffer.from(file.buffer);
+      await workbook.xlsx.load(buf as any);
+
+      const sheet = workbook.worksheets[0];
+      if (!sheet) {
+        throw new BadRequestException(
+          t('menu.import.noWorksheets', 'Excel file contains no worksheets'),
+        );
+      }
+
+      // Check headers
+      const headers: string[] = [];
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) {
+          const values = row.values as any[];
+          headers.push(...values.slice(1).map((v) => String(v || '').trim()));
+        }
+      });
+
+      // Check required headers
+      const requiredHeaders = ['name'];
+      const missingHeaders = requiredHeaders.filter(
+        (h) => !headers.includes(h),
+      );
+      if (missingHeaders.length > 0) {
+        throw new BadRequestException(
+          t(
+            'menu.import.missingRequiredColumns',
+            `Missing required columns: ${missingHeaders.join(', ')}`,
+            { args: { columns: missingHeaders.join(', ') } },
+          ),
+        );
+      }
+
+      // Collect sample rows for modifier validation
+      const sampleRows: Record<string, any>[] = [];
+      let dataRowCount = 0;
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) {
+          dataRowCount++;
+          if (sampleRows.length < 5) {
+            // Collect first 5 data rows
+            const obj: Record<string, any> = {};
+            headers.forEach((h, i) => {
+              obj[h] = row.values?.[i + 1] || '';
+            });
+            sampleRows.push(obj);
+          }
+        }
+      });
+
+      if (dataRowCount === 0) {
+        throw new BadRequestException(
+          t('menu.import.emptyExcelFile', 'Excel file contains no data rows'),
+        );
+      }
+
+      // Validate modifier structure in sample rows
+      if (headers.includes('modifiers')) {
+        await this.validateModifierStructure(headers, sampleRows);
+      }
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        t('menu.import.invalidExcelFormat', 'Invalid Excel file format'),
+      );
+    }
+  }
+
   async import(tenantId: string, file: Express.Multer.File, mode: string) {
     if (!file || !file.buffer) {
       throw new BadRequestException('No file uploaded');
     }
 
+    // Validate file before processing
+    await this.validateImportFile(file);
+
     const ext = (file.originalname || '').toLowerCase();
     let rows: Record<string, any>[] = [];
 
+    // parse file into rows
     if (ext.endsWith('.csv') || file.mimetype.includes('csv')) {
       // parse CSV
       const stream = Readable.from(file.buffer);
@@ -643,9 +1035,9 @@ export class MenuService {
       // parse Excel
       const workbook = new ExcelJS.Workbook();
       const buf = Buffer.isBuffer(file.buffer)
-        ? (file.buffer as Buffer)
-        : Buffer.from(file.buffer as any);
-      await workbook.xlsx.load(buf as any);
+        ? file.buffer
+        : Buffer.from(file.buffer);
+      await workbook.xlsx.load(buf as any as any);
       // pick first sheet
       const sheet = workbook.worksheets[0];
       const headers: string[] = [];
@@ -771,6 +1163,7 @@ export class MenuService {
               menuItemId: menuItem.id,
               imageUrl: imageUrls[i].trim(),
               displayOrder: i,
+              isPrimary: i === 0,
             },
           });
         }
@@ -841,12 +1234,19 @@ export class MenuService {
       category: it.category ? it.category.name : '',
       images: it.images ? it.images.map((i: any) => i.imageUrl).join(';') : '',
       modifiers: it.modifierGroups
-        ? it.modifierGroups
-            .map(
-              (mg: any) =>
-                `${mg.modifierGroup.name}:${mg.modifierGroup.modifiers.map((m: any) => `${m.name}:${m.priceAdjustment}`).join('|')}`,
-            )
-            .join(';')
+        ? JSON.stringify(
+            it.modifierGroups.map((mg: any) => ({
+              name: mg.modifierGroup.name,
+              type: mg.modifierGroup.type,
+              isRequired: mg.modifierGroup.isRequired,
+              minSelections: mg.modifierGroup.minSelections,
+              maxSelections: mg.modifierGroup.maxSelections,
+              modifiers: mg.modifierGroup.modifiers.map((m: any) => ({
+                name: m.name,
+                priceAdjustment: m.priceAdjustment,
+              })),
+            })),
+          )
         : '',
     }));
 

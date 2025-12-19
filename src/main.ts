@@ -11,17 +11,18 @@ async function bootstrap() {
   // Enable cookie parser
   app.use(cookieParser());
 
-   // Enable CORS - Allow multiple frontend origins
+  // Enable CORS - Allow multiple frontend origins
   const allowedOrigins = [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
+    process.env.FRONTEND_URL || 'http://localhost:3001',
     process.env.CUSTOMER_FRONTEND_URL || 'http://localhost:3002',
+    'http://localhost:3000',
   ];
-  
+
   app.enableCors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
-      
+
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {

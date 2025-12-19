@@ -32,8 +32,8 @@ export class TablesService {
   private readonly JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
   private readonly QR_API_URL =
     process.env.QR_API_URL || 'https://api.qrserver.com/v1/create-qr-code/';
-  private readonly APP_ORDER_URL =
-    process.env.APP_ORDER_URL || 'localhost:3002';
+  private readonly CUSTOMER_FRONTEND_URL =
+    process.env.CUSTOMER_FRONTEND_URL || 'localhost:3002';
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -1037,7 +1037,7 @@ export class TablesService {
 
     // Generate ordering URL with QR token as query parameter
     // Frontend extracts token from URL and stores it for API requests
-    const orderingUrl = `${this.APP_ORDER_URL}/${table.tenant.slug}?table=${tableId}&token=${token}`;
+    const orderingUrl = `${this.CUSTOMER_FRONTEND_URL}/${table.tenant.slug}?table=${tableId}&token=${token}`;
 
     // Generate external QR image URL for frontend display
     const qrCodeUrl = `${this.QR_API_URL}?size=200x200&data=${encodeURIComponent(orderingUrl)}`;
