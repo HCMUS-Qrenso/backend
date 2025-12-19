@@ -44,6 +44,9 @@ export class QrTokenGuard implements CanActivate {
         tableNumber: string;
         tenantId: string;
         tableCapacity: number;
+        tenantName: string;
+        tenantImage: string;
+        zoneName: string;
       };
     }>();
 
@@ -124,6 +127,9 @@ export class QrTokenGuard implements CanActivate {
         tableNumber: table.tableNumber,
         tenantId: table.tenantId,
         tableCapacity: table.capacity,
+        tenantName: decoded.tenantName,
+        tenantImage: decoded.tenantImage,
+        zoneName: decoded.zoneName,
       };
 
       return true;
