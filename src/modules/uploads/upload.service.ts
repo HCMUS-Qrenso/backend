@@ -16,7 +16,7 @@ export class UploadService {
     this.s3Client = new S3Client({
       region: this.configService.get<string>('S3_REGION') || 'auto',
       endpoint: process.env.S3_ENDPOINT || undefined,
-      forcePathStyle: true, 
+      forcePathStyle: true,
       credentials: {
         accessKeyId: this.configService.get<string>('S3_ACCESS_KEY_ID') || '',
         secretAccessKey:

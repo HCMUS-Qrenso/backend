@@ -900,7 +900,10 @@ export class MenuService {
             );
           }
 
-          if (typeof modifier.priceAdjustment !== 'number') {
+          if (
+            typeof modifier.priceAdjustment !== 'number' &&
+            isNaN(Number(modifier.priceAdjustment))
+          ) {
             throw new BadRequestException(
               t(
                 'menu.import.invalidModifierPrice',
