@@ -419,6 +419,25 @@ export class MenuService {
       updateData.categoryId = updateMenuItemDto.category_id;
     }
 
+    // Handle image_urls update
+    if (updateMenuItemDto.image_urls !== undefined) {
+      // Delete existing images
+      await this.prisma.menuItemImage.deleteMany({
+        where: { menuItemId: id },
+      });
+
+      // Create new images if any
+      if (updateMenuItemDto.image_urls.length > 0) {
+        await this.prisma.menuItemImage.createMany({
+          data: updateMenuItemDto.image_urls.map((url, index) => ({
+            menuItemId: id,
+            imageUrl: url,
+            displayOrder: index,
+          })),
+        });
+      }
+    }
+
     const updatedMenuItem = await this.prisma.menuItem.update({
       where: { id },
       data: updateData,
