@@ -17,6 +17,10 @@ import { JwtPayload } from '../interfaces';
 interface QrTokenPayload extends JwtPayload {
   tableId: string;
   tableNumber: string;
+  tableCapacity: number;
+  tenantName: string;
+  tenantImage: string;
+  zoneName: string;
 }
 
 /**
@@ -35,7 +39,12 @@ export class QrTokenGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<{
       user?: JwtPayload;
       headers: Record<string, string>;
-      qrContext?: { tableId: string; tableNumber: string; tenantId: string };
+      qrContext?: {
+        tableId: string;
+        tableNumber: string;
+        tenantId: string;
+        tableCapacity: number;
+      };
     }>();
 
     const user = request.user;
@@ -114,6 +123,7 @@ export class QrTokenGuard implements CanActivate {
         tableId: table.id,
         tableNumber: table.tableNumber,
         tenantId: table.tenantId,
+        tableCapacity: table.capacity,
       };
 
       return true;

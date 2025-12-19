@@ -1001,6 +1001,13 @@ export class TablesService {
         tenant: {
           select: {
             slug: true,
+            name: true,
+            image: true,
+          },
+        },
+        zone: {
+          select: {
+            name: true,
           },
         },
       },
@@ -1018,6 +1025,10 @@ export class TablesService {
       tenantId: tenantId, // Match JwtPayload interface field name
       tableId: tableId, // Table context for QrTokenGuard
       tableNumber: table.tableNumber, // Table number for convenience
+      tableCapacity: table.capacity, // Table capacity for convenience
+      tenantName: table.tenant.name,
+      tenantImage: table.tenant.image,
+      zoneName: table.zone?.name,
       iat: Math.floor(Date.now() / 1000), // Issued at timestamp
     };
 
