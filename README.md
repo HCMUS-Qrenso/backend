@@ -1,7 +1,7 @@
 # Backend API - Complete Documentation
 
-> **Last Updated:** December 17, 2025  
-> **Version:** 1.1  
+> **Last Updated:** December 19, 2025  
+> **Version:** 1.2  
 > **Framework:** NestJS 11 with TypeScript
 
 ---
@@ -904,7 +904,7 @@ Get detailed user profile. **[Protected]**
 ---
 
 #### 👥 GET /users/all
-Get all users. **[Protected - Admin/Manager only]**
+Get all users. **[Protected - Super Admin only]**
 
 **Response:** `200 OK`
 ```json
@@ -1184,6 +1184,66 @@ Delete table (soft delete - sets is_active to false).
 
 ---
 
+#### 🔄 PATCH /tables/:id/status
+Update table status. **[Protected - Owner/Admin/Waiter]**
+
+**Request:**
+```json
+{
+  "status": "available"
+}
+```
+
+**Status Options:**
+- `available` - Table is free
+- `occupied` - Table is in use
+- `reserved` - Table is reserved
+- `maintenance` - Table is under maintenance
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Table status updated successfully",
+  "data": {
+    "id": "uuid",
+    "status": "available",
+    "updated_at": "2025-12-17T10:00:00Z"
+  }
+}
+```
+
+---
+
+#### 📍 PATCH /tables/:id/position
+Update table position for floor plan. **[Protected - Owner/Admin]**
+
+**Request:**
+```json
+{
+  "position": {
+    "x": 150,
+    "y": 250,
+    "rotation": 45
+  }
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Table position updated successfully",
+  "data": {
+    "id": "uuid",
+    "position": { "x": 150, "y": 250, "rotation": 45 },
+    "updated_at": "2025-12-17T10:00:00Z"
+  }
+}
+```
+
+---
+
 ### QR Code Endpoints
 
 #### 🎯 POST /tables/:id/qr/generate
@@ -1208,6 +1268,95 @@ Generate or regenerate QR code for a table.
     "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?...",
     "ordering_url": "http://localhost:3001/joes-diner/menu?table=...&token=...",
     "qr_code_generated_at": "2025-12-14T..."
+  }
+}
+```
+
+---
+
+#### 📱 GET /tables/:id/qr
+Get QR code information for a specific table. **[Protected - Owner/Admin/Waiter]**
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "table_number": "T-01",
+    "qr_code_token": "eyJhbGci...",
+    "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?...",
+    "ordering_url": "http://localhost:3001/joes-diner/menu?table=...&token=...",
+    "qr_code_generated_at": "2025-12-14T..."
+  }
+}
+```
+
+---
+
+#### 📋 GET /tables/qr/all
+Get all QR codes with pagination. **[Protected - Owner/Admin]**
+
+**Query Parameters:**
+```typescript
+{
+  page?: number;      // Default: 1
+  limit?: number;     // Default: 10
+  has_qr?: boolean;   // Filter by QR code status
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "tables": [
+      {
+        "id": "uuid",
+        "table_number": "T-01",
+        "qr_code_url": "https://...",
+        "ordering_url": "http://...",
+        "qr_code_generated_at": "2025-12-14T..."
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 25,
+      "total_pages": 3
+    }
+  }
+}
+```
+
+---
+
+#### 🔄 POST /tables/qr/batch-generate
+Batch generate QR codes for multiple tables. **[Protected - Owner/Admin]**
+
+**Request:**
+```json
+{
+  "table_ids": ["uuid-1", "uuid-2", "uuid-3"],
+  "force_regenerate": false
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "QR codes generated for 3 tables",
+  "data": {
+    "generated_count": 3,
+    "tables": [
+      {
+        "id": "uuid-1",
+        "table_number": "T-01",
+        "qr_code_url": "https://..."
+      }
+    ]
   }
 }
 ```
@@ -1712,19 +1861,25 @@ Get detailed information about the current tenant. **[Protected - Owner, Admin, 
 ### Menu Endpoints
 
 #### 📋 GET /menu
-Get paginated list of menu items with filtering and search.
+Get paginated list of menu items with filtering and search. **[Protected - QrTokenGuard for GUEST/CUSTOMER]**
 
 **Query Parameters:**
 ```typescript
 {
-  page?: number;        // Default: 1
-  limit?: number;       // Default: 10, Max: 100
-  search?: string;      // Search by menu item name
-  category_id?: string; // Filter by category
-  status?: 'active' | 'inactive';
-  sort_by?: 'name' | 'base_price' | 'created_at' | 'display_order';
-  sort_order?: 'asc' | 'desc'; // Default: 'asc'
+  page?: number;                    // Default: 1
+  limit?: number;                   // Default: 10, Max: 100
+  search?: string;                  // Search by menu item name
+  category_id?: string;             // Filter by category UUID
+  status?: 'available' | 'unavailable';  // Filter by status
+  is_chef_recommendation?: boolean; // Filter chef recommendations
+  sort_by?: 'createdAt' | 'name' | 'basePrice' | 'popularityScore';  // Default: 'createdAt'
+  sort_order?: 'asc' | 'desc';      // Default: 'desc'
 }
+```
+
+**Headers (for CUSTOMER role):**
+```
+x-qr-token: <qr_token>
 ```
 
 **Response:** `200 OK`
@@ -1735,16 +1890,27 @@ Get paginated list of menu items with filtering and search.
     "menu_items": [
       {
         "id": "uuid",
-        "name": "Margherita Pizza",
-        "description": "Fresh tomato sauce, mozzarella, basil",
-        "base_price": 15.99,
-        "status": "active",
-        "allergens": ["dairy", "gluten"],
+        "name": "Phở Bò",
+        "description": "Vietnamese beef noodle soup",
+        "base_price": 85000,
+        "preparation_time": 15,
+        "status": "available",
+        "is_chef_recommendation": true,
+        "allergen_info": "Contains beef, gluten",
+        "popularity_score": 95,
         "category": {
           "id": "uuid",
-          "name": "Pizza"
+          "name": "Món chính"
         },
-        "images": ["https://..."],
+        "images": [
+          {
+            "id": "uuid",
+            "image_url": "https://example.com/pho.jpg",
+            "display_order": 0
+          }
+        ],
+        "review_count": 120,
+        "order_count": 450,
         "created_at": "2025-12-17T10:00:00Z",
         "updated_at": "2025-12-17T10:00:00Z"
       }
@@ -1762,7 +1928,7 @@ Get paginated list of menu items with filtering and search.
 ---
 
 #### 📊 GET /menu/stats
-Get menu statistics for the tenant.
+Get menu statistics for the tenant. **[Protected - Owner/Admin/Waiter/Kitchen]**
 
 **Response:** `200 OK`
 ```json
@@ -1770,16 +1936,9 @@ Get menu statistics for the tenant.
   "success": true,
   "data": {
     "total_menu_items": 45,
-    "active_menu_items": 42,
-    "inactive_menu_items": 3,
-    "total_categories": 8,
-    "items_by_category": [
-      {
-        "category_id": "uuid",
-        "category_name": "Pizza",
-        "item_count": 12
-      }
-    ]
+    "available_items": 42,
+    "unavailable_items": 3,
+    "chef_recommendations": 8
   }
 }
 ```
@@ -1787,18 +1946,20 @@ Get menu statistics for the tenant.
 ---
 
 #### ➕ POST /menu
-Create a new menu item.
+Create a new menu item. **[Protected - Owner/Admin only]**
 
 **Request:**
 ```json
 {
-  "name": "Margherita Pizza",
-  "description": "Fresh tomato sauce, mozzarella, basil",
-  "base_price": 15.99,
-  "status": "active",
-  "allergens": ["dairy", "gluten"],
+  "name": "Phở Bò",
+  "description": "Vietnamese beef noodle soup",
+  "base_price": 85000,
+  "preparation_time": 15,
+  "status": "available",
+  "is_chef_recommendation": true,
+  "allergen_info": "Contains beef, gluten",
   "category_id": "uuid",
-  "images": ["https://example.com/pizza.jpg"]
+  "image_urls": ["https://example.com/pho.jpg"]
 }
 ```
 
@@ -1806,18 +1967,20 @@ Create a new menu item.
 ```json
 {
   "success": true,
+  "message": "Menu item created successfully",
   "data": {
     "id": "uuid",
-    "name": "Margherita Pizza",
-    "description": "Fresh tomato sauce, mozzarella, basil",
-    "base_price": 15.99,
-    "status": "active",
-    "allergens": ["dairy", "gluten"],
+    "name": "Phở Bò",
+    "description": "Vietnamese beef noodle soup",
+    "base_price": 85000,
+    "preparation_time": 15,
+    "status": "available",
+    "is_chef_recommendation": true,
+    "allergen_info": "Contains beef, gluten",
     "category": {
       "id": "uuid",
-      "name": "Pizza"
+      "name": "Món chính"
     },
-    "images": ["https://example.com/pizza.jpg"],
     "created_at": "2025-12-17T10:00:00Z",
     "updated_at": "2025-12-17T10:00:00Z"
   }
@@ -1829,8 +1992,52 @@ Create a new menu item.
 
 ---
 
+#### 📤 POST /menu/import
+Import menu data from CSV/XLSX file. **[Protected - Owner/Admin only]**
+
+**Request:** `multipart/form-data`
+```
+file: <CSV or XLSX file>
+mode: 'create' | 'update' | 'upsert'  // Default: 'create'
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "created": 10,
+    "updated": 5
+  }
+}
+```
+
+**Errors:**
+- `400 Bad Request` - File missing or invalid format
+
+---
+
+#### 📥 GET /menu/export
+Export menu data as CSV/XLSX file. **[Protected - Owner/Admin only]**
+
+**Query Parameters:**
+```typescript
+{
+  format?: 'csv' | 'xlsx';        // Default: 'csv'
+  scope?: 'all' | 'category';     // Default: 'all'
+  categoryId?: string;            // Required when scope='category'
+  includeImages?: boolean;        // Default: false
+  includeModifiers?: boolean;     // Default: false
+  includeHidden?: boolean;        // Default: false
+}
+```
+
+**Response:** File download (CSV or XLSX)
+
+---
+
 #### 👁️ GET /menu/{id}
-Get detailed menu item information including modifiers.
+Get detailed menu item information including modifiers. **[Protected - All roles]**
 
 **Response:** `200 OK`
 ```json
@@ -1838,39 +2045,62 @@ Get detailed menu item information including modifiers.
   "success": true,
   "data": {
     "id": "uuid",
-    "name": "Margherita Pizza",
-    "description": "Fresh tomato sauce, mozzarella, basil",
-    "base_price": 15.99,
-    "status": "active",
-    "allergens": ["dairy", "gluten"],
+    "name": "Phở Bò",
+    "description": "Vietnamese beef noodle soup",
+    "base_price": 85000,
+    "preparation_time": 15,
+    "status": "available",
+    "is_chef_recommendation": true,
+    "allergen_info": "Contains beef, gluten",
+    "nutritional_info": null,
+    "popularity_score": 95,
     "category": {
       "id": "uuid",
-      "name": "Pizza"
+      "name": "Món chính"
     },
+    "images": [
+      {
+        "id": "uuid",
+        "image_url": "https://example.com/pho.jpg",
+        "display_order": 0
+      }
+    ],
     "modifier_groups": [
       {
         "id": "uuid",
         "name": "Size",
         "type": "single",
+        "is_required": true,
         "min_selections": 1,
+        "max_selections": 1,
         "display_order": 1,
         "modifiers": [
           {
             "id": "uuid",
-            "name": "Small",
-            "price": 0,
+            "name": "Nhỏ",
+            "price_adjustment": 0,
+            "is_available": true,
             "display_order": 1
           },
           {
             "id": "uuid",
-            "name": "Large",
-            "price": 5.00,
+            "name": "Lớn",
+            "price_adjustment": 15000,
+            "is_available": true,
             "display_order": 2
           }
         ]
       }
     ],
-    "images": ["https://example.com/pizza.jpg"],
+    "pairings": [
+      {
+        "id": "uuid",
+        "name": "Chả giò",
+        "base_price": 35000
+      }
+    ],
+    "review_count": 120,
+    "order_count": 450,
     "created_at": "2025-12-17T10:00:00Z",
     "updated_at": "2025-12-17T10:00:00Z"
   }
@@ -1883,14 +2113,15 @@ Get detailed menu item information including modifiers.
 ---
 
 #### ✏️ PUT /menu/{id}
-Update an existing menu item.
+Update an existing menu item. **[Protected - Owner/Admin only]**
 
 **Request:** (All fields optional)
 ```json
 {
-  "name": "Updated Pizza Name",
-  "base_price": 16.99,
-  "status": "active"
+  "name": "Phở Bò Đặc Biệt",
+  "base_price": 95000,
+  "status": "available",
+  "is_chef_recommendation": true
 }
 ```
 
@@ -1898,10 +2129,11 @@ Update an existing menu item.
 ```json
 {
   "success": true,
+  "message": "Menu item updated successfully",
   "data": {
     "id": "uuid",
-    "name": "Updated Pizza Name",
-    "base_price": 16.99,
+    "name": "Phở Bò Đặc Biệt",
+    "base_price": 95000,
     "updated_at": "2025-12-17T11:00:00Z"
   }
 }
@@ -1914,7 +2146,7 @@ Update an existing menu item.
 ---
 
 #### 🗑️ DELETE /menu/{id}
-Delete a menu item.
+Delete a menu item (soft delete - sets status to unavailable). **[Protected - Owner/Admin only]**
 
 **Response:** `200 OK`
 ```json
@@ -1932,8 +2164,8 @@ Delete a menu item.
 
 ### Category Endpoints
 
-#### � GET /categories/stats
-Get category statistics.
+#### 📊 GET /categories/stats
+Get category statistics. **[Protected - Owner/Admin/Waiter]**
 
 **Response:** `200 OK`
 ```json
@@ -1950,8 +2182,8 @@ Get category statistics.
 
 ---
 
-#### �📂 GET /categories
-Get paginated list of categories with filtering.
+#### 📂 GET /categories
+Get paginated list of categories with filtering. **[Protected - QrTokenGuard for GUEST/CUSTOMER]**
 
 **Query Parameters:**
 - `page` (default: 1)
@@ -1991,8 +2223,8 @@ Get paginated list of categories with filtering.
 
 ---
 
-#### 🍕 POST /categories
-Create a new category.
+#### ➕ POST /categories
+Create a new category. **[Protected - Owner/Admin only]**
 
 **Request Body:**
 ```json
@@ -2024,8 +2256,8 @@ Create a new category.
 
 ---
 
-#### � GET /categories/{id}
-Get a specific category by ID.
+#### 🔍 GET /categories/{id}
+Get a specific category by ID. **[Protected - QrTokenGuard for GUEST/CUSTOMER]**
 
 **Query Parameters:**
 - `include_menu_items` (default: false) - Include associated menu items
@@ -2052,8 +2284,8 @@ Get a specific category by ID.
 
 ---
 
-#### �📝 PATCH /categories/{id}
-Update an existing category.
+#### 📝 PATCH /categories/{id}
+Update an existing category. **[Protected - Owner/Admin only]**
 
 **Request Body:**
 ```json
@@ -2085,7 +2317,7 @@ Update an existing category.
 ---
 
 #### 🗑️ DELETE /categories/{id}
-Delete a category (only if no menu items are associated).
+Delete a category (only if no menu items are associated). **[Protected - Owner/Admin only]**
 
 **Query Parameters:**
 - `force` (optional): Force delete even with associated menu items
@@ -2104,7 +2336,7 @@ Delete a category (only if no menu items are associated).
 ---
 
 #### 🔄 PUT /categories/reorder
-Reorder categories display order.
+Reorder categories display order. **[Protected - Owner/Admin only]**
 
 **Request Body:**
 ```json
@@ -2131,7 +2363,7 @@ Reorder categories display order.
 ---
 
 #### 🔄 PATCH /categories/{id}/status
-Toggle category active status.
+Toggle category active status. **[Protected - Owner/Admin only]**
 
 **Request Body:**
 ```json
@@ -2160,7 +2392,7 @@ Toggle category active status.
 ### Modifier Group Endpoints
 
 #### 🛠️ GET /modifier-groups
-Get paginated list of modifier groups.
+Get paginated list of modifier groups. **[Protected - QrTokenGuard for GUEST/CUSTOMER]**
 
 **Query Parameters:**
 - `page` (default: 1)
@@ -2203,7 +2435,7 @@ Get paginated list of modifier groups.
 ---
 
 #### ➕ POST /modifier-groups
-Create a new modifier group.
+Create a new modifier group. **[Protected - Owner/Admin only]**
 
 **Request Body:**
 ```json
@@ -2241,8 +2473,8 @@ Create a new modifier group.
 
 ---
 
-#### � GET /modifier-groups/{group_id}
-Get a specific modifier group by ID with its modifiers.
+#### 🔍 GET /modifier-groups/{group_id}
+Get a specific modifier group by ID with its modifiers. **[Protected - QrTokenGuard for GUEST/CUSTOMER]**
 
 **Query Parameters:**
 - `include_modifiers` (default: true) - Include list of modifiers
@@ -2280,8 +2512,8 @@ Get a specific modifier group by ID with its modifiers.
 
 ---
 
-#### �📝 PATCH /modifier-groups/{group_id}
-Update a modifier group.
+#### 📝 PATCH /modifier-groups/{group_id}
+Update a modifier group. **[Protected - Owner/Admin only]**
 
 **Request Body:**
 ```json
@@ -2314,7 +2546,7 @@ Update a modifier group.
 ---
 
 #### 🗑️ DELETE /modifier-groups/{group_id}
-Delete a modifier group (only if no menu items are associated).
+Delete a modifier group (only if no menu items are associated). **[Protected - Owner/Admin only]**
 
 **Response:** `200 OK`
 ```json
@@ -2330,7 +2562,7 @@ Delete a modifier group (only if no menu items are associated).
 ---
 
 #### 🔄 PUT /modifier-groups/reorder
-Reorder modifier groups display order.
+Reorder modifier groups display order. **[Protected - Owner/Admin only]**
 
 **Request Body:**
 ```json
@@ -2358,7 +2590,7 @@ Reorder modifier groups display order.
 ### Individual Modifier Endpoints
 
 #### 🛠️ GET /modifier-groups/{group_id}/modifiers
-Get modifiers within a specific group.
+Get modifiers within a specific group. **[Protected - QrTokenGuard for GUEST/CUSTOMER]**
 
 **Query Parameters:**
 - `include_unavailable` (default: true) - Include unavailable modifiers
@@ -2389,7 +2621,7 @@ Get modifiers within a specific group.
 ---
 
 #### ➕ POST /modifier-groups/{group_id}/modifiers
-Create a new modifier in a group.
+Create a new modifier in a group. **[Protected - Owner/Admin only]**
 
 **Request Body:**
 ```json
@@ -2424,7 +2656,7 @@ Create a new modifier in a group.
 ---
 
 #### 📝 PATCH /modifiers/{modifier_id}
-Update a modifier.
+Update a modifier. **[Protected - Owner/Admin only]**
 
 **Request Body:**
 ```json
@@ -2455,7 +2687,7 @@ Update a modifier.
 ---
 
 #### 🗑️ DELETE /modifiers/{modifier_id}
-Delete a modifier.
+Delete a modifier. **[Protected - Owner/Admin only]**
 
 **Response:** `200 OK`
 ```json
@@ -2470,7 +2702,7 @@ Delete a modifier.
 ---
 
 #### 🔄 PUT /modifier-groups/{group_id}/modifiers/reorder
-Reorder modifiers within a group.
+Reorder modifiers within a group. **[Protected - Owner/Admin only]**
 
 **Request Body:**
 ```json
@@ -3154,4 +3386,4 @@ npm run test:cov           # Test coverage
 
 **Built with ❤️ using NestJS**
 
-*Last Updated: December 17, 2025*
+*Last Updated: December 19, 2025*
