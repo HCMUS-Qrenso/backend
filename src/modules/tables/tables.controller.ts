@@ -38,7 +38,11 @@ import {
 import { JwtAuthGuard } from '../auth/guards';
 import { Roles, TenantContext } from '../../common/decorators';
 import { ROLES } from 'src/common/constants';
-import { QrTokenGuard, RolesGuard, TenantOwnershipGuard } from 'src/common/guards';
+import {
+  QrTokenGuard,
+  RolesGuard,
+  TenantOwnershipGuard,
+} from 'src/common/guards';
 
 @ApiTags('tables')
 @Controller('tables')

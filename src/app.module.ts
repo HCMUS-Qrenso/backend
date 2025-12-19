@@ -18,6 +18,7 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { MenuModule } from './modules/menu/menu.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ModifiersModule } from './modules/modifiers/modifiers.module';
+import { UploadModule } from './modules/uploads/upload.module';
 import { JwtAuthGuard } from './modules/auth/guards';
 
 @Module({
@@ -42,6 +43,7 @@ import { JwtAuthGuard } from './modules/auth/guards';
     MenuModule,
     CategoriesModule,
     ModifiersModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [
