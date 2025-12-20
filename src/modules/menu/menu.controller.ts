@@ -142,7 +142,7 @@ export class MenuController {
   })
   async importData(
     @TenantContext('id') tenantId: string,
-    @UploadedFile() file: Express.Request['file'],
+    @UploadedFile() file: Express.Multer.File,
     @Body() importDto: ImportMenuDto,
   ) {
     const { mode } = importDto as any;
