@@ -2,6 +2,8 @@ import {
   IsEmail,
   IsNotEmpty,
   IsString,
+  IsBoolean,
+  IsOptional,
   MinLength,
   MaxLength,
   IsStrongPassword,
@@ -29,4 +31,15 @@ export class LoginDto {
   @MaxLength(255)
   @IsStrongPassword()
   password: string;
+
+  @ApiProperty({
+    description:
+      'Whether to remember the user for extended session (7 days vs session cookie)',
+    example: true,
+    default: true,
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  rememberMe?: boolean = true;
 }

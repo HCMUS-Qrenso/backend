@@ -15,6 +15,10 @@ import { UserModule } from './modules/user/user.module';
 import { TablesModule } from './modules/tables/tables.module';
 import { ZonesModule } from './modules/zones/zones.module';
 import { TenantModule } from './modules/tenant/tenant.module';
+import { MenuModule } from './modules/menu/menu.module';
+import { CategoriesModule } from './modules/categories/categories.module';
+import { ModifiersModule } from './modules/modifiers/modifiers.module';
+import { UploadModule } from './modules/uploads/upload.module';
 import { JwtAuthGuard } from './modules/auth/guards';
 
 @Module({
@@ -36,6 +40,10 @@ import { JwtAuthGuard } from './modules/auth/guards';
     TablesModule,
     ZonesModule,
     TenantModule,
+    MenuModule,
+    CategoriesModule,
+    ModifiersModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [

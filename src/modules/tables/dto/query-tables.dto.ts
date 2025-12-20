@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsBoolean,
   IsUUID,
+  IsIn,
   Min,
   Max,
 } from 'class-validator';
@@ -76,4 +77,22 @@ export class QueryTablesDto {
   })
   @IsBoolean()
   is_active?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'tableNumber',
+    description: 'Sort by field',
+    enum: ['tableNumber', 'status', 'createdAt', 'updatedAt'],
+  })
+  @IsOptional()
+  @IsString()
+  sort_by?: string = 'tableNumber';
+
+  @ApiPropertyOptional({
+    example: 'asc',
+    description: 'Sort order',
+    enum: ['asc', 'desc'],
+  })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sort_order?: 'asc' | 'desc' = 'asc';
 }

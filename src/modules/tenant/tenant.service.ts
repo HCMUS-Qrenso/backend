@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { QueryTenantsDto } from './dto';
 import { t } from '../../common/utils';
@@ -18,7 +13,15 @@ export class TenantService {
    * Get all tenants owned by a specific owner
    */
   async findAllByOwner(ownerId: string, query: QueryTenantsDto) {
-    const { page = 1, limit = 10, search, status, subscription_tier } = query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+      subscription_tier,
+      sort_by = 'createdAt',
+      sort_order = 'desc',
+    } = query;
     const skip = (page - 1) * limit;
 
     // Build where clause
@@ -51,6 +54,20 @@ export class TenantService {
       where.subscriptionTier = subscription_tier;
     }
 
+    // Validate and set orderBy
+    const validSortFields = [
+      'name',
+      'slug',
+      'status',
+      'subscriptionTier',
+      'createdAt',
+      'updatedAt',
+    ];
+    const orderByField = validSortFields.includes(sort_by)
+      ? sort_by
+      : 'createdAt';
+    const orderBy = { [orderByField]: sort_order };
+
     // Get total count
     const total = await this.prisma.tenant.count({ where });
 
@@ -59,7 +76,7 @@ export class TenantService {
       where,
       skip,
       take: limit,
-      orderBy: { createdAt: 'desc' },
+      orderBy,
       include: {
         _count: {
           select: {
@@ -78,6 +95,7 @@ export class TenantService {
       name: tenant.name,
       slug: tenant.slug,
       address: tenant.address,
+      image: tenant.image,
       status: tenant.status,
       subscription_tier: tenant.subscriptionTier,
       settings: tenant.settings,
@@ -193,6 +211,7 @@ export class TenantService {
         name: tenant.name,
         slug: tenant.slug,
         address: tenant.address,
+        image: tenant.image,
         status: tenant.status,
         subscription_tier: tenant.subscriptionTier,
         settings: tenant.settings,

@@ -8,6 +8,7 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
+import { ROLES } from '../../common/constants';
 import { t } from '../../common/utils';
 import {
   CreateTableDto,
@@ -31,8 +32,8 @@ export class TablesService {
   private readonly JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
   private readonly QR_API_URL =
     process.env.QR_API_URL || 'https://api.qrserver.com/v1/create-qr-code/';
-  private readonly APP_ORDER_URL =
-    process.env.APP_ORDER_URL || 'localhost:3002';
+  private readonly CUSTOMER_FRONTEND_URL =
+    process.env.CUSTOMER_FRONTEND_URL || 'localhost:3002';
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -40,7 +41,16 @@ export class TablesService {
    * Get paginated list of tables with filtering
    */
   async findAll(tenantId: string, query: QueryTablesDto) {
-    const { page = 1, limit = 10, search, zone_id, status, is_active } = query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      zone_id,
+      status,
+      is_active,
+      sort_by = 'tableNumber',
+      sort_order = 'asc',
+    } = query;
     const skip = (page - 1) * limit;
 
     // Build where clause
@@ -64,6 +74,13 @@ export class TablesService {
       where.isActive = is_active;
     }
 
+    // Validate and set orderBy
+    const validSortFields = ['tableNumber', 'status', 'createdAt', 'updatedAt'];
+    const orderByField = validSortFields.includes(sort_by)
+      ? sort_by
+      : 'tableNumber';
+    const orderBy = { [orderByField]: sort_order };
+
     // Get total count
     const total = await this.prisma.table.count({ where });
 
@@ -72,7 +89,7 @@ export class TablesService {
       where,
       skip,
       take: limit,
-      orderBy: { tableNumber: 'asc' },
+      orderBy,
       include: {
         zone: {
           select: {
@@ -887,6 +904,12 @@ export class TablesService {
     const table = await this.prisma.table.findUnique({
       where: { id, tenantId },
       include: {
+        zone: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         tenant: {
           select: {
             slug: true,
@@ -906,6 +929,7 @@ export class TablesService {
       data: {
         id: table.id,
         table_number: table.tableNumber,
+        tableZone: table.zone?.name || null,
         qr_code_token: table.qrCodeToken,
         qr_code_url: table.qrCodeUrl,
         ordering_url: table.orderingUrl,
@@ -977,6 +1001,13 @@ export class TablesService {
         tenant: {
           select: {
             slug: true,
+            name: true,
+            image: true,
+          },
+        },
+        zone: {
+          select: {
+            name: true,
           },
         },
       },
@@ -986,19 +1017,27 @@ export class TablesService {
       throw new NotFoundException(t('tables.tableNotFound', 'Table not found'));
     }
 
-    // Create JWT token with table and tenant information
+    // Create QR token with GUEST role
+    // Frontend will send this token in x-qr-token header for verification
     const payload = {
-      tenant_id: tenantId,
-      table_id: tableId,
-      table_number: table.tableNumber,
-      issued_at: new Date().toISOString(),
+      sub: `guest_table_${tableId}`, // Subject: unique guest identifier
+      role: ROLES.GUEST, // Guest role for authorization control
+      tenantId: tenantId, // Match JwtPayload interface field name
+      tableId: tableId, // Table context for QrTokenGuard
+      tableNumber: table.tableNumber, // Table number for convenience
+      tableCapacity: table.capacity, // Table capacity for convenience
+      tenantName: table.tenant.name,
+      tenantImage: table.tenant.image,
+      zoneName: table.zone?.name,
+      iat: Math.floor(Date.now() / 1000), // Issued at timestamp
     };
 
-    const token = jwt.sign(payload, this.JWT_SECRET, { expiresIn: '365d' });
+    // No expiration - QR codes remain valid until regenerated
+    const token = jwt.sign(payload, this.JWT_SECRET);
 
-    // Generate ordering URL with tenant slug and table info
-    // This is the actual URL that will be embedded in QR code
-    const orderingUrl = `${this.APP_ORDER_URL}/${table.tenant.slug}/menu?table=${tableId}&token=${token}`;
+    // Generate ordering URL with QR token as query parameter
+    // Frontend extracts token from URL and stores it for API requests
+    const orderingUrl = `${this.CUSTOMER_FRONTEND_URL}/${table.tenant.slug}?table=${tableId}&token=${token}`;
 
     // Generate external QR image URL for frontend display
     const qrCodeUrl = `${this.QR_API_URL}?size=200x200&data=${encodeURIComponent(orderingUrl)}`;
@@ -1274,101 +1313,48 @@ export class TablesService {
   }
 
   /**
-   * Verify QR code token
+   * Get QR stats
    */
-  async verifyToken(token: string) {
-    try {
-      // Verify and decode token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret-key');
+  async getQrStats(tenantId: string) {
+    // Run queries in parallel for better performance
+    const [totalActiveTables, tablesWithQr, latestQrUpdate] = await Promise.all(
+      [
+        this.prisma.table.count({
+          where: {
+            tenantId,
+            isActive: true,
+          },
+        }),
+        this.prisma.table.count({
+          where: {
+            tenantId,
+            isActive: true,
+            qrCodeToken: { not: null },
+          },
+        }),
+        this.prisma.table.findFirst({
+          where: {
+            tenantId,
+            isActive: true,
+            qrCodeGeneratedAt: { not: null },
+          },
+          orderBy: { qrCodeGeneratedAt: 'desc' },
+          select: { qrCodeGeneratedAt: true },
+        }),
+      ],
+    );
 
-      if (typeof decoded === 'string') {
-        throw new UnauthorizedException(
-          t('tables.invalidTokenFormat', 'Invalid token format'),
-        );
-      }
+    // Calculate tables without QR
+    const tablesWithoutQr = totalActiveTables - tablesWithQr;
 
-      const { table_id, tenant_id } = decoded as {
-        table_id: string;
-        tenant_id: string;
-        table_number: string;
-        issued_at: number;
-      };
-
-      // Verify table still exists and is active
-      const table = await this.prisma.table.findUnique({
-        where: { id: table_id, tenantId: tenant_id },
-      });
-
-      if (!table) {
-        return {
-          valid: false,
-          error: 'Table not found',
-          message: t(
-            'tables.qrNoLongerValid',
-            'This QR code is no longer valid. Please ask staff for assistance.',
-          ),
-        };
-      }
-
-      if (!table.isActive) {
-        return {
-          valid: false,
-          error: 'Table is inactive',
-          message: t(
-            'tables.tableUnavailable',
-            'This table is currently unavailable. Please ask staff for assistance.',
-          ),
-        };
-      }
-
-      // Check if token has been regenerated (current token doesn't match)
-      if (table.qrCodeToken !== token) {
-        return {
-          valid: false,
-          error: 'Token has been regenerated',
-          message: t(
-            'tables.qrOutdated',
-            'This QR code is outdated. Please scan the current QR code on the table.',
-          ),
-        };
-      }
-
-      return {
-        valid: true,
-        table: {
-          id: table.id,
-          tableNumber: table.tableNumber,
-          capacity: table.capacity,
-          status: table.status,
-          zoneId: table.zoneId,
-        },
-      };
-    } catch (error) {
-      if (error.name === 'TokenExpiredError') {
-        return {
-          valid: false,
-          error: 'Token expired',
-          message: t(
-            'tables.qrExpired',
-            'This QR code has expired. Please ask staff for a new one.',
-          ),
-        };
-      }
-
-      if (error.name === 'JsonWebTokenError') {
-        return {
-          valid: false,
-          error: 'Invalid token',
-          message: t(
-            'tables.qrInvalid',
-            'This QR code is invalid. Please ask staff for assistance.',
-          ),
-        };
-      }
-
-      throw new UnauthorizedException(
-        t('tables.tokenVerificationFailed', 'Token verification failed'),
-      );
-    }
+    return {
+      success: true,
+      data: {
+        total_active_tables: totalActiveTables,
+        tables_with_qr: tablesWithQr,
+        tables_without_qr: tablesWithoutQr,
+        latest_qr_update: latestQrUpdate?.qrCodeGeneratedAt || null,
+      },
+    };
   }
 }

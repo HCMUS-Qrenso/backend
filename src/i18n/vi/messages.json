@@ -17,7 +17,13 @@
     "userNotFoundOrInactive": "Không tìm thấy người dùng hoặc tài khoản đã bị vô hiệu hóa",
     "emailNotVerified": "Email chưa được xác thực. Vui lòng kiểm tra email để lấy liên kết xác thực hoặc yêu cầu gửi lại.",
     "emailAlreadyVerified": "Email đã được xác thực",
-    "verificationEmailSent": "Email xác thực đã được gửi thành công. Vui lòng kiểm tra hộp thư của bạn."
+    "verificationEmailSent": "Email xác thực đã được gửi thành công. Vui lòng kiểm tra hộp thư của bạn.",
+    "qrTokenOutdated": "Mã QR đã được tạo lại",
+    "invalidQrToken": "Chữ ký token QR không hợp lệ",
+    "qrTokenExpired": "Token QR đã hết hạn",
+    "qrTokenVerificationFailed": "Xác thực token QR thất bại",
+    "qrScanRequired": "Vui lòng quét mã QR trên bàn để truy cập tính năng này",
+    "tableInactive": "Bàn này hiện không khả dụng. Vui lòng liên hệ nhân viên để được hỗ trợ."
   },
   "tables": {
     "tableNameExists": "Một bàn với tên này đã tồn tại trong nhà hàng",
@@ -35,14 +41,7 @@
     "invalidTableStatus": "Trạng thái bàn không hợp lệ. Phải là available hoặc unavailable.",
     "tableStatusUpdatedSuccess": "Cập nhật trạng thái bàn thành công",
     "tableNotFound": "Không tìm thấy bàn",
-    "noTablesWithQr": "Không tìm thấy bàn nào có mã QR",
-    "invalidTokenFormat": "Định dạng token không hợp lệ",
-    "qrInvalid": "Mã QR này không hợp lệ. Vui lòng liên hệ nhân viên để được hỗ trợ.",
-    "qrNoLongerValid": "Mã QR này không còn hợp lệ. Vui lòng liên hệ nhân viên để được hỗ trợ.",
-    "tableUnavailable": "Bàn này hiện không khả dụng. Vui lòng liên hệ nhân viên để được hỗ trợ.",
-    "qrOutdated": "Mã QR này đã lỗi thời. Vui lòng quét mã QR hiện tại trên bàn.",
-    "qrExpired": "Mã QR này đã hết hạn. Vui lòng yêu cầu nhân viên cung cấp mã mới.",
-    "tokenVerificationFailed": "Xác thực token thất bại"
+    "noTablesWithQr": "Không tìm thấy bàn nào có mã QR"
   },
   "zones": {
     "zoneNotFound": "Không tìm thấy khu vực",
@@ -51,6 +50,72 @@
     "zoneDeleted": "Xóa khu vực thành công",
     "zoneCreatedSuccess": "Tạo khu vực thành công",
     "zoneUpdatedSuccess": "Cập nhật khu vực thành công"
+  },
+  "menu": {
+    "menuItemNotFound": "Không tìm thấy món ăn",
+    "menuItemNameExists": "Món ăn với tên này đã tồn tại",
+    "menuItemCreatedSuccess": "Tạo món ăn thành công",
+    "menuItemUpdatedSuccess": "Cập nhật món ăn thành công",
+    "cannotDeleteActiveOrders": "Không thể xóa món ăn có đơn hàng đang hoạt động",
+    "menuItemDeletedSuccess": "Xóa món ăn thành công",
+    "exportCategoryIdRequired": "categoryId là bắt buộc khi scope là category",
+    "import": {
+      "fileTooLarge": "Kích thước tệp vượt quá giới hạn tối đa 10MB",
+      "invalidFileType": "Loại tệp không hợp lệ. Chỉ cho phép tệp CSV và Excel.",
+      "invalidCsvFormat": "Định dạng tệp CSV không hợp lệ",
+      "missingRequiredColumns": "Thiếu các cột bắt buộc: {columns}",
+      "emptyCsvFile": "Tệp CSV trống hoặc không chứa hàng dữ liệu hợp lệ",
+      "emptyExcelFile": "Tệp Excel không chứa hàng dữ liệu",
+      "noWorksheets": "Tệp Excel không chứa worksheet nào",
+      "invalidExcelFormat": "Định dạng tệp Excel không hợp lệ",
+      "invalidModifiersFormat": "Modifiers phải là một mảng JSON của các nhóm modifier",
+      "invalidModifierGroup": "Mỗi nhóm modifier phải là một đối tượng",
+      "missingModifierGroupField": "Nhóm modifier thiếu trường bắt buộc: {field}",
+      "invalidModifierGroupName": "Tên nhóm modifier phải là chuỗi không rỗng",
+      "invalidModifierGroupType": "Loại nhóm modifier phải là 'single_choice' hoặc 'multiple_choice'",
+      "invalidModifierGroupRequired": "Thuộc tính isRequired của nhóm modifier phải là boolean",
+      "invalidModifierGroupMinSelections": "Thuộc tính minSelections của nhóm modifier phải là số không âm",
+      "invalidModifierGroupMaxSelections": "Thuộc tính maxSelections của nhóm modifier phải là số không âm",
+      "invalidModifierGroupSelections": "Thuộc tính minSelections của nhóm modifier không thể lớn hơn maxSelections",
+      "invalidModifierGroupModifiers": "Thuộc tính modifiers của nhóm modifier phải là một mảng",
+      "invalidModifier": "Mỗi modifier phải là một đối tượng",
+      "missingModifierField": "Modifier thiếu trường bắt buộc: {field}",
+      "invalidModifierName": "Tên modifier phải là chuỗi không rỗng",
+      "invalidModifierPrice": "Thuộc tính priceAdjustment của modifier phải là số",
+      "invalidModifierJson": "Cấu trúc JSON modifier không hợp lệ"
+    }
+  },
+  "categories": {
+    "categoryNotFound": "Không tìm thấy danh mục",
+    "categoryNameExists": "Danh mục với tên này đã tồn tại",
+    "categoryCreatedSuccess": "Tạo danh mục thành công",
+    "categoryUpdatedSuccess": "Cập nhật danh mục thành công",
+    "categoryDeletedSuccess": "Xóa danh mục thành công",
+    "categoryOrderUpdatedSuccess": "Cập nhật thứ tự danh mục thành công",
+    "categoryStatusUpdatedSuccess": "Cập nhật trạng thái danh mục thành công",
+    "displayOrdersMustBeUnique": "Thứ tự hiển thị phải là duy nhất",
+    "cannotDeleteCategoryWithMenuItems": "Không thể xóa danh mục có món ăn liên quan",
+    "categoriesNotFoundOrInvalid": "Một hoặc nhiều danh mục không tìm thấy hoặc không thuộc về tenant này"
+  },
+  "modifiers": {
+    "modifierGroupNotFound": "Không tìm thấy nhóm modifier",
+    "modifierGroupNameExists": "Nhóm modifier với tên này đã tồn tại",
+    "modifierGroupCreatedSuccess": "Tạo nhóm modifier thành công",
+    "modifierGroupUpdatedSuccess": "Cập nhật nhóm modifier thành công",
+    "modifierGroupDeletedSuccess": "Xóa nhóm modifier thành công",
+    "modifierGroupsReorderedSuccess": "Sắp xếp lại nhóm modifier thành công",
+    "modifierNotFound": "Không tìm thấy modifier",
+    "modifierNameExists": "Modifier với tên này đã tồn tại trong nhóm này",
+    "modifierCreatedSuccess": "Tạo modifier thành công",
+    "modifierUpdatedSuccess": "Cập nhật modifier thành công",
+    "modifierDeletedSuccess": "Xóa modifier thành công",
+    "modifiersReorderedSuccess": "Sắp xếp lại modifier thành công",
+    "displayOrdersMustBeUnique": "Thứ tự hiển thị phải là duy nhất",
+    "invalidSelectionConstraints": "Ràng buộc lựa chọn không hợp lệ (tối thiểu > tối đa hoặc tối thiểu < 0 hoặc tối đa < 0)",
+    "cannotDeleteModifierGroupWithModifiers": "Không thể xóa nhóm modifier có modifier liên quan",
+    "cannotDeleteModifierGroupWithMenuItems": "Không thể xóa nhóm modifier được sử dụng bởi món ăn",
+    "modifierGroupsNotFoundOrInvalid": "Một hoặc nhiều nhóm modifier không tìm thấy hoặc không thuộc về tenant này",
+    "modifiersNotFoundOrInvalid": "Một hoặc nhiều modifier không tìm thấy hoặc không thuộc về nhóm này"
   },
   "tenants": {
     "tenantNotFound": "Không tìm thấy tenant"

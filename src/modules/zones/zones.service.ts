@@ -18,7 +18,14 @@ export class ZonesService {
    * Get paginated list of zones with filtering
    */
   async findAll(tenantId: string, query: QueryZonesDto) {
-    const { page = 1, limit = 10, search, is_active } = query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      is_active,
+      sort_by = 'displayOrder',
+      sort_order = 'asc',
+    } = query;
     const skip = (page - 1) * limit;
 
     // Build where clause
@@ -34,6 +41,16 @@ export class ZonesService {
       where.isActive = is_active;
     }
 
+    // Validate and set orderBy
+    const validSortFields = ['name', 'displayOrder', 'createdAt', 'updatedAt'];
+    const orderByField = validSortFields.includes(sort_by)
+      ? sort_by
+      : 'displayOrder';
+    const orderBy = [{ [orderByField]: sort_order }];
+    if (orderByField !== 'name') {
+      orderBy.push({ name: 'asc' });
+    }
+
     // Get total count
     const total = await this.prisma.zone.count({ where });
 
@@ -42,7 +59,7 @@ export class ZonesService {
       where,
       skip,
       take: limit,
-      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+      orderBy,
       include: {
         _count: {
           select: { tables: true },
@@ -243,6 +260,7 @@ export class ZonesService {
         t(
           'zones.zoneHasTables',
           `Cannot delete zone with ${existing._count.tables} tables assigned to it`,
+          { args: { count: existing._count.tables } },
         ),
       );
     }

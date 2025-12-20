@@ -80,6 +80,7 @@ async function main() {
     data: {
       name: "Joe's Vietnamese Diner",
       address: '227 Nguyen Van Cu, District 5, Ho Chi Minh City',
+      image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
       slug: 'joes-diner',
       ownerId: owner.id,
       subscriptionTier: 'premium',
@@ -108,6 +109,7 @@ async function main() {
     data: {
       name: 'Pho & More Vietnamese Kitchen',
       address: '458 Le Van Sy, District 3, Ho Chi Minh City',
+      image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1224&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
       slug: 'pho-and-more',
       ownerId: owner.id,
       subscriptionTier: 'business',

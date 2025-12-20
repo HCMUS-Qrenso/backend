@@ -424,7 +424,7 @@ export class AuthService {
     return this.tokenService.createRefreshToken(userId);
   }
 
-  private async generateAuthResponse(user: any): Promise<AuthResponse> {
+  private generateAuthResponse(user: any): AuthResponse {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
