@@ -12,6 +12,7 @@ import { CreateMenuItemDto, UpdateMenuItemDto, QueryMenuItemsDto } from './dto';
 import * as ExcelJS from 'exceljs';
 import csvParser from 'csv-parser';
 import { Readable } from 'stream';
+import { Express } from 'express';
 
 @Injectable()
 export class MenuService {

@@ -42,6 +42,7 @@ import {
   TenantOwnershipGuard,
 } from '../../common/guards';
 import { t } from 'src/common/utils';
+import type { Express } from 'express';
 
 @ApiTags('menu')
 @Controller('menu')
