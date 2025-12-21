@@ -97,4 +97,21 @@ export class CreateMenuItemDto {
   @IsArray()
   @IsString({ each: true })
   image_urls?: string[];
+
+  @ApiPropertyOptional({
+    example: {
+      fat: 10,
+      carbs: 30,
+      protein: 15,
+      calories: 300,
+    },
+    description: 'Nutritional information for the menu item',
+  })
+  @IsOptional()
+  nutritional_info?: {
+    fat?: number;
+    carbs?: number;
+    protein?: number;
+    calories?: number;
+  };
 }

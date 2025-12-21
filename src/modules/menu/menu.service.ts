@@ -91,6 +91,15 @@ export class MenuService {
           },
           orderBy: { displayOrder: 'asc' },
         },
+        modifierGroups: {
+          include: {
+            modifierGroup: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             reviews: true,
@@ -122,6 +131,9 @@ export class MenuService {
         id: img.id,
         image_url: img.imageUrl,
         display_order: img.displayOrder,
+      })),
+      modifier_groups: item.modifierGroups.map((mg) => ({
+        id: mg.modifierGroup.id,
       })),
       review_count: item._count.reviews,
       order_count: item._count.orderItems,
@@ -302,6 +314,7 @@ export class MenuService {
         isChefRecommendation: createMenuItemDto.is_chef_recommendation || false,
         allergenInfo: createMenuItemDto.allergen_info,
         categoryId: createMenuItemDto.category_id,
+        nutritionalInfo: createMenuItemDto.nutritional_info,
       },
       include: {
         category: {
@@ -348,6 +361,7 @@ export class MenuService {
               name: menuItem.category.name,
             }
           : null,
+        nutritional_info: menuItem.nutritionalInfo,
         created_at: menuItem.createdAt,
         updated_at: menuItem.updatedAt,
       },
@@ -419,6 +433,15 @@ export class MenuService {
     if (updateMenuItemDto.category_id !== undefined) {
       updateData.categoryId = updateMenuItemDto.category_id;
     }
+    if (updateMenuItemDto.nutritional_info !== undefined) {
+      const newNutritionalInfo = updateMenuItemDto.nutritional_info;
+      const oldNutritionalInfo = menuItem.nutritionalInfo as object || {};
+
+      // Merge existing nutritional info with updates
+      const mergedNutritionalInfo = { ...oldNutritionalInfo, ...newNutritionalInfo };
+
+      updateData.nutritionalInfo = mergedNutritionalInfo;
+    }
 
     // Handle image_urls update
     if (updateMenuItemDto.image_urls !== undefined) {
@@ -473,6 +496,7 @@ export class MenuService {
               name: updatedMenuItem.category.name,
             }
           : null,
+        nutritional_info: updatedMenuItem.nutritionalInfo,
         updated_at: updatedMenuItem.updatedAt,
       },
     };
@@ -709,7 +733,7 @@ export class MenuService {
   private async validateCsvFile(file: Express.Multer.File) {
     const stream = Readable.from(file.buffer);
     let headers: string[] = [];
-    let data: Record<string, any>[] = [];
+    const data: Record<string, any>[] = [];
     let rowCount = 0;
     const maxRows = 1000; // Check first 1000 rows
 
@@ -763,9 +787,14 @@ export class MenuService {
     if (headers.includes('modifiers')) {
       await this.validateModifierStructure(headers, data.slice(0, 5)); // Check first 5 rows
     }
+
+    // Validate nutritional info structure in sample rows
+    if (headers.includes('nutritional_info')) {
+      await this.validateNutritionalInfoStructure(headers, data.slice(0, 5)); // Check first 5 rows
+    }
   }
 
-  private async validateModifierStructure(
+  private validateModifierStructure(
     headers: string[],
     sampleRows: Record<string, any>[],
   ) {
@@ -936,6 +965,63 @@ export class MenuService {
     }
   }
 
+  private validateNutritionalInfoStructure(
+    headers: string[],
+    sampleRows: Record<string, any>[],
+  ) {
+    const nutritionalIndex = headers.indexOf('nutritional_info');
+
+    for (const row of sampleRows) {
+      const nutritionalStr = row[headers[nutritionalIndex]];
+      if (!nutritionalStr || nutritionalStr.trim() === '') continue; // Skip empty nutritional info
+
+      let nutritional: any;
+      try {
+        nutritional = JSON.parse(nutritionalStr);
+      } catch (error) {
+        throw new BadRequestException(
+          t(
+            'menu.import.invalidNutritionalJson',
+            `Invalid nutritional info JSON: ${error.message}`,
+            { args: { error: error.message } },
+          ),
+        );
+      }
+
+      if (typeof nutritional !== 'object' || nutritional === null) {
+        throw new BadRequestException(
+          t(
+            'menu.import.invalidNutritionalFormat',
+            'Nutritional info must be a JSON object',
+          ),
+        );
+      }
+
+      const requiredKeys = ['fat', 'carbs', 'protein', 'calories'];
+      for (const key of requiredKeys) {
+        if (!(key in nutritional)) {
+          throw new BadRequestException(
+            t(
+              'menu.import.missingNutritionalKey',
+              `Nutritional info missing required key: ${key}`,
+              { args: { key } },
+            ),
+          );
+        }
+
+        if (typeof nutritional[key] !== 'number') {
+          throw new BadRequestException(
+            t(
+              'menu.import.invalidNutritionalValue',
+              `Nutritional info ${key} must be a number`,
+              { args: { key } },
+            ),
+          );
+        }
+      }
+    }
+  }
+
   private async validateExcelFile(file: Express.Multer.File) {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -1000,7 +1086,12 @@ export class MenuService {
 
       // Validate modifier structure in sample rows
       if (headers.includes('modifiers')) {
-        await this.validateModifierStructure(headers, sampleRows);
+        this.validateModifierStructure(headers, sampleRows);
+      }
+
+      // Validate nutritional info structure in sample rows
+      if (headers.includes('nutritional_info')) {
+        this.validateNutritionalInfoStructure(headers, sampleRows);
       }
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -1041,7 +1132,7 @@ export class MenuService {
       const buf = Buffer.isBuffer(file.buffer)
         ? file.buffer
         : Buffer.from(file.buffer);
-      await workbook.xlsx.load(buf as any as any);
+      await workbook.xlsx.load(buf as any);
       // pick first sheet
       const sheet = workbook.worksheets[0];
       const headers: string[] = [];
@@ -1081,6 +1172,7 @@ export class MenuService {
       const allergenInfo =
         r.allergen_info ?? r.allergenInfo ?? r['allergen info'] ?? '';
       const modifiers = r.modifiers || '';
+      const nutritionalInfo = r.nutritional_info ?? r.nutritionalInfo ?? r['nutritional info'] ?? '';
 
       // resolve or create category if provided
       let categoryId: string | null = null;
@@ -1125,6 +1217,7 @@ export class MenuService {
             isChefRecommendation: isChef,
             allergenInfo: allergenInfo || existing.allergenInfo,
             categoryId: categoryId || existing.categoryId,
+            nutritionalInfo: nutritionalInfo || existing.nutritionalInfo,
           },
         });
         result.updated += 1;
@@ -1146,6 +1239,7 @@ export class MenuService {
             isChefRecommendation: isChef,
             allergenInfo: allergenInfo,
             categoryId: categoryId || undefined,
+            nutritionalInfo,
           },
         });
         result.created += 1;
@@ -1235,6 +1329,7 @@ export class MenuService {
       status: it.status,
       is_chef_recommendation: it.isChefRecommendation,
       allergen_info: it.allergenInfo,
+      nutritional_info: it.nutritionalInfo ? JSON.stringify(it.nutritionalInfo) : '',
       category: it.category ? it.category.name : '',
       images: it.images ? it.images.map((i: any) => i.imageUrl).join(';') : '',
       modifiers: it.modifierGroups
@@ -1265,6 +1360,8 @@ export class MenuService {
           preparation_time: '',
           status: '',
           is_chef_recommendation: '',
+          allergen_info: '',
+          nutritional_info: '',
           category: '',
           images: '',
           modifiers: '',
@@ -1304,6 +1401,8 @@ export class MenuService {
         preparation_time: '',
         status: '',
         is_chef_recommendation: '',
+        allergen_info: '',
+        nutritional_info: '',
         category: '',
         images: '',
         modifiers: '',

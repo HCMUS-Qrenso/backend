@@ -82,7 +82,11 @@
       "missingModifierField": "Modifier missing required field: {field}",
       "invalidModifierName": "Modifier name must be a non-empty string",
       "invalidModifierPrice": "Modifier priceAdjustment must be a number",
-      "invalidModifierJson": "Invalid modifier JSON structure"
+      "invalidModifierJson": "Invalid modifier JSON structure",
+      "invalidNutritionalJson": "Invalid nutritional info JSON: {error}",
+      "invalidNutritionalFormat": "Nutritional info must be a JSON object",
+      "missingNutritionalKey": "Nutritional info missing required key: {key}",
+      "invalidNutritionalValue": "Nutritional info {key} must be a number"
     }
   },
   "categories": {
