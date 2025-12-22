@@ -323,6 +323,11 @@ export class MenuService {
             name: true,
           },
         },
+        modifierGroups: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
 
@@ -336,6 +341,19 @@ export class MenuService {
           menuItemId: menuItem.id,
           imageUrl: url,
           displayOrder: index,
+        })),
+      });
+    }
+
+    // Assign modifier groups if provided
+    if (
+      createMenuItemDto.modifier_group_ids &&
+      createMenuItemDto.modifier_group_ids.length > 0
+    ) {
+      await this.prisma.menuItemModifierGroup.createMany({
+        data: createMenuItemDto.modifier_group_ids.map((modifierGroupId) => ({
+          menuItemId: menuItem.id,
+          modifierGroupId,
         })),
       });
     }
@@ -362,6 +380,7 @@ export class MenuService {
             }
           : null,
         nutritional_info: menuItem.nutritionalInfo,
+        modifier_groups: menuItem.modifierGroups,
         created_at: menuItem.createdAt,
         updated_at: menuItem.updatedAt,
       },
@@ -435,10 +454,13 @@ export class MenuService {
     }
     if (updateMenuItemDto.nutritional_info !== undefined) {
       const newNutritionalInfo = updateMenuItemDto.nutritional_info;
-      const oldNutritionalInfo = menuItem.nutritionalInfo as object || {};
+      const oldNutritionalInfo = (menuItem.nutritionalInfo as object) || {};
 
       // Merge existing nutritional info with updates
-      const mergedNutritionalInfo = { ...oldNutritionalInfo, ...newNutritionalInfo };
+      const mergedNutritionalInfo = {
+        ...oldNutritionalInfo,
+        ...newNutritionalInfo,
+      };
 
       updateData.nutritionalInfo = mergedNutritionalInfo;
     }
@@ -462,6 +484,24 @@ export class MenuService {
       }
     }
 
+    //Handle update modifier groups
+    if (updateMenuItemDto.modifier_group_ids !== undefined) {
+      // Delete existing modifier group links
+      await this.prisma.menuItemModifierGroup.deleteMany({
+        where: { menuItemId: id },
+      });
+
+      // Create new links if any
+      if (updateMenuItemDto.modifier_group_ids.length > 0) {
+        await this.prisma.menuItemModifierGroup.createMany({
+          data: updateMenuItemDto.modifier_group_ids.map((modifierGroupId) => ({
+            menuItemId: id,
+            modifierGroupId,
+          })),
+        });
+      }
+    }
+
     const updatedMenuItem = await this.prisma.menuItem.update({
       where: { id },
       data: updateData,
@@ -470,6 +510,11 @@ export class MenuService {
           select: {
             id: true,
             name: true,
+          },
+        },
+        modifierGroups: {
+          select: {
+            id: true,
           },
         },
       },
@@ -497,6 +542,7 @@ export class MenuService {
             }
           : null,
         nutritional_info: updatedMenuItem.nutritionalInfo,
+        modifier_groups: updatedMenuItem.modifierGroups,
         updated_at: updatedMenuItem.updatedAt,
       },
     };
@@ -1172,7 +1218,8 @@ export class MenuService {
       const allergenInfo =
         r.allergen_info ?? r.allergenInfo ?? r['allergen info'] ?? '';
       const modifiers = r.modifiers || '';
-      const nutritionalInfo = r.nutritional_info ?? r.nutritionalInfo ?? r['nutritional info'] ?? '';
+      const nutritionalInfo =
+        r.nutritional_info ?? r.nutritionalInfo ?? r['nutritional info'] ?? '';
 
       // resolve or create category if provided
       let categoryId: string | null = null;
@@ -1329,7 +1376,9 @@ export class MenuService {
       status: it.status,
       is_chef_recommendation: it.isChefRecommendation,
       allergen_info: it.allergenInfo,
-      nutritional_info: it.nutritionalInfo ? JSON.stringify(it.nutritionalInfo) : '',
+      nutritional_info: it.nutritionalInfo
+        ? JSON.stringify(it.nutritionalInfo)
+        : '',
       category: it.category ? it.category.name : '',
       images: it.images ? it.images.map((i: any) => i.imageUrl).join(';') : '',
       modifiers: it.modifierGroups

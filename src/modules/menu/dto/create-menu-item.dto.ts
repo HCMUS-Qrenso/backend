@@ -114,4 +114,17 @@ export class CreateMenuItemDto {
     protein?: number;
     calories?: number;
   };
+
+  @ApiPropertyOptional({
+    example: [
+      '123e4567-e89b-12d3-a456-426614174000',
+      '123e4567-e89b-12d3-a456-426614174001',
+    ],
+    description: 'Array of modifier group IDs associated with the menu item',
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  modifier_group_ids?: string[];
 }
