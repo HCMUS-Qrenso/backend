@@ -4,11 +4,18 @@ import {
   IsNumber,
   IsBoolean,
   IsUUID,
+  IsEnum,
   Min,
   Max,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+
+export enum MenuItemStatus {
+  AVAILABLE = 'available',
+  UNAVAILABLE = 'unavailable',
+  SOLD_OUT = 'sold_out',
+}
 
 export class QueryMenuItemsDto {
   @ApiPropertyOptional({
@@ -55,12 +62,13 @@ export class QueryMenuItemsDto {
 
   @ApiPropertyOptional({
     example: 'available',
-    description: 'Filter by status (available, unavailable)',
-    enum: ['available', 'unavailable'],
+    description:
+      'Filter by status (available, unavailable, sold_out). If customers or guests access, only available & sold_out items are returned (this status filter is ignored).',
+    enum: MenuItemStatus,
   })
   @IsOptional()
-  @IsString()
-  status?: string;
+  @IsEnum(MenuItemStatus)
+  status?: MenuItemStatus;
 
   @ApiPropertyOptional({
     example: true,

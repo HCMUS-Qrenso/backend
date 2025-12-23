@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { t } from '../../common/utils';
-import { CreateMenuItemDto, UpdateMenuItemDto, QueryMenuItemsDto } from './dto';
+import { CreateMenuItemDto, UpdateMenuItemDto, QueryMenuItemsDto, MenuItemStatus } from './dto';
 import * as ExcelJS from 'exceljs';
 import csvParser from 'csv-parser';
 import { Readable } from 'stream';
@@ -23,7 +23,7 @@ export class MenuService {
   /**
    * Get paginated list of menu items with filtering
    */
-  async findAll(tenantId: string, query: QueryMenuItemsDto) {
+  async findAll(tenantId: string, query: QueryMenuItemsDto, isCustomer: boolean = false) {
     const {
       page = 1,
       limit = 10,
@@ -49,7 +49,10 @@ export class MenuService {
       where.categoryId = category_id;
     }
 
-    if (status) {
+    if (isCustomer) {
+      where.status = { in: [MenuItemStatus.AVAILABLE, MenuItemStatus.SOLD_OUT] };
+      where.category = { isActive: true };
+    } else if (status) {
       where.status = status;
     }
 
