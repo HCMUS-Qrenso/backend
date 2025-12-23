@@ -124,6 +124,18 @@
   "tenants": {
     "tenantNotFound": "Không tìm thấy tenant"
   },
+  "staff": {
+    "staffNotFound": "Không tìm thấy nhân viên",
+    "emailExists": "Email đã tồn tại",
+    "staffCreatedSuccess": "Tạo nhân viên thành công",
+    "staffUpdatedSuccess": "Cập nhật nhân viên thành công",
+    "staffDeleted": "Xóa nhân viên thành công",
+    "staffStatusUpdated": "Cập nhật trạng thái nhân viên thành công",
+    "hasActiveOrders": "Không thể xóa nhân viên có đơn hàng đang hoạt động",
+    "passwordResetSent": "Email đặt lại mật khẩu đã được gửi thành công",
+    "inviteResent": "Email mời đã được gửi lại thành công",
+    "alreadyVerified": "Nhân viên đã xác thực email của họ"
+  },
   "common": {
     "notFound": "Không tìm thấy tài nguyên",
     "badRequest": "Yêu cầu không hợp lệ",

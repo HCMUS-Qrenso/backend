@@ -124,6 +124,18 @@
   "tenants": {
     "tenantNotFound": "Tenant not found"
   },
+  "staff": {
+    "staffNotFound": "Staff not found",
+    "emailExists": "Email already exists",
+    "staffCreatedSuccess": "Staff created successfully",
+    "staffUpdatedSuccess": "Staff updated successfully",
+    "staffDeleted": "Staff deleted successfully",
+    "staffStatusUpdated": "Staff status updated successfully",
+    "hasActiveOrders": "Cannot delete staff with active orders",
+    "passwordResetSent": "Password reset email sent successfully",
+    "inviteResent": "Invite email resent successfully",
+    "alreadyVerified": "Staff member has already verified their email"
+  },
   "common": {
     "notFound": "Resource not found",
     "badRequest": "Bad request",
