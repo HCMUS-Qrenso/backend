@@ -12,6 +12,7 @@ import {
   UpdateStatusDto,
   QueryStaffDto,
 } from './dto';
+import { EmailService, TokenService } from '../auth/services';
 
 // Staff roles that this module manages
 const STAFF_ROLES: string[] = ['waiter', 'kitchen_staff'];
@@ -20,7 +21,11 @@ const STAFF_ROLES: string[] = ['waiter', 'kitchen_staff'];
 export class StaffService {
   private readonly logger = new Logger(StaffService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+    private readonly tokenService: TokenService,
+  ) {}
 
   /**
    * Format user data to staff response format
@@ -230,8 +235,17 @@ export class StaffService {
       },
     });
 
-    // TODO: Create verification token and send invite email
-    // This would integrate with the existing auth module's email service
+    // Create verification token and send invite email
+    const verificationToken = await this.tokenService.createVerificationToken(
+      user.id,
+      'email_verification',
+    );
+
+    await this.emailService.sendVerificationEmail(
+      user.email,
+      verificationToken,
+      user.fullName,
+    );
 
     this.logger.log(
       `Staff created: ${user.id} (${user.email}) role=${user.role} for tenant ${tenantId}`,
@@ -372,8 +386,17 @@ export class StaffService {
       throw new NotFoundException(t('staff.staffNotFound', 'Staff not found'));
     }
 
-    // TODO: Integrate with auth module to send password reset email
-    // This would create a password reset token and send the email
+    // Create password reset token and send email
+    const resetToken = await this.tokenService.createVerificationToken(
+      existing.id,
+      'password_reset',
+    );
+
+    await this.emailService.sendPasswordResetEmail(
+      existing.email,
+      resetToken,
+      existing.fullName,
+    );
 
     this.logger.log(`Password reset email sent for staff: ${id} (${existing.email})`);
 
@@ -408,7 +431,27 @@ export class StaffService {
       );
     }
 
-    // TODO: Create new verification token and resend invite email
+    // Invalidate old verification tokens
+    await this.prisma.userVerificationToken.updateMany({
+      where: {
+        userId: existing.id,
+        type: 'email_verification',
+        usedAt: null,
+      },
+      data: { usedAt: new Date() },
+    });
+
+    // Create new verification token and send email
+    const verificationToken = await this.tokenService.createVerificationToken(
+      existing.id,
+      'email_verification',
+    );
+
+    await this.emailService.sendVerificationEmail(
+      existing.email,
+      verificationToken,
+      existing.fullName,
+    );
 
     this.logger.log(`Invite email resent for staff: ${id} (${existing.email})`);
 
