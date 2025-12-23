@@ -11,6 +11,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -27,7 +28,7 @@ import {
   QueryStaffDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
-import { Roles, TenantContext } from '../../common/decorators';
+import { Roles, TenantContext, CurrentUser } from '../../common/decorators';
 import { RolesGuard, TenantOwnershipGuard } from '../../common/guards';
 import { ROLES } from '../../common/constants';
 
@@ -96,13 +97,22 @@ export class StaffController {
     description: 'Staff member created successfully',
   })
   @ApiResponse({
+    status: 403,
+    description: 'Only owner can create admin',
+  })
+  @ApiResponse({
     status: 409,
     description: 'Email already exists',
   })
   async create(
     @TenantContext() tenantId: string,
+    @CurrentUser() user: { role: string },
     @Body() createStaffDto: CreateStaffDto,
   ) {
+    // Only Owner can create admin
+    if (createStaffDto.role === 'admin' && user.role !== ROLES.OWNER) {
+      throw new ForbiddenException('Only owner can create admin');
+    }
     return this.staffService.create(tenantId, createStaffDto);
   }
 

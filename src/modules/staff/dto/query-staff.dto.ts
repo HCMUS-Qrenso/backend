@@ -43,11 +43,11 @@ export class QueryStaffDto {
   @ApiPropertyOptional({
     example: 'waiter',
     description: 'Filter by role',
-    enum: ['waiter', 'kitchen_staff'],
+    enum: ['admin', 'waiter', 'kitchen_staff'],
   })
   @IsOptional()
-  @IsIn(['waiter', 'kitchen_staff'])
-  role?: 'waiter' | 'kitchen_staff';
+  @IsIn(['admin', 'waiter', 'kitchen_staff'])
+  role?: 'admin' | 'waiter' | 'kitchen_staff';
 
   @ApiPropertyOptional({
     example: 'active',
