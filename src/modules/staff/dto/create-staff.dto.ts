@@ -39,8 +39,8 @@ export class CreateStaffDto {
   @ApiProperty({
     example: 'waiter',
     description: 'Role of the staff member',
-    enum: ['waiter', 'kitchen_staff'],
+    enum: ['admin', 'waiter', 'kitchen_staff'],
   })
-  @IsIn(['waiter', 'kitchen_staff'])
-  role: 'waiter' | 'kitchen_staff';
+  @IsIn(['admin', 'waiter', 'kitchen_staff'])
+  role: 'admin' | 'waiter' | 'kitchen_staff';
 }

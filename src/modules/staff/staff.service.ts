@@ -15,7 +15,7 @@ import {
 import { EmailService, TokenService } from '../auth/services';
 
 // Staff roles that this module manages
-const STAFF_ROLES: string[] = ['waiter', 'kitchen_staff'];
+const STAFF_ROLES: string[] = ['admin', 'waiter', 'kitchen_staff'];
 
 @Injectable()
 export class StaffService {
@@ -131,6 +131,10 @@ export class StaffService {
 
     // Get counts by role and status
     const [
+      totalAdmin,
+      activeAdmin,
+      inactiveAdmin,
+      suspendedAdmin,
       totalWaiter,
       activeWaiter,
       inactiveWaiter,
@@ -140,6 +144,17 @@ export class StaffService {
       inactiveKitchen,
       suspendedKitchen,
     ] = await Promise.all([
+      // Admin counts
+      this.prisma.user.count({ where: { ...baseWhere, role: 'admin' } }),
+      this.prisma.user.count({
+        where: { ...baseWhere, role: 'admin', status: 'active' },
+      }),
+      this.prisma.user.count({
+        where: { ...baseWhere, role: 'admin', status: 'inactive' },
+      }),
+      this.prisma.user.count({
+        where: { ...baseWhere, role: 'admin', status: 'suspended' },
+      }),
       // Waiter counts
       this.prisma.user.count({ where: { ...baseWhere, role: 'waiter' } }),
       this.prisma.user.count({
@@ -165,8 +180,14 @@ export class StaffService {
     ]);
 
     return {
-      total: totalWaiter + totalKitchen,
+      total: totalAdmin + totalWaiter + totalKitchen,
       byRole: {
+        admin: {
+          total: totalAdmin,
+          active: activeAdmin,
+          inactive: inactiveAdmin,
+          suspended: suspendedAdmin,
+        },
         waiter: {
           total: totalWaiter,
           active: activeWaiter,
@@ -181,9 +202,9 @@ export class StaffService {
         },
       },
       summary: {
-        active: activeWaiter + activeKitchen,
-        inactive: inactiveWaiter + inactiveKitchen,
-        suspended: suspendedWaiter + suspendedKitchen,
+        active: activeAdmin + activeWaiter + activeKitchen,
+        inactive: inactiveAdmin + inactiveWaiter + inactiveKitchen,
+        suspended: suspendedAdmin + suspendedWaiter + suspendedKitchen,
       },
     };
   }
