@@ -235,13 +235,14 @@ export class StaffService {
       },
     });
 
-    // Create verification token and send invite email
+    // Create verification token and send staff invite email
     const verificationToken = await this.tokenService.createVerificationToken(
       user.id,
       'email_verification',
     );
 
-    await this.emailService.sendVerificationEmail(
+    // TODO: Get restaurant name from tenant for email
+    await this.emailService.sendStaffInviteEmail(
       user.email,
       verificationToken,
       user.fullName,
@@ -441,13 +442,14 @@ export class StaffService {
       data: { usedAt: new Date() },
     });
 
-    // Create new verification token and send email
+    // Create new verification token and send staff invite email
     const verificationToken = await this.tokenService.createVerificationToken(
       existing.id,
       'email_verification',
     );
 
-    await this.emailService.sendVerificationEmail(
+    // TODO: Get restaurant name from tenant for email
+    await this.emailService.sendStaffInviteEmail(
       existing.email,
       verificationToken,
       existing.fullName,

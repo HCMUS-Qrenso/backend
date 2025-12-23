@@ -23,7 +23,9 @@
     "qrTokenExpired": "Token QR đã hết hạn",
     "qrTokenVerificationFailed": "Xác thực token QR thất bại",
     "qrScanRequired": "Vui lòng quét mã QR trên bàn để truy cập tính năng này",
-    "tableInactive": "Bàn này hiện không khả dụng. Vui lòng liên hệ nhân viên để được hỗ trợ."
+    "tableInactive": "Bàn này hiện không khả dụng. Vui lòng liên hệ nhân viên để được hỗ trợ.",
+    "accountSetupSuccess": "Thiết lập tài khoản thành công",
+    "accountAlreadySetup": "Tài khoản đã được thiết lập trước đó"
   },
   "tables": {
     "tableNameExists": "Một bàn với tên này đã tồn tại trong nhà hàng",
