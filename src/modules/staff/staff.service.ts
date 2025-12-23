@@ -129,83 +129,43 @@ export class StaffService {
       role: { in: STAFF_ROLES },
     };
 
-    // Get counts by role and status
-    const [
-      totalAdmin,
-      activeAdmin,
-      inactiveAdmin,
-      suspendedAdmin,
-      totalWaiter,
-      activeWaiter,
-      inactiveWaiter,
-      suspendedWaiter,
-      totalKitchen,
-      activeKitchen,
-      inactiveKitchen,
-      suspendedKitchen,
-    ] = await Promise.all([
-      // Admin counts
-      this.prisma.user.count({ where: { ...baseWhere, role: 'admin' } }),
-      this.prisma.user.count({
-        where: { ...baseWhere, role: 'admin', status: 'active' },
-      }),
-      this.prisma.user.count({
-        where: { ...baseWhere, role: 'admin', status: 'inactive' },
-      }),
-      this.prisma.user.count({
-        where: { ...baseWhere, role: 'admin', status: 'suspended' },
-      }),
-      // Waiter counts
-      this.prisma.user.count({ where: { ...baseWhere, role: 'waiter' } }),
-      this.prisma.user.count({
-        where: { ...baseWhere, role: 'waiter', status: 'active' },
-      }),
-      this.prisma.user.count({
-        where: { ...baseWhere, role: 'waiter', status: 'inactive' },
-      }),
-      this.prisma.user.count({
-        where: { ...baseWhere, role: 'waiter', status: 'suspended' },
-      }),
-      // Kitchen staff counts
-      this.prisma.user.count({ where: { ...baseWhere, role: 'kitchen_staff' } }),
-      this.prisma.user.count({
-        where: { ...baseWhere, role: 'kitchen_staff', status: 'active' },
-      }),
-      this.prisma.user.count({
-        where: { ...baseWhere, role: 'kitchen_staff', status: 'inactive' },
-      }),
-      this.prisma.user.count({
-        where: { ...baseWhere, role: 'kitchen_staff', status: 'suspended' },
-      }),
-    ]);
+    // Get all staff grouped by role and status in a single query
+    const stats = await this.prisma.user.groupBy({
+      by: ['role', 'status'],
+      where: baseWhere,
+      _count: {
+        id: true,
+      },
+    });
+
+    // Initialize counters
+    const roleStats = {
+      admin: { total: 0, active: 0, inactive: 0, suspended: 0 },
+      waiter: { total: 0, active: 0, inactive: 0, suspended: 0 },
+      kitchen_staff: { total: 0, active: 0, inactive: 0, suspended: 0 },
+    };
+
+    const summary = { active: 0, inactive: 0, suspended: 0 };
+    let total = 0;
+
+    // Process the grouped results
+    stats.forEach((stat) => {
+      const role = stat.role as keyof typeof roleStats;
+      const status = stat.status as keyof typeof roleStats.admin;
+      const count = stat._count.id;
+
+      if (roleStats[role]) {
+        roleStats[role][status] += count;
+        roleStats[role].total += count;
+        summary[status] += count;
+        total += count;
+      }
+    });
 
     return {
-      total: totalAdmin + totalWaiter + totalKitchen,
-      byRole: {
-        admin: {
-          total: totalAdmin,
-          active: activeAdmin,
-          inactive: inactiveAdmin,
-          suspended: suspendedAdmin,
-        },
-        waiter: {
-          total: totalWaiter,
-          active: activeWaiter,
-          inactive: inactiveWaiter,
-          suspended: suspendedWaiter,
-        },
-        kitchen_staff: {
-          total: totalKitchen,
-          active: activeKitchen,
-          inactive: inactiveKitchen,
-          suspended: suspendedKitchen,
-        },
-      },
-      summary: {
-        active: activeAdmin + activeWaiter + activeKitchen,
-        inactive: inactiveAdmin + inactiveWaiter + inactiveKitchen,
-        suspended: suspendedAdmin + suspendedWaiter + suspendedKitchen,
-      },
+      total,
+      byRole: roleStats,
+      summary,
     };
   }
 

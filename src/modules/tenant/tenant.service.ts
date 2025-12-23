@@ -127,21 +127,18 @@ export class TenantService {
    * Get summary statistics for all tenants owned by owner
    */
   async getOwnerStats(ownerId: string) {
-    const totalTenants = await this.prisma.tenant.count({
+    // Get tenant status breakdown in a single query
+    const statusStats = await this.prisma.tenant.groupBy({
+      by: ['status'],
       where: { ownerId },
+      _count: true,
     });
 
-    const activeTenants = await this.prisma.tenant.count({
-      where: { ownerId, status: 'active' },
-    });
-
-    const inactiveTenants = await this.prisma.tenant.count({
-      where: { ownerId, status: 'inactive' },
-    });
-
-    const suspendedTenants = await this.prisma.tenant.count({
-      where: { ownerId, status: 'suspended' },
-    });
+    // Calculate status counts from grouped results
+    const totalTenants = statusStats.reduce((sum, stat) => sum + stat._count, 0);
+    const activeTenants = statusStats.find(stat => stat.status === 'active')?._count || 0;
+    const inactiveTenants = statusStats.find(stat => stat.status === 'inactive')?._count || 0;
+    const suspendedTenants = statusStats.find(stat => stat.status === 'suspended')?._count || 0;
 
     // Get subscription tier breakdown
     const tierStats = await this.prisma.tenant.groupBy({

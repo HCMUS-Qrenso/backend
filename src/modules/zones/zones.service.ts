@@ -280,11 +280,17 @@ export class ZonesService {
    * Get zone statistics
    */
   async getStats(tenantId: string) {
-    const [total, active, inactive] = await Promise.all([
-      this.prisma.zone.count({ where: { tenantId } }),
-      this.prisma.zone.count({ where: { tenantId, isActive: true } }),
-      this.prisma.zone.count({ where: { tenantId, isActive: false } }),
-    ]);
+    // Get zone stats grouped by isActive status in a single query
+    const stats = await this.prisma.zone.groupBy({
+      by: ['isActive'],
+      where: { tenantId },
+      _count: true,
+    });
+
+    // Calculate stats from grouped results
+    const total = stats.reduce((sum, stat) => sum + stat._count, 0);
+    const active = stats.find(stat => stat.isActive)?._count || 0;
+    const inactive = stats.find(stat => !stat.isActive)?._count || 0;
 
     return {
       total,

@@ -1316,36 +1316,30 @@ export class TablesService {
    * Get QR stats
    */
   async getQrStats(tenantId: string) {
-    // Run queries in parallel for better performance
-    const [totalActiveTables, tablesWithQr, latestQrUpdate] = await Promise.all(
-      [
-        this.prisma.table.count({
-          where: {
-            tenantId,
-            isActive: true,
-          },
-        }),
-        this.prisma.table.count({
-          where: {
-            tenantId,
-            isActive: true,
-            qrCodeToken: { not: null },
-          },
-        }),
-        this.prisma.table.findFirst({
-          where: {
-            tenantId,
-            isActive: true,
-            qrCodeGeneratedAt: { not: null },
-          },
-          orderBy: { qrCodeGeneratedAt: 'desc' },
-          select: { qrCodeGeneratedAt: true },
-        }),
-      ],
-    );
+    // Get QR-related stats in a single query
+    const qrStats = await this.prisma.table.groupBy({
+      by: ['qrCodeToken'],
+      where: {
+        tenantId,
+        isActive: true,
+      },
+      _count: {
+        id: true,
+      },
+      _max: {
+        qrCodeGeneratedAt: true,
+      },
+    });
 
-    // Calculate tables without QR
+    // Calculate stats from grouped results
+    const totalActiveTables = qrStats.reduce((sum, stat) => sum + stat._count.id, 0);
+    const tablesWithQr = qrStats.filter(stat => stat.qrCodeToken !== null).reduce((sum, stat) => sum + stat._count.id, 0);
     const tablesWithoutQr = totalActiveTables - tablesWithQr;
+
+    // Get latest QR update from the grouped results
+    const latestQrUpdate = qrStats
+      .filter(stat => stat._max.qrCodeGeneratedAt !== null)
+      .sort((a, b) => new Date(b._max.qrCodeGeneratedAt!).getTime() - new Date(a._max.qrCodeGeneratedAt!).getTime())[0]?._max.qrCodeGeneratedAt || null;
 
     return {
       success: true,
@@ -1353,7 +1347,7 @@ export class TablesService {
         total_active_tables: totalActiveTables,
         tables_with_qr: tablesWithQr,
         tables_without_qr: tablesWithoutQr,
-        latest_qr_update: latestQrUpdate?.qrCodeGeneratedAt || null,
+        latest_qr_update: latestQrUpdate,
       },
     };
   }
