@@ -23,7 +23,9 @@
     "qrTokenExpired": "QR token expired",
     "qrTokenVerificationFailed": "QR token verification failed",
     "qrScanRequired": "Please scan the QR code on your table to access this feature",
-    "tableInactive": "This table is currently unavailable. Please ask staff for assistance."
+    "tableInactive": "This table is currently unavailable. Please ask staff for assistance.",
+    "accountSetupSuccess": "Account set up successfully",
+    "accountAlreadySetup": "Account has already been set up"
   },
   "tables": {
     "tableNameExists": "A table with this name already exists in this restaurant",
@@ -123,6 +125,18 @@
   },
   "tenants": {
     "tenantNotFound": "Tenant not found"
+  },
+  "staff": {
+    "staffNotFound": "Staff not found",
+    "emailExists": "Email already exists",
+    "staffCreatedSuccess": "Staff created successfully",
+    "staffUpdatedSuccess": "Staff updated successfully",
+    "staffDeleted": "Staff deleted successfully",
+    "staffStatusUpdated": "Staff status updated successfully",
+    "hasActiveOrders": "Cannot delete staff with active orders",
+    "passwordResetSent": "Password reset email sent successfully",
+    "inviteResent": "Invite email resent successfully",
+    "alreadyVerified": "Staff member has already verified their email"
   },
   "common": {
     "notFound": "Resource not found",

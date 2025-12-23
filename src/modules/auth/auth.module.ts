@@ -32,6 +32,6 @@ import { PrismaService } from '../../prisma.service';
     GoogleStrategy,
     PrismaService,
   ],
-  exports: [AuthService, TokenService, JwtModule],
+  exports: [AuthService, TokenService, EmailService, JwtModule],
 })
 export class AuthModule {}

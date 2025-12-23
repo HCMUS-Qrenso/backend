@@ -105,4 +105,31 @@ export class EmailService {
       // Don't throw error for welcome email as it's not critical
     }
   }
+
+  async sendStaffInviteEmail(
+    email: string,
+    token: string,
+    fullName: string,
+    restaurantName?: string,
+  ): Promise<void> {
+    const setupUrl = `${this.configService.get<string>('FRONTEND_URL')}/auth/setup-password?token=${token}&email=${encodeURIComponent(email)}`;
+
+    const mailOptions = {
+      from: `"${this.fromName}" <${this.fromEmail}>`,
+      to: email,
+      subject: EMAIL_TEMPLATES.staffInvite.subject,
+      html: EMAIL_TEMPLATES.staffInvite.getHtml(fullName, setupUrl, restaurantName),
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Staff invite email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send staff invite email to ${email}:`,
+        error,
+      );
+      throw new Error('Failed to send staff invite email');
+    }
+  }
 }

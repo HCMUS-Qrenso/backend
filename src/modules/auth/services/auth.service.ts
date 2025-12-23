@@ -16,6 +16,7 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   ResendEmailType,
+  SetupPasswordDto,
 } from '../dto';
 import { EmailService } from './email.service';
 import { TokenService } from './token.service';
@@ -214,6 +215,62 @@ export class AuthService {
 
     return {
       message: t('auth.passwordResetSuccess', 'Password reset successfully'),
+    };
+  }
+
+  /**
+   * Setup password for invited staff (first-time login)
+   * Uses email_verification token type
+   */
+  async setupPassword(
+    setupPasswordDto: SetupPasswordDto,
+  ): Promise<{ message: string }> {
+    const { email, token, password } = setupPasswordDto;
+
+    const validation = await this.tokenService.validateVerificationToken(
+      token,
+      'email_verification',
+    );
+
+    if (!validation.valid) {
+      throw new BadRequestException(validation.error);
+    }
+
+    if (validation.user!.email !== email) {
+      throw new BadRequestException(
+        t('auth.invalidEmail', 'Invalid email address'),
+      );
+    }
+
+    // Check if user already has a password (already set up)
+    if (validation.user!.passwordHash) {
+      throw new BadRequestException(
+        t('auth.accountAlreadySetup', 'Account has already been set up'),
+      );
+    }
+
+    const passwordHash = await HashUtil.hash(password);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: validation.user!.id },
+        data: {
+          passwordHash,
+          emailVerified: true,
+        },
+      }),
+      this.prisma.userVerificationToken.update({
+        where: { id: validation.tokenId },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    await this.emailService.sendWelcomeEmail(email, validation.user!.fullName);
+
+    this.logger.log(`Account setup completed for: ${email}`);
+
+    return {
+      message: t('auth.accountSetupSuccess', 'Account set up successfully'),
     };
   }
 

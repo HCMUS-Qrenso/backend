@@ -28,6 +28,7 @@ import {
   ResetPasswordDto,
   VerifyEmailDto,
   ResendEmailDto,
+  SetupPasswordDto,
   AuthResponseDto,
   MessageResponseDto,
 } from './dto';
@@ -237,6 +238,29 @@ export class AuthController {
   })
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
+  }
+
+  @Public()
+  @Post('setup-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Set up password for invited staff (first-time login)',
+    description:
+      'Use this endpoint when an invited staff member needs to set their password for the first time. ' +
+      'The token is received via email invitation link.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Password set up successfully, account activated',
+    type: MessageResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid token, email, or account already set up',
+    type: ErrorResponseDto,
+  })
+  async setupPassword(@Body() setupPasswordDto: SetupPasswordDto) {
+    return this.authService.setupPassword(setupPasswordDto);
   }
 
   @Public()

@@ -20,6 +20,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { ModifiersModule } from './modules/modifiers/modifiers.module';
 import { UploadModule } from './modules/uploads/upload.module';
 import { JwtAuthGuard } from './modules/auth/guards';
+import { StaffModule } from './modules/staff/staff.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { JwtAuthGuard } from './modules/auth/guards';
     CategoriesModule,
     ModifiersModule,
     UploadModule,
+    StaffModule,
   ],
   controllers: [AppController],
   providers: [
