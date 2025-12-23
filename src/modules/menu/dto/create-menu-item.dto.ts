@@ -53,21 +53,19 @@ export class CreateMenuItemDto {
     example: 'available',
     description: 'Status of the menu item',
     enum: ['available', 'unavailable'],
-    default: 'available',
   })
   @IsOptional()
   @IsString()
-  status?: string = 'available';
+  status?: string;
 
   @ApiPropertyOptional({
     example: true,
     description: 'Whether this item is a chef recommendation',
-    default: false,
   })
   @IsOptional()
   @IsBoolean()
   @Type(() => Boolean)
-  is_chef_recommendation?: boolean = false;
+  is_chef_recommendation?: boolean;
 
   @ApiPropertyOptional({
     example: 'Contains gluten, dairy',

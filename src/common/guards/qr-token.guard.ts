@@ -102,7 +102,7 @@ export class QrTokenGuard implements CanActivate {
         );
       }
 
-      if (!table.isActive) {
+      if (!table.isActive || table.status === 'maintenance') {
         throw new ForbiddenException(
           t(
             'auth.tableInactive',
