@@ -40,8 +40,12 @@ export class CategoriesService {
     });
 
     // Process category stats
-    const totalCategories = categoryStats.reduce((sum, stat) => sum + stat._count.id, 0);
-    const activeCategories = categoryStats.find(stat => stat.isActive)?._count.id || 0;
+    const totalCategories = categoryStats.reduce(
+      (sum, stat) => sum + stat._count.id,
+      0,
+    );
+    const activeCategories =
+      categoryStats.find((stat) => stat.isActive)?._count.id || 0;
     const hiddenCategories = totalCategories - activeCategories;
 
     return {

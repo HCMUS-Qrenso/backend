@@ -289,8 +289,8 @@ export class ZonesService {
 
     // Calculate stats from grouped results
     const total = stats.reduce((sum, stat) => sum + stat._count, 0);
-    const active = stats.find(stat => stat.isActive)?._count || 0;
-    const inactive = stats.find(stat => !stat.isActive)?._count || 0;
+    const active = stats.find((stat) => stat.isActive)?._count || 0;
+    const inactive = stats.find((stat) => !stat.isActive)?._count || 0;
 
     return {
       total,

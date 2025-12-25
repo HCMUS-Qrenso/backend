@@ -8,7 +8,12 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { t } from '../../common/utils';
-import { CreateMenuItemDto, UpdateMenuItemDto, QueryMenuItemsDto, MenuItemStatus } from './dto';
+import {
+  CreateMenuItemDto,
+  UpdateMenuItemDto,
+  QueryMenuItemsDto,
+  MenuItemStatus,
+} from './dto';
 import * as ExcelJS from 'exceljs';
 import csvParser from 'csv-parser';
 import { Readable } from 'stream';
@@ -23,7 +28,11 @@ export class MenuService {
   /**
    * Get paginated list of menu items with filtering
    */
-  async findAll(tenantId: string, query: QueryMenuItemsDto, isCustomer: boolean = false) {
+  async findAll(
+    tenantId: string,
+    query: QueryMenuItemsDto,
+    isCustomer: boolean = false,
+  ) {
     const {
       page = 1,
       limit = 10,
@@ -50,7 +59,9 @@ export class MenuService {
     }
 
     if (isCustomer) {
-      where.status = { in: [MenuItemStatus.AVAILABLE, MenuItemStatus.SOLD_OUT] };
+      where.status = {
+        in: [MenuItemStatus.AVAILABLE, MenuItemStatus.SOLD_OUT],
+      };
       where.category = { isActive: true };
     } else if (status) {
       where.status = status;
@@ -91,6 +102,7 @@ export class MenuService {
             id: true,
             imageUrl: true,
             displayOrder: true,
+            isPrimary: true,
           },
           orderBy: { displayOrder: 'asc' },
         },
@@ -134,6 +146,7 @@ export class MenuService {
         id: img.id,
         image_url: img.imageUrl,
         display_order: img.displayOrder,
+        is_primary: img.isPrimary,
       })),
       modifier_groups: item.modifierGroups.map((mg) => ({
         id: mg.modifierGroup.id,
@@ -176,6 +189,7 @@ export class MenuService {
             id: true,
             imageUrl: true,
             displayOrder: true,
+            isPrimary: true,
           },
           orderBy: { displayOrder: 'asc' },
         },
@@ -254,6 +268,7 @@ export class MenuService {
           id: img.id,
           image_url: img.imageUrl,
           display_order: img.displayOrder,
+          is_primary: img.isPrimary,
         })),
         modifier_groups: menuItem.modifierGroups.map((mg) => ({
           id: mg.modifierGroup.id,
@@ -326,6 +341,15 @@ export class MenuService {
             name: true,
           },
         },
+        images: {
+          select: {
+            id: true,
+            imageUrl: true,
+            displayOrder: true,
+            isPrimary: true,
+          },
+          orderBy: { displayOrder: 'asc' },
+        },
         modifierGroups: {
           select: {
             id: true,
@@ -339,11 +363,17 @@ export class MenuService {
       createMenuItemDto.image_urls &&
       createMenuItemDto.image_urls.length > 0
     ) {
+      const imageCount = createMenuItemDto.image_urls.length;
+      let primaryIndex = createMenuItemDto.primary_image_index ?? 0;
+      if (primaryIndex >= imageCount) {
+        primaryIndex = 0; // default to first if out of bounds
+      }
       await this.prisma.menuItemImage.createMany({
         data: createMenuItemDto.image_urls.map((url, index) => ({
           menuItemId: menuItem.id,
           imageUrl: url,
           displayOrder: index,
+          isPrimary: index === primaryIndex,
         })),
       });
     }
@@ -383,6 +413,12 @@ export class MenuService {
             }
           : null,
         nutritional_info: menuItem.nutritionalInfo,
+        images: menuItem.images.map((img) => ({
+          id: img.id,
+          image_url: img.imageUrl,
+          display_order: img.displayOrder,
+          is_primary: img.isPrimary,
+        })),
         modifier_groups: menuItem.modifierGroups,
         created_at: menuItem.createdAt,
         updated_at: menuItem.updatedAt,
@@ -477,12 +513,43 @@ export class MenuService {
 
       // Create new images if any
       if (updateMenuItemDto.image_urls.length > 0) {
+        const imageCount = updateMenuItemDto.image_urls.length;
+        let primaryIndex = updateMenuItemDto.primary_image_index ?? 0;
+        if (primaryIndex >= imageCount) {
+          primaryIndex = 0; // default to first if out of bounds
+        }
         await this.prisma.menuItemImage.createMany({
           data: updateMenuItemDto.image_urls.map((url, index) => ({
             menuItemId: id,
             imageUrl: url,
             displayOrder: index,
+            isPrimary: index === primaryIndex,
           })),
+        });
+      }
+    } else if (updateMenuItemDto.primary_image_index !== undefined) {
+      // Update primary image among existing images
+      const existingImages = await this.prisma.menuItemImage.findMany({
+        where: { menuItemId: id },
+        orderBy: { displayOrder: 'asc' },
+      });
+
+      if (existingImages.length > 0) {
+        let primaryIndex = updateMenuItemDto.primary_image_index;
+        if (primaryIndex >= existingImages.length) {
+          primaryIndex = 0;
+        }
+
+        // First, set all to not primary
+        await this.prisma.menuItemImage.updateMany({
+          where: { menuItemId: id },
+          data: { isPrimary: false },
+        });
+
+        // Then, set the primary one
+        await this.prisma.menuItemImage.update({
+          where: { id: existingImages[primaryIndex].id },
+          data: { isPrimary: true },
         });
       }
     }
@@ -515,6 +582,15 @@ export class MenuService {
             name: true,
           },
         },
+        images: {
+          select: {
+            id: true,
+            imageUrl: true,
+            displayOrder: true,
+            isPrimary: true,
+          },
+          orderBy: { displayOrder: 'asc' },
+        },
         modifierGroups: {
           select: {
             id: true,
@@ -545,6 +621,12 @@ export class MenuService {
             }
           : null,
         nutritional_info: updatedMenuItem.nutritionalInfo,
+        images: updatedMenuItem.images.map((img) => ({
+          id: img.id,
+          image_url: img.imageUrl,
+          display_order: img.displayOrder,
+          is_primary: img.isPrimary,
+        })),
         modifier_groups: updatedMenuItem.modifierGroups,
         updated_at: updatedMenuItem.updatedAt,
       },

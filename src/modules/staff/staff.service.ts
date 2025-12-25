@@ -92,7 +92,9 @@ export class StaffService {
 
     // Validate and set orderBy
     const validSortFields = ['createdAt', 'fullName', 'lastLoginAt'];
-    const orderByField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    const orderByField = validSortFields.includes(sortBy)
+      ? sortBy
+      : 'createdAt';
     const orderBy = { [orderByField]: sortOrder };
 
     // Get total count
@@ -333,10 +335,7 @@ export class StaffService {
 
     if (activeOrdersCount > 0) {
       throw new ConflictException(
-        t(
-          'staff.hasActiveOrders',
-          'Cannot delete staff with active orders',
-        ),
+        t('staff.hasActiveOrders', 'Cannot delete staff with active orders'),
       );
     }
 
@@ -380,7 +379,9 @@ export class StaffService {
       existing.fullName,
     );
 
-    this.logger.log(`Password reset email sent for staff: ${id} (${existing.email})`);
+    this.logger.log(
+      `Password reset email sent for staff: ${id} (${existing.email})`,
+    );
 
     return {
       message: t(
@@ -409,7 +410,10 @@ export class StaffService {
 
     if (existing.emailVerified) {
       throw new ConflictException(
-        t('staff.alreadyVerified', 'Staff member has already verified their email'),
+        t(
+          'staff.alreadyVerified',
+          'Staff member has already verified their email',
+        ),
       );
     }
 

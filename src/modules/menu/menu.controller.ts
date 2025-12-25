@@ -83,7 +83,10 @@ export class MenuController {
     @Query() query: QueryMenuItemsDto,
     @Req() req: Request,
   ) {
-    const isCustomer = req.user && ((req.user as User).role === ROLES.CUSTOMER || (req.user as User).role === ROLES.GUEST);
+    const isCustomer =
+      req.user &&
+      ((req.user as User).role === ROLES.CUSTOMER ||
+        (req.user as User).role === ROLES.GUEST);
     return this.menuService.findAll(tenantId, query, isCustomer);
   }
 

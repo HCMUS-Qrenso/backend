@@ -97,6 +97,17 @@ export class CreateMenuItemDto {
   image_urls?: string[];
 
   @ApiPropertyOptional({
+    example: 0,
+    description: 'Index of the primary image in the image_urls array (0-based)',
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  primary_image_index?: number;
+
+  @ApiPropertyOptional({
     example: {
       fat: 10,
       carbs: 30,
