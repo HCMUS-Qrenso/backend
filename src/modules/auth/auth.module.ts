@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { HttpModule } from '@nestjs/axios';
 import { AuthController } from './auth.controller';
 import { AuthService, EmailService, TokenService } from './services';
 import { JwtStrategy, GoogleStrategy } from './strategies';
@@ -9,6 +10,7 @@ import { PrismaService } from '../../prisma.service';
 
 @Module({
   imports: [
+    HttpModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
