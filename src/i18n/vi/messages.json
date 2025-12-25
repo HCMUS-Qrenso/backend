@@ -23,7 +23,9 @@
     "qrTokenExpired": "Token QR đã hết hạn",
     "qrTokenVerificationFailed": "Xác thực token QR thất bại",
     "qrScanRequired": "Vui lòng quét mã QR trên bàn để truy cập tính năng này",
-    "tableInactive": "Bàn này hiện không khả dụng. Vui lòng liên hệ nhân viên để được hỗ trợ."
+    "tableInactive": "Bàn này hiện không khả dụng. Vui lòng liên hệ nhân viên để được hỗ trợ.",
+    "accountSetupSuccess": "Thiết lập tài khoản thành công",
+    "accountAlreadySetup": "Tài khoản đã được thiết lập trước đó"
   },
   "tables": {
     "tableNameExists": "Một bàn với tên này đã tồn tại trong nhà hàng",
@@ -82,7 +84,11 @@
       "missingModifierField": "Modifier thiếu trường bắt buộc: {field}",
       "invalidModifierName": "Tên modifier phải là chuỗi không rỗng",
       "invalidModifierPrice": "Thuộc tính priceAdjustment của modifier phải là số",
-      "invalidModifierJson": "Cấu trúc JSON modifier không hợp lệ"
+      "invalidModifierJson": "Cấu trúc JSON modifier không hợp lệ",
+      "invalidNutritionalJson": "JSON thông tin dinh dưỡng không hợp lệ: {error}",
+      "invalidNutritionalFormat": "Thông tin dinh dưỡng phải là một đối tượng JSON",
+      "missingNutritionalKey": "Thông tin dinh dưỡng thiếu khóa bắt buộc: {key}",
+      "invalidNutritionalValue": "Thông tin dinh dưỡng {key} phải là số"
     }
   },
   "categories": {
@@ -119,6 +125,18 @@
   },
   "tenants": {
     "tenantNotFound": "Không tìm thấy tenant"
+  },
+  "staff": {
+    "staffNotFound": "Không tìm thấy nhân viên",
+    "emailExists": "Email đã tồn tại",
+    "staffCreatedSuccess": "Tạo nhân viên thành công",
+    "staffUpdatedSuccess": "Cập nhật nhân viên thành công",
+    "staffDeleted": "Xóa nhân viên thành công",
+    "staffStatusUpdated": "Cập nhật trạng thái nhân viên thành công",
+    "hasActiveOrders": "Không thể xóa nhân viên có đơn hàng đang hoạt động",
+    "passwordResetSent": "Email đặt lại mật khẩu đã được gửi thành công",
+    "inviteResent": "Email mời đã được gửi lại thành công",
+    "alreadyVerified": "Nhân viên đã xác thực email của họ"
   },
   "common": {
     "notFound": "Không tìm thấy tài nguyên",

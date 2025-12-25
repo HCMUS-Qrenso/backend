@@ -53,21 +53,19 @@ export class CreateMenuItemDto {
     example: 'available',
     description: 'Status of the menu item',
     enum: ['available', 'unavailable'],
-    default: 'available',
   })
   @IsOptional()
   @IsString()
-  status?: string = 'available';
+  status?: string;
 
   @ApiPropertyOptional({
     example: true,
     description: 'Whether this item is a chef recommendation',
-    default: false,
   })
   @IsOptional()
   @IsBoolean()
   @Type(() => Boolean)
-  is_chef_recommendation?: boolean = false;
+  is_chef_recommendation?: boolean;
 
   @ApiPropertyOptional({
     example: 'Contains gluten, dairy',
@@ -97,4 +95,45 @@ export class CreateMenuItemDto {
   @IsArray()
   @IsString({ each: true })
   image_urls?: string[];
+
+  @ApiPropertyOptional({
+    example: 0,
+    description: 'Index of the primary image in the image_urls array (0-based)',
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  primary_image_index?: number;
+
+  @ApiPropertyOptional({
+    example: {
+      fat: 10,
+      carbs: 30,
+      protein: 15,
+      calories: 300,
+    },
+    description: 'Nutritional information for the menu item',
+  })
+  @IsOptional()
+  nutritional_info?: {
+    fat?: number;
+    carbs?: number;
+    protein?: number;
+    calories?: number;
+  };
+
+  @ApiPropertyOptional({
+    example: [
+      '123e4567-e89b-12d3-a456-426614174000',
+      '123e4567-e89b-12d3-a456-426614174001',
+    ],
+    description: 'Array of modifier group IDs associated with the menu item',
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  modifier_group_ids?: string[];
 }

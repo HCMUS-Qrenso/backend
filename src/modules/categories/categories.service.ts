@@ -25,19 +25,27 @@ export class CategoriesService {
    * Get category statistics
    */
   async getStats(tenantId: string) {
-    const [totalCategories, activeCategories, totalMenuItems] =
-      await Promise.all([
-        this.prisma.category.count({
-          where: { tenantId },
-        }),
-        this.prisma.category.count({
-          where: { tenantId, isActive: true },
-        }),
-        this.prisma.menuItem.count({
-          where: { tenantId },
-        }),
-      ]);
+    // Get category stats grouped by isActive status
+    const categoryStats = await this.prisma.category.groupBy({
+      by: ['isActive'],
+      where: { tenantId },
+      _count: {
+        id: true,
+      },
+    });
 
+    // Get total menu items count
+    const totalMenuItems = await this.prisma.menuItem.count({
+      where: { tenantId },
+    });
+
+    // Process category stats
+    const totalCategories = categoryStats.reduce(
+      (sum, stat) => sum + stat._count.id,
+      0,
+    );
+    const activeCategories =
+      categoryStats.find((stat) => stat.isActive)?._count.id || 0;
     const hiddenCategories = totalCategories - activeCategories;
 
     return {

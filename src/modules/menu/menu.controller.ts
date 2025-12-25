@@ -13,6 +13,7 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -24,6 +25,8 @@ import {
   ApiHeader,
   ApiBody,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
+import { User } from '@prisma/client';
 import { MenuService } from './menu.service';
 import {
   CreateMenuItemDto,
@@ -78,8 +81,13 @@ export class MenuController {
   async findAll(
     @TenantContext('id') tenantId: string,
     @Query() query: QueryMenuItemsDto,
+    @Req() req: Request,
   ) {
-    return this.menuService.findAll(tenantId, query);
+    const isCustomer =
+      req.user &&
+      ((req.user as User).role === ROLES.CUSTOMER ||
+        (req.user as User).role === ROLES.GUEST);
+    return this.menuService.findAll(tenantId, query, isCustomer);
   }
 
   @Get('stats')
