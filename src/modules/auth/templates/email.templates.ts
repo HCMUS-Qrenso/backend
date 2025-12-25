@@ -204,7 +204,7 @@ export const EMAIL_TEMPLATES = {
   },
 
   staffInvite: {
-    subject: 'You\'re Invited to Join Qrenso! 🎉',
+    subject: "You're Invited to Join Qrenso! 🎉",
     getHtml: (fullName: string, setupUrl: string, restaurantName?: string) => `
       <!DOCTYPE html>
       <html>

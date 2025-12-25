@@ -118,7 +118,11 @@ export class EmailService {
       from: `"${this.fromName}" <${this.fromEmail}>`,
       to: email,
       subject: EMAIL_TEMPLATES.staffInvite.subject,
-      html: EMAIL_TEMPLATES.staffInvite.getHtml(fullName, setupUrl, restaurantName),
+      html: EMAIL_TEMPLATES.staffInvite.getHtml(
+        fullName,
+        setupUrl,
+        restaurantName,
+      ),
     };
 
     try {

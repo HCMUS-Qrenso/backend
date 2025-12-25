@@ -1332,14 +1332,24 @@ export class TablesService {
     });
 
     // Calculate stats from grouped results
-    const totalActiveTables = qrStats.reduce((sum, stat) => sum + stat._count.id, 0);
-    const tablesWithQr = qrStats.filter(stat => stat.qrCodeToken !== null).reduce((sum, stat) => sum + stat._count.id, 0);
+    const totalActiveTables = qrStats.reduce(
+      (sum, stat) => sum + stat._count.id,
+      0,
+    );
+    const tablesWithQr = qrStats
+      .filter((stat) => stat.qrCodeToken !== null)
+      .reduce((sum, stat) => sum + stat._count.id, 0);
     const tablesWithoutQr = totalActiveTables - tablesWithQr;
 
     // Get latest QR update from the grouped results
-    const latestQrUpdate = qrStats
-      .filter(stat => stat._max.qrCodeGeneratedAt !== null)
-      .sort((a, b) => new Date(b._max.qrCodeGeneratedAt!).getTime() - new Date(a._max.qrCodeGeneratedAt!).getTime())[0]?._max.qrCodeGeneratedAt || null;
+    const latestQrUpdate =
+      qrStats
+        .filter((stat) => stat._max.qrCodeGeneratedAt !== null)
+        .sort(
+          (a, b) =>
+            new Date(b._max.qrCodeGeneratedAt!).getTime() -
+            new Date(a._max.qrCodeGeneratedAt!).getTime(),
+        )[0]?._max.qrCodeGeneratedAt || null;
 
     return {
       success: true,

@@ -135,10 +135,16 @@ export class TenantService {
     });
 
     // Calculate status counts from grouped results
-    const totalTenants = statusStats.reduce((sum, stat) => sum + stat._count, 0);
-    const activeTenants = statusStats.find(stat => stat.status === 'active')?._count || 0;
-    const inactiveTenants = statusStats.find(stat => stat.status === 'inactive')?._count || 0;
-    const suspendedTenants = statusStats.find(stat => stat.status === 'suspended')?._count || 0;
+    const totalTenants = statusStats.reduce(
+      (sum, stat) => sum + stat._count,
+      0,
+    );
+    const activeTenants =
+      statusStats.find((stat) => stat.status === 'active')?._count || 0;
+    const inactiveTenants =
+      statusStats.find((stat) => stat.status === 'inactive')?._count || 0;
+    const suspendedTenants =
+      statusStats.find((stat) => stat.status === 'suspended')?._count || 0;
 
     // Get subscription tier breakdown
     const tierStats = await this.prisma.tenant.groupBy({
