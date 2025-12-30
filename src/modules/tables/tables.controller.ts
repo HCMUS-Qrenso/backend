@@ -189,6 +189,52 @@ export class TablesController {
   }
 
   // ============================================
+  // Session Management
+  // ============================================
+
+  @Post('session/start')
+  @UseGuards(QrTokenGuard)
+  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Start a new table session (customer)' })
+  @ApiHeader({
+    name: 'Authorization',
+    required: true,
+    description: 'Bearer token from QR scan',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Session started successfully, returns session token',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Session already exists, returns existing session',
+  })
+  async startSession(@Req() request: any, @Body() startSessionDto: any) {
+    const { qrContext } = request;
+    return this.tablesService.startSession(
+      qrContext.tableId,
+      qrContext.tenantId,
+      startSessionDto,
+    );
+  }
+
+  @Get('session/:token')
+  @ApiOperation({ summary: 'Get session details by token' })
+  @ApiParam({ name: 'token', description: 'Session token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns session details with active order',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Session not found or expired',
+  })
+  async getSession(@Param('token') token: string) {
+    return this.tablesService.getSessionByToken(token);
+  }
+
+  // ============================================
   // Table CRUD
   // ============================================
 

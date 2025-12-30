@@ -21,6 +21,8 @@ import { ModifiersModule } from './modules/modifiers/modifiers.module';
 import { UploadModule } from './modules/uploads/upload.module';
 import { JwtAuthGuard } from './modules/auth/guards';
 import { StaffModule } from './modules/staff/staff.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { EventsModule } from './modules/events/events.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { StaffModule } from './modules/staff/staff.module';
     ModifiersModule,
     UploadModule,
     StaffModule,
+    OrdersModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [

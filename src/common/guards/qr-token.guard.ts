@@ -21,12 +21,13 @@ interface QrTokenPayload extends JwtPayload {
   tenantName: string;
   tenantImage: string;
   zoneName: string;
+  type?: 'qr' | 'session'; // Token type
 }
 
 /**
- * Guard to verify QR token from x-qr-token header.
+ * Guard to verify QR token or Session token from Authorization header.
  * Staff roles can bypass this check.
- * Guests/Customers must provide valid QR token.
+ * Guests/Customers must provide valid QR token or session token.
  */
 @Injectable()
 export class QrTokenGuard implements CanActivate {
@@ -47,6 +48,8 @@ export class QrTokenGuard implements CanActivate {
         tenantName: string;
         tenantImage: string;
         zoneName: string;
+        tableSessionId?: string;
+        customerId?: string;
       };
     }>();
 
@@ -65,11 +68,11 @@ export class QrTokenGuard implements CanActivate {
       return true;
     }
 
-    // Take QR token from Bearer if user is GUEST, from x-qr-token header otherwise
-    const qrToken =
-      user?.role === ROLES.GUEST
-        ? request.headers['authorization']?.split(' ')[1]
-        : request.headers['x-qr-token'];
+    // Take token from Bearer authorization header or x-qr-token
+    const authHeader = request.headers['authorization'];
+    const qrToken = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : request.headers['x-qr-token'];
 
     if (!qrToken) {
       throw new ForbiddenException(
@@ -81,10 +84,50 @@ export class QrTokenGuard implements CanActivate {
     }
 
     try {
-      // Verify QR token signature
+      // Verify token signature
       const decoded = this.jwtService.verify<QrTokenPayload>(qrToken);
 
-      // Ensure it's a valid GUEST token with table context
+      // Check if it's a session token (from POST /tables/session/start)
+      if (decoded.type === 'session') {
+        // Find active session
+        const session = await this.prisma.tableSession.findFirst({
+          where: {
+            sessionToken: qrToken,
+            status: 'active',
+          },
+          include: {
+            table: {
+              include: {
+                tenant: { select: { name: true } },
+                zone: { select: { name: true } },
+              },
+            },
+          },
+        });
+
+        if (!session) {
+          throw new UnauthorizedException(
+            t('auth.sessionNotFound', 'Session not found or expired'),
+          );
+        }
+
+        // Attach session context to request
+        request.qrContext = {
+          tableId: session.tableId,
+          tableNumber: session.table.tableNumber,
+          tenantId: session.table.tenantId,
+          tableCapacity: session.table.capacity,
+          tenantName: session.table.tenant.name,
+          tenantImage: '',
+          zoneName: session.table.zone?.name || '',
+          tableSessionId: session.id,
+          customerId: session.customerId || undefined,
+        };
+
+        return true;
+      }
+
+      // Original QR token handling
       if (decoded.role !== ROLES.GUEST || !decoded.tableId) {
         throw new UnauthorizedException(
           t('auth.invalidQrToken', 'Invalid QR token'),
@@ -94,6 +137,10 @@ export class QrTokenGuard implements CanActivate {
       // Verify table exists and is active
       const table = await this.prisma.table.findUnique({
         where: { id: decoded.tableId, tenantId: decoded.tenantId },
+        include: {
+          tenant: { select: { name: true } },
+          zone: { select: { name: true } },
+        },
       });
 
       if (!table) {
@@ -121,15 +168,24 @@ export class QrTokenGuard implements CanActivate {
         );
       }
 
+      // Check for active session for this table
+      const activeSession = await this.prisma.tableSession.findFirst({
+        where: {
+          tableId: table.id,
+          status: 'active',
+        },
+      });
+
       // Attach table context to request for controllers to use
       request.qrContext = {
         tableId: table.id,
         tableNumber: table.tableNumber,
         tenantId: table.tenantId,
         tableCapacity: table.capacity,
-        tenantName: decoded.tenantName,
-        tenantImage: decoded.tenantImage,
-        zoneName: decoded.zoneName,
+        tenantName: table.tenant.name,
+        tenantImage: decoded.tenantImage || '',
+        zoneName: table.zone?.name || '',
+        tableSessionId: activeSession?.id,
       };
 
       return true;
@@ -156,3 +212,4 @@ export class QrTokenGuard implements CanActivate {
     }
   }
 }
+

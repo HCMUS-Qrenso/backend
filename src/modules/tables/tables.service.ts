@@ -1361,4 +1361,248 @@ export class TablesService {
       },
     };
   }
+
+  // ============================================
+  // Session Management
+  // ============================================
+
+  /**
+   * Start a new table session
+   * Called when customer clicks "Start Ordering" after scanning QR
+   */
+  async startSession(
+    tableId: string,
+    tenantId: string,
+    startSessionDto: {
+      preferred_language?: string;
+      party_size?: number;
+      guest_name?: string;
+    },
+  ) {
+    // 1. Verify table exists and is available
+    const table = await this.prisma.table.findFirst({
+      where: { id: tableId, tenantId, isActive: true },
+      include: {
+        tenant: { select: { slug: true, name: true } },
+        zone: { select: { name: true } },
+      },
+    });
+
+    if (!table) {
+      throw new NotFoundException(
+        t('tables.tableNotFound', 'Table not found'),
+      );
+    }
+
+    // 2. Check if there's already an active session for this table
+    const existingSession = await this.prisma.tableSession.findFirst({
+      where: {
+        tableId,
+        status: 'active',
+      },
+    });
+
+    if (existingSession) {
+      // Return existing session instead of creating new one
+      return {
+        success: true,
+        message: 'Session already exists',
+        data: {
+          session_id: existingSession.id,
+          session_token: existingSession.sessionToken,
+          table: {
+            id: table.id,
+            number: table.tableNumber,
+            capacity: table.capacity,
+            zone: table.zone?.name || null,
+          },
+          tenant: {
+            slug: table.tenant.slug,
+            name: table.tenant.name,
+          },
+          started_at: existingSession.startedAt,
+          guest_name: existingSession.guestName,
+        },
+      };
+    }
+
+    // 3. Generate session token (JWT)
+    const sessionPayload = {
+      role: 'guest',
+      tableId: table.id,
+      tenantId: table.tenantId,
+      tableNumber: table.tableNumber,
+      type: 'session',
+    };
+
+    const sessionToken = jwt.sign(sessionPayload, this.JWT_SECRET, {
+      expiresIn: '12h', // Session valid for 12 hours
+    });
+
+    // 4. Create table session
+    const session = await this.prisma.tableSession.create({
+      data: {
+        tableId: table.id,
+        sessionToken,
+        guestName: startSessionDto.guest_name,
+        status: 'active',
+        startedAt: new Date(),
+      },
+    });
+
+    // 5. Update table status to occupied
+    await this.prisma.table.update({
+      where: { id: tableId },
+      data: { status: 'occupied' },
+    });
+
+    this.logger.log(
+      `Session ${session.id} started for table ${table.tableNumber}`,
+    );
+
+    return {
+      success: true,
+      message: t('tables.sessionStarted', 'Session started successfully'),
+      data: {
+        session_id: session.id,
+        session_token: sessionToken,
+        table: {
+          id: table.id,
+          number: table.tableNumber,
+          capacity: table.capacity,
+          zone: table.zone?.name || null,
+        },
+        tenant: {
+          slug: table.tenant.slug,
+          name: table.tenant.name,
+        },
+        started_at: session.startedAt,
+        guest_name: session.guestName,
+      },
+    };
+  }
+
+  /**
+   * Get session by token
+   */
+  async getSessionByToken(sessionToken: string) {
+    const session = await this.prisma.tableSession.findFirst({
+      where: {
+        sessionToken,
+        status: 'active',
+      },
+      include: {
+        table: {
+          include: {
+            tenant: { select: { id: true, slug: true, name: true } },
+            zone: { select: { id: true, name: true } },
+          },
+        },
+        orders: {
+          where: {
+            status: {
+              notIn: ['completed', 'cancelled', 'rejected', 'abandoned'],
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!session) {
+      throw new NotFoundException(
+        t('tables.sessionNotFound', 'Session not found or expired'),
+      );
+    }
+
+    const activeOrder = session.orders[0] || null;
+
+    return {
+      success: true,
+      data: {
+        session_id: session.id,
+        table: {
+          id: session.table.id,
+          number: session.table.tableNumber,
+          capacity: session.table.capacity,
+          zone: session.table.zone?.name || null,
+        },
+        tenant: {
+          id: session.table.tenant.id,
+          slug: session.table.tenant.slug,
+          name: session.table.tenant.name,
+        },
+        active_order: activeOrder
+          ? {
+              id: activeOrder.id,
+              order_number: activeOrder.orderNumber,
+              status: activeOrder.status,
+              total_amount: Number(activeOrder.totalAmount),
+            }
+          : null,
+        guest_name: session.guestName,
+        started_at: session.startedAt,
+      },
+    };
+  }
+
+  /**
+   * End a table session (called when bill is paid)
+   */
+  async endSession(sessionId: string, tenantId: string) {
+    const session = await this.prisma.tableSession.findFirst({
+      where: { id: sessionId, status: 'active' },
+      include: {
+        table: { select: { tenantId: true } },
+        orders: {
+          where: {
+            status: {
+              notIn: ['completed', 'cancelled', 'rejected', 'abandoned'],
+            },
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      throw new NotFoundException(
+        t('tables.sessionNotFound', 'Session not found'),
+      );
+    }
+
+    // Verify tenant ownership
+    if (session.table.tenantId !== tenantId) {
+      throw new UnauthorizedException('Access denied');
+    }
+
+    // Check for unpaid orders
+    if (session.orders.length > 0) {
+      throw new BadRequestException(
+        t('tables.unpaidOrders', 'Please complete all orders before ending session'),
+      );
+    }
+
+    // End session
+    await this.prisma.$transaction([
+      this.prisma.tableSession.update({
+        where: { id: sessionId },
+        data: {
+          status: 'completed',
+          endedAt: new Date(),
+        },
+      }),
+      this.prisma.table.update({
+        where: { id: session.tableId },
+        data: { status: 'available' },
+      }),
+    ]);
+
+    this.logger.log(`Session ${sessionId} ended`);
+
+    return {
+      success: true,
+      message: t('tables.sessionEnded', 'Session ended successfully'),
+    };
+  }
 }

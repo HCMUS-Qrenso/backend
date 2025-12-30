@@ -7,3 +7,4 @@ export * from './batch-update-layout.dto';
 export * from './generate-qr.dto';
 export * from './query-qr.dto';
 export * from './download-qr.dto';
+export * from './session.dto';
