@@ -3,7 +3,10 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
   Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { Prisma } from '@prisma/client';
@@ -20,6 +23,7 @@ import {
   OrderItemStatus,
 } from './dto';
 import { EventsGateway } from '../events/events.gateway';
+import { TablesService } from '../tables/tables.service';
 
 @Injectable()
 export class OrdersService {
@@ -28,6 +32,8 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventsGateway: EventsGateway,
+    @Inject(forwardRef(() => TablesService))
+    private readonly tablesService: TablesService,
   ) {}
 
   // ============================================
@@ -81,6 +87,7 @@ export class OrdersService {
       priority,
       payment_status,
       table_id,
+      zone_id,
       waiter_id,
       date_from,
       date_to,
@@ -99,6 +106,9 @@ export class OrdersService {
       ...(status && { status }),
       ...(priority && { priority }),
       ...(table_id && { tableId: table_id }),
+      ...(zone_id && { 
+        table: { zoneId: zone_id } 
+      }),
       ...(waiter_id && { waiterId: waiter_id }),
       ...(date_from || date_to
         ? {
@@ -555,6 +565,9 @@ export class OrdersService {
       `Order ${orderNumber} created for table ${session.table.tableNumber}`,
     );
 
+    // Extend session expiry from 15 min to 4 hours now that order is placed
+    await this.tablesService.extendSessionForOrder(tableSessionId);
+
     // Get the full order and emit real-time event
     const result = await this.findOne(tenantId, order.id);
     
@@ -581,11 +594,23 @@ export class OrdersService {
       },
       include: {
         tableSession: true,
+        payments: {
+          where: {
+            status: { in: ['pending', 'processing'] },
+          },
+        },
       },
     });
 
     if (!order) {
       throw new NotFoundException('Order not found or cannot be modified');
+    }
+
+    // Check if payment has been initiated - cannot add items after payment starts
+    if (order.payments && order.payments.length > 0) {
+      throw new ConflictException(
+        'Cannot add items after payment has been initiated. Please contact staff for assistance.',
+      );
     }
 
     // Validate customer access

@@ -1367,8 +1367,11 @@ export class TablesService {
   // ============================================
 
   /**
-   * Start a new table session
+   * Start a new table session or JOIN existing session
    * Called when customer clicks "Start Ordering" after scanning QR
+   *
+   * JOIN Policy: If table has active session, new devices join the same session
+   * with a fresh token (same sessionId, different token per device)
    */
   async startSession(
     tableId: string,
@@ -1377,6 +1380,7 @@ export class TablesService {
       preferred_language?: string;
       party_size?: number;
       guest_name?: string;
+      device_id?: string;
     },
   ) {
     // 1. Verify table exists and is available
@@ -1389,10 +1393,13 @@ export class TablesService {
     });
 
     if (!table) {
-      throw new NotFoundException(
-        t('tables.tableNotFound', 'Table not found'),
-      );
+      throw new NotFoundException(t('tables.tableNotFound', 'Table not found'));
     }
+
+    // Generate unique device ID if not provided
+    const deviceId =
+      startSessionDto.device_id ||
+      `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // 2. Check if there's already an active session for this table
     const existingSession = await this.prisma.tableSession.findFirst({
@@ -1400,16 +1407,59 @@ export class TablesService {
         tableId,
         status: 'active',
       },
+      include: {
+        orders: {
+          where: {
+            status: {
+              notIn: ['completed', 'cancelled', 'rejected', 'abandoned'],
+            },
+          },
+        },
+      },
     });
 
     if (existingSession) {
-      // Return existing session instead of creating new one
+      // JOIN existing session - generate new token for this device
+      const sessionPayload = {
+        role: 'guest',
+        tableId: table.id,
+        tenantId: table.tenantId,
+        tableNumber: table.tableNumber,
+        type: 'session',
+        sessionId: existingSession.id,
+        deviceId,
+      };
+
+      const newSessionToken = jwt.sign(sessionPayload, this.JWT_SECRET, {
+        expiresIn: '4h', // Token valid for 4 hours
+      });
+
+      // Add device to session's deviceIds array and update activity
+      const updatedDeviceIds = existingSession.deviceIds.includes(deviceId)
+        ? existingSession.deviceIds
+        : [...existingSession.deviceIds, deviceId];
+
+      await this.prisma.tableSession.update({
+        where: { id: existingSession.id },
+        data: {
+          deviceIds: updatedDeviceIds,
+          lastActivityAt: new Date(),
+          // Update session token to the new one (all devices will use latest)
+          sessionToken: newSessionToken,
+        },
+      });
+
+      this.logger.log(
+        `Device ${deviceId} joined session ${existingSession.id} for table ${table.tableNumber}`,
+      );
+
       return {
         success: true,
-        message: 'Session already exists',
+        message: 'Joined existing session',
         data: {
           session_id: existingSession.id,
-          session_token: existingSession.sessionToken,
+          session_token: newSessionToken,
+          is_join: true,
           table: {
             id: table.id,
             number: table.tableNumber,
@@ -1422,31 +1472,42 @@ export class TablesService {
           },
           started_at: existingSession.startedAt,
           guest_name: existingSession.guestName,
+          guest_count: existingSession.guestCount,
+          has_active_order: existingSession.orders.length > 0,
         },
       };
     }
 
-    // 3. Generate session token (JWT)
+    // 3. Create NEW session - Generate session token (JWT)
     const sessionPayload = {
       role: 'guest',
       tableId: table.id,
       tenantId: table.tenantId,
       tableNumber: table.tableNumber,
       type: 'session',
+      deviceId,
     };
 
     const sessionToken = jwt.sign(sessionPayload, this.JWT_SECRET, {
-      expiresIn: '12h', // Session valid for 12 hours
+      expiresIn: '4h', // Token valid for 4 hours
     });
 
-    // 4. Create table session
+    // 4. Create table session with lifecycle fields
+    // Session expires in 15 minutes if no order is placed
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes
+
     const session = await this.prisma.tableSession.create({
       data: {
         tableId: table.id,
         sessionToken,
         guestName: startSessionDto.guest_name,
+        guestCount: startSessionDto.party_size || 1,
         status: 'active',
-        startedAt: new Date(),
+        startedAt: now,
+        expiresAt,
+        lastActivityAt: now,
+        deviceIds: [deviceId],
       },
     });
 
@@ -1457,7 +1518,7 @@ export class TablesService {
     });
 
     this.logger.log(
-      `Session ${session.id} started for table ${table.tableNumber}`,
+      `Session ${session.id} created for table ${table.tableNumber} by device ${deviceId}`,
     );
 
     return {
@@ -1466,6 +1527,7 @@ export class TablesService {
       data: {
         session_id: session.id,
         session_token: sessionToken,
+        is_join: false,
         table: {
           id: table.id,
           number: table.tableNumber,
@@ -1478,6 +1540,9 @@ export class TablesService {
         },
         started_at: session.startedAt,
         guest_name: session.guestName,
+        guest_count: session.guestCount,
+        expires_at: session.expiresAt,
+        has_active_order: false,
       },
     };
   }
@@ -1542,7 +1607,111 @@ export class TablesService {
             }
           : null,
         guest_name: session.guestName,
+        guest_count: session.guestCount,
         started_at: session.startedAt,
+        expires_at: session.expiresAt,
+        last_activity_at: session.lastActivityAt,
+      },
+    };
+  }
+
+  /**
+   * Update session activity timestamp
+   * Called when any action is performed with session token
+   */
+  async updateSessionActivity(sessionId: string) {
+    await this.prisma.tableSession.update({
+      where: { id: sessionId },
+      data: { lastActivityAt: new Date() },
+    });
+  }
+
+  /**
+   * Extend session expiry when order is created
+   * Changes expiry from 15 min to 4 hours
+   */
+  async extendSessionForOrder(sessionId: string) {
+    const fourHoursFromNow = new Date(Date.now() + 4 * 60 * 60 * 1000);
+    await this.prisma.tableSession.update({
+      where: { id: sessionId },
+      data: {
+        expiresAt: fourHoursFromNow,
+        lastActivityAt: new Date(),
+      },
+    });
+    this.logger.log(
+      `Session ${sessionId} extended to ${fourHoursFromNow.toISOString()}`,
+    );
+  }
+
+  /**
+   * Refresh session token (when current token is about to expire but session is still active)
+   */
+  async refreshSessionToken(sessionId: string, tenantId: string) {
+    const session = await this.prisma.tableSession.findFirst({
+      where: {
+        id: sessionId,
+        status: 'active',
+        table: { tenantId },
+      },
+      include: {
+        table: {
+          include: {
+            tenant: { select: { slug: true, name: true } },
+            zone: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      throw new NotFoundException(
+        t('tables.sessionNotFound', 'Session not found or expired'),
+      );
+    }
+
+    // Generate new session token
+    const sessionPayload = {
+      role: 'guest',
+      tableId: session.tableId,
+      tenantId: session.table.tenantId,
+      tableNumber: session.table.tableNumber,
+      type: 'session',
+      sessionId: session.id,
+    };
+
+    const newSessionToken = jwt.sign(sessionPayload, this.JWT_SECRET, {
+      expiresIn: '4h',
+    });
+
+    // Update session with new token
+    await this.prisma.tableSession.update({
+      where: { id: sessionId },
+      data: {
+        sessionToken: newSessionToken,
+        lastActivityAt: new Date(),
+      },
+    });
+
+    this.logger.log(`Session ${sessionId} token refreshed`);
+
+    return {
+      success: true,
+      message: 'Session token refreshed',
+      data: {
+        session_id: session.id,
+        session_token: newSessionToken,
+        table: {
+          id: session.table.id,
+          number: session.table.tableNumber,
+          capacity: session.table.capacity,
+          zone: session.table.zone?.name || null,
+        },
+        tenant: {
+          slug: session.table.tenant.slug,
+          name: session.table.tenant.name,
+        },
+        expires_at: session.expiresAt,
       },
     };
   }
@@ -1579,7 +1748,10 @@ export class TablesService {
     // Check for unpaid orders
     if (session.orders.length > 0) {
       throw new BadRequestException(
-        t('tables.unpaidOrders', 'Please complete all orders before ending session'),
+        t(
+          'tables.unpaidOrders',
+          'Please complete all orders before ending session',
+        ),
       );
     }
 

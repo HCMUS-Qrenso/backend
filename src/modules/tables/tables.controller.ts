@@ -12,6 +12,7 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -232,6 +233,37 @@ export class TablesController {
   })
   async getSession(@Param('token') token: string) {
     return this.tablesService.getSessionByToken(token);
+  }
+
+  @Post('session/refresh')
+  @UseGuards(QrTokenGuard)
+  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Refresh session token (when current token is about to expire)',
+  })
+  @ApiHeader({
+    name: 'Authorization',
+    required: true,
+    description: 'Bearer token (current session token)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Session token refreshed successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Session not found or already ended',
+  })
+  async refreshSession(@Req() request: any) {
+    const { qrContext } = request;
+    if (!qrContext.tableSessionId) {
+      throw new NotFoundException('No active session found');
+    }
+    return this.tablesService.refreshSessionToken(
+      qrContext.tableSessionId,
+      qrContext.tenantId,
+    );
   }
 
   // ============================================

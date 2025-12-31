@@ -342,6 +342,11 @@ model TableSession {
   endedAt         DateTime? @map("ended_at") @db.Timestamp(6)
   durationMinutes Int?      @map("duration_minutes")
   status          String    @default("active") @db.VarChar(20)
+  // New fields for session lifecycle management
+  expiresAt       DateTime? @map("expires_at") @db.Timestamp(6)
+  lastActivityAt  DateTime  @default(now()) @map("last_activity_at") @db.Timestamp(6)
+  guestCount      Int       @default(1) @map("guest_count")
+  deviceIds       String[]  @default([]) @map("device_ids")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
@@ -353,6 +358,7 @@ model TableSession {
   @@index([sessionToken])
   @@index([customerId])
   @@index([tableId, status])
+  @@index([expiresAt])
   @@map("table_sessions")
 }
 
@@ -639,4 +645,41 @@ model Setting {
   @@unique([tenantId, key])
   @@index([tenantId])
   @@map("settings")
+}
+
+// ============================================
+// IDEMPOTENCY KEYS TABLE
+// ============================================
+
+model IdempotencyKey {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String   @unique @db.VarChar(255)
+  endpoint    String   @db.VarChar(255)
+  method      String   @db.VarChar(10)
+  response    Json?    @db.JsonB
+  statusCode  Int?     @map("status_code")
+  expiresAt   DateTime @map("expires_at") @db.Timestamp(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+// ============================================
+// ANALYTICS EVENTS TABLE
+// ============================================
+
+model AnalyticsEvent {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  tableSessionId  String?  @map("table_session_id") @db.Uuid
+  eventType       String   @map("event_type") @db.VarChar(50)
+  deviceId        String?  @map("device_id") @db.VarChar(255)
+  metadata        Json?    @db.JsonB
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([tenantId, eventType, createdAt])
+  @@index([tableSessionId])
+  @@map("analytics_events")
 }

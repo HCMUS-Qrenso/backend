@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
   Req,
@@ -30,13 +31,22 @@ import {
   UpdateOrderItemStatusDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
-import { Roles, TenantContext, CurrentUser } from '../../common/decorators';
+import {
+  Roles,
+  TenantContext,
+  CurrentUser,
+  Idempotent,
+} from '../../common/decorators';
 import { ROLES } from '../../common/constants';
 import {
   QrTokenGuard,
   RolesGuard,
   TenantOwnershipGuard,
 } from '../../common/guards';
+import {
+  SessionActivityInterceptor,
+  IdempotencyInterceptor,
+} from '../../common/interceptors';
 
 @ApiTags('orders')
 @Controller('orders')
@@ -107,7 +117,12 @@ export class OrdersController {
     @Body() updateStatusDto: UpdateOrderStatusDto,
     @CurrentUser() user: any,
   ) {
-    return this.ordersService.updateStatus(tenantId, id, updateStatusDto, user.id);
+    return this.ordersService.updateStatus(
+      tenantId,
+      id,
+      updateStatusDto,
+      user.id,
+    );
   }
 
   @Patch(':id/priority')
@@ -163,6 +178,8 @@ export class OrdersController {
 
   @Post()
   @UseGuards(QrTokenGuard)
+  @UseInterceptors(SessionActivityInterceptor, IdempotencyInterceptor)
+  @Idempotent(60) // Cache response for 60 minutes
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new order (customer)' })
@@ -170,6 +187,11 @@ export class OrdersController {
     name: 'Authorization',
     required: true,
     description: 'Bearer token from QR scan (session token)',
+  })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: false,
+    description: 'Unique key for idempotent requests (prevents double orders)',
   })
   @ApiResponse({
     status: 201,
@@ -191,6 +213,8 @@ export class OrdersController {
 
   @Post(':id/items')
   @UseGuards(QrTokenGuard)
+  @UseInterceptors(SessionActivityInterceptor, IdempotencyInterceptor)
+  @Idempotent(60) // Cache response for 60 minutes
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Add items to an existing order (customer)' })
@@ -199,6 +223,12 @@ export class OrdersController {
     name: 'Authorization',
     required: true,
     description: 'Bearer token from QR scan (session token)',
+  })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: false,
+    description:
+      'Unique key for idempotent requests (prevents duplicate item additions)',
   })
   @ApiResponse({
     status: 200,
@@ -220,6 +250,7 @@ export class OrdersController {
 
   @Get('my-order')
   @UseGuards(QrTokenGuard)
+  @UseInterceptors(SessionActivityInterceptor)
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
   @ApiOperation({ summary: 'Get current order for table session (customer)' })
   @ApiHeader({
@@ -233,7 +264,7 @@ export class OrdersController {
   })
   async getMyOrder(@Req() request: any) {
     const { qrContext } = request;
-    
+
     if (!qrContext.tableSessionId) {
       return {
         success: true,
@@ -241,7 +272,7 @@ export class OrdersController {
         message: 'No active session. Please start a session first.',
       };
     }
-    
+
     return this.ordersService.getMyOrder(
       qrContext.tableSessionId,
       qrContext.tenantId,
