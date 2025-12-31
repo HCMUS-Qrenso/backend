@@ -1114,6 +1114,7 @@ export class OrdersService {
             name: mod.modifierName,
             priceAdjustment: Number(mod.priceAdjustment),
           })),
+          createdAt: item.createdAt, // When this item was added to the order
         })),
         subtotal: Number(order.subtotal),
         taxAmount: Number(order.taxAmount),

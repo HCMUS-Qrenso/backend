@@ -37,7 +37,7 @@ import {
   DownloadFormat,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
-import { Roles, TenantContext } from '../../common/decorators';
+import { Roles, TenantContext, Public } from '../../common/decorators';
 import { ROLES } from 'src/common/constants';
 import {
   QrTokenGuard,
@@ -170,8 +170,9 @@ export class TablesController {
   }
 
   @Get('qr/verify-token')
-  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @Public()
   @UseGuards(QrTokenGuard)
+  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
   @ApiOperation({ summary: 'Verify QR token and get table context' })
   @ApiHeader({
     name: 'x-qr-token',
@@ -194,6 +195,7 @@ export class TablesController {
   // ============================================
 
   @Post('session/start')
+  @Public()
   @UseGuards(QrTokenGuard)
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
   @HttpCode(HttpStatus.CREATED)

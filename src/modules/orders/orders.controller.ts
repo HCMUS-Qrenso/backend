@@ -36,6 +36,7 @@ import {
   TenantContext,
   CurrentUser,
   Idempotent,
+  Public,
 } from '../../common/decorators';
 import { ROLES } from '../../common/constants';
 import {
@@ -84,6 +85,122 @@ export class OrdersController {
   async getStats(@TenantContext() tenantId: string) {
     return this.ordersService.getStats(tenantId);
   }
+
+  // ============================================
+  // Customer Endpoints (QR Token Auth)
+  // IMPORTANT: These must be defined BEFORE :id routes
+  // ============================================
+
+  @Get('my-order')
+  @Public()
+  @UseGuards(QrTokenGuard)
+  @UseInterceptors(SessionActivityInterceptor)
+  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @ApiOperation({ summary: 'Get current order for table session (customer)' })
+  @ApiHeader({
+    name: 'Authorization',
+    required: true,
+    description: 'Bearer token from QR scan (session token)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns current order for the table session',
+  })
+  async getMyOrder(@Req() request: any) {
+    const { qrContext } = request;
+
+    if (!qrContext.tableSessionId) {
+      return {
+        success: true,
+        data: null,
+        message: 'No active session. Please start a session first.',
+      };
+    }
+
+    return this.ordersService.getMyOrder(
+      qrContext.tableSessionId,
+      qrContext.tenantId,
+    );
+  }
+
+  @Post()
+  @Public()
+  @UseGuards(QrTokenGuard)
+  @UseInterceptors(SessionActivityInterceptor, IdempotencyInterceptor)
+  @Idempotent(60) // Cache response for 60 minutes
+  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a new order (customer)' })
+  @ApiHeader({
+    name: 'Authorization',
+    required: true,
+    description: 'Bearer token from QR scan (session token)',
+  })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: false,
+    description: 'Unique key for idempotent requests (prevents double orders)',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Order created successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request or table already has active order',
+  })
+  async create(@Body() createOrderDto: CreateOrderDto, @Req() request: any) {
+    const { qrContext } = request;
+    return this.ordersService.create(
+      qrContext.tenantId,
+      qrContext.tableSessionId,
+      createOrderDto,
+      qrContext.customerId,
+    );
+  }
+
+  @Post(':id/items')
+  @Public()
+  @UseGuards(QrTokenGuard)
+  @UseInterceptors(SessionActivityInterceptor, IdempotencyInterceptor)
+  @Idempotent(60) // Cache response for 60 minutes
+  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Add items to an existing order (customer)' })
+  @ApiParam({ name: 'id', description: 'Order ID (UUID)' })
+  @ApiHeader({
+    name: 'Authorization',
+    required: true,
+    description: 'Bearer token from QR scan (session token)',
+  })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: false,
+    description:
+      'Unique key for idempotent requests (prevents duplicate item additions)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Items added to order successfully',
+  })
+  async addItems(
+    @Param('id') id: string,
+    @Body() addItemsDto: AddOrderItemsDto,
+    @Req() request: any,
+  ) {
+    const { qrContext } = request;
+    return this.ordersService.addItems(
+      qrContext.tenantId,
+      id,
+      addItemsDto,
+      qrContext.customerId,
+    );
+  }
+
+  // ============================================
+  // Admin/Staff Endpoints with :id parameter
+  // IMPORTANT: These must be defined AFTER specific routes like 'my-order'
+  // ============================================
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, TenantOwnershipGuard, RolesGuard)
@@ -169,113 +286,6 @@ export class OrdersController {
       itemId,
       updateStatusDto,
       user?.id,
-    );
-  }
-
-  // ============================================
-  // Customer Endpoints (QR Token Auth)
-  // ============================================
-
-  @Post()
-  @UseGuards(QrTokenGuard)
-  @UseInterceptors(SessionActivityInterceptor, IdempotencyInterceptor)
-  @Idempotent(60) // Cache response for 60 minutes
-  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new order (customer)' })
-  @ApiHeader({
-    name: 'Authorization',
-    required: true,
-    description: 'Bearer token from QR scan (session token)',
-  })
-  @ApiHeader({
-    name: 'Idempotency-Key',
-    required: false,
-    description: 'Unique key for idempotent requests (prevents double orders)',
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'Order created successfully',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid request or table already has active order',
-  })
-  async create(@Body() createOrderDto: CreateOrderDto, @Req() request: any) {
-    const { qrContext } = request;
-    return this.ordersService.create(
-      qrContext.tenantId,
-      qrContext.tableSessionId,
-      createOrderDto,
-      qrContext.customerId,
-    );
-  }
-
-  @Post(':id/items')
-  @UseGuards(QrTokenGuard)
-  @UseInterceptors(SessionActivityInterceptor, IdempotencyInterceptor)
-  @Idempotent(60) // Cache response for 60 minutes
-  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Add items to an existing order (customer)' })
-  @ApiParam({ name: 'id', description: 'Order ID (UUID)' })
-  @ApiHeader({
-    name: 'Authorization',
-    required: true,
-    description: 'Bearer token from QR scan (session token)',
-  })
-  @ApiHeader({
-    name: 'Idempotency-Key',
-    required: false,
-    description:
-      'Unique key for idempotent requests (prevents duplicate item additions)',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Items added to order successfully',
-  })
-  async addItems(
-    @Param('id') id: string,
-    @Body() addItemsDto: AddOrderItemsDto,
-    @Req() request: any,
-  ) {
-    const { qrContext } = request;
-    return this.ordersService.addItems(
-      qrContext.tenantId,
-      id,
-      addItemsDto,
-      qrContext.customerId,
-    );
-  }
-
-  @Get('my-order')
-  @UseGuards(QrTokenGuard)
-  @UseInterceptors(SessionActivityInterceptor)
-  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
-  @ApiOperation({ summary: 'Get current order for table session (customer)' })
-  @ApiHeader({
-    name: 'Authorization',
-    required: true,
-    description: 'Bearer token from QR scan (session token)',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns current order for the table session',
-  })
-  async getMyOrder(@Req() request: any) {
-    const { qrContext } = request;
-
-    if (!qrContext.tableSessionId) {
-      return {
-        success: true,
-        data: null,
-        message: 'No active session. Please start a session first.',
-      };
-    }
-
-    return this.ordersService.getMyOrder(
-      qrContext.tableSessionId,
-      qrContext.tenantId,
     );
   }
 }
