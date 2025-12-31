@@ -24,7 +24,7 @@ import { StaffService } from './staff.service';
 import {
   CreateStaffDto,
   UpdateStaffDto,
-  UpdateStatusDto,
+  UpdateStaffStatusDto,
   QueryStaffDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
@@ -176,7 +176,7 @@ export class StaffController {
   async updateStatus(
     @TenantContext() tenantId: string,
     @Param('id') id: string,
-    @Body() updateStatusDto: UpdateStatusDto,
+    @Body() updateStatusDto: UpdateStaffStatusDto,
   ) {
     return this.staffService.updateStatus(tenantId, id, updateStatusDto);
   }

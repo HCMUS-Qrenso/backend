@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsIn } from 'class-validator';
 
-export class UpdateStatusDto {
+export class UpdateStaffStatusDto {
   @ApiProperty({
     example: 'suspended',
     description: 'New status for the staff member',

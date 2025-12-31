@@ -27,7 +27,7 @@ import { TablesService } from './tables.service';
 import {
   CreateTableDto,
   UpdateTableDto,
-  UpdateStatusDto,
+  UpdateTableStatusDto,
   QueryTablesDto,
   UpdatePositionDto,
   BatchUpdateLayoutDto,
@@ -367,7 +367,7 @@ export class TablesController {
   async updateStatus(
     @TenantContext() tenantId: string,
     @Param('id') id: string,
-    @Body() updateStatusDto: UpdateStatusDto,
+    @Body() updateStatusDto: UpdateTableStatusDto,
   ) {
     return this.tablesService.updateStatus(
       tenantId,

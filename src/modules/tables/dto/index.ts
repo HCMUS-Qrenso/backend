@@ -1,6 +1,6 @@
 export * from './create-table.dto';
 export * from './update-table.dto';
-export * from './update-status.dto';
+export * from './update-table-status.dto';
 export * from './query-tables.dto';
 export * from './update-position.dto';
 export * from './batch-update-layout.dto';
