@@ -32,6 +32,30 @@ export class EmailService {
     }
   }
 
+  /**
+   * Get frontend URL based on user role
+   * Customer operations → APP_ORDER_URL (customer frontend)
+   * Admin/Staff operations → FRONTEND_URL (admin frontend)
+   */
+  private getFrontendUrl(userRole?: string): string {
+    const isCustomer = userRole === 'customer';
+
+    if (isCustomer) {
+      const customerUrl = this.configService.get<string>('APP_ORDER_URL');
+      if (customerUrl) {
+        return customerUrl;
+      }
+      this.logger.warn(
+        'APP_ORDER_URL not configured, falling back to FRONTEND_URL for customer',
+      );
+    }
+
+    // Default to admin frontend URL
+    return (
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3001'
+    );
+  }
+
   private async sendEmail(
     to: string,
     subject: string,
@@ -70,8 +94,10 @@ export class EmailService {
     email: string,
     token: string,
     fullName: string,
+    userRole?: string,
   ): Promise<void> {
-    const verificationUrl = `${this.configService.get<string>('FRONTEND_URL')}/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
+    const frontendUrl = this.getFrontendUrl(userRole);
+    const verificationUrl = `${frontendUrl}/auth/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
 
     try {
       await this.sendEmail(
@@ -79,7 +105,9 @@ export class EmailService {
         EMAIL_TEMPLATES.verification.subject,
         EMAIL_TEMPLATES.verification.getHtml(fullName, verificationUrl),
       );
-      this.logger.log(`Verification email sent to ${email}`);
+      this.logger.log(
+        `Verification email sent to ${email} (frontend: ${frontendUrl})`,
+      );
     } catch (error) {
       this.logger.error(
         `Failed to send verification email to ${email}:`,
@@ -93,8 +121,10 @@ export class EmailService {
     email: string,
     token: string,
     fullName: string,
+    userRole?: string,
   ): Promise<void> {
-    const resetUrl = `${this.configService.get<string>('FRONTEND_URL')}/auth/reset-password?token=${token}`;
+    const frontendUrl = this.getFrontendUrl(userRole);
+    const resetUrl = `${frontendUrl}/auth/reset-password?token=${token}`;
 
     try {
       await this.sendEmail(
@@ -102,7 +132,9 @@ export class EmailService {
         EMAIL_TEMPLATES.passwordReset.subject,
         EMAIL_TEMPLATES.passwordReset.getHtml(fullName, resetUrl),
       );
-      this.logger.log(`Password reset email sent to ${email}`);
+      this.logger.log(
+        `Password reset email sent to ${email} (frontend: ${frontendUrl})`,
+      );
     } catch (error) {
       this.logger.error(
         `Failed to send password reset email to ${email}:`,

@@ -38,6 +38,22 @@ export class RolesGuard implements CanActivate {
       return requiredRoles.some((role) => user.role === role);
     }
 
+    // For guest users (no JWT token, request.user = null):
+    // - If qrContext exists (QrTokenGuard already ran), allow if GUEST/CUSTOMER roles are required
+    // - If qrContext doesn't exist yet (QrTokenGuard runs after), allow if GUEST/CUSTOMER roles are required
+    //   (QrTokenGuard will validate the token and set qrContext)
+    if (!user) {
+      // Check if GUEST or CUSTOMER roles are in required roles
+      const allowsGuest = requiredRoles.some(
+        (role) => role === ROLES.GUEST || role === ROLES.CUSTOMER,
+      );
+
+      if (allowsGuest) {
+        // Allow guest users - QrTokenGuard will validate QR/session token
+        return true;
+      }
+    }
+
     // For endpoints using QrTokenGuard, check if qrContext exists
     if (request.qrContext) {
       return requiredRoles.some(

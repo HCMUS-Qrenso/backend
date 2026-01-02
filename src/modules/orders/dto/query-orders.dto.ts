@@ -37,6 +37,31 @@ export enum PaymentStatus {
   REFUNDED = 'refunded',
 }
 
+/**
+ * Order Payment Status for payment lock feature
+ * Used to track payment lifecycle and enforce "no add items after payment initiated" rule
+ */
+export enum OrderPaymentStatus {
+  NONE = 'none', // No payment initiated
+  INITIATED = 'initiated', // Payment process started (lock adding items)
+  PROCESSING = 'processing', // Payment is being processed
+  PAID = 'paid', // Payment completed successfully
+  FAILED = 'failed', // Payment failed (may allow retry)
+}
+
+/**
+ * Item-level status for KDS tracking
+ */
+export enum OrderItemStatus {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted',
+  PREPARING = 'preparing',
+  READY = 'ready',
+  SERVED = 'served',
+  CANCELLED = 'cancelled',
+  RETURNED = 'returned',
+}
+
 export class QueryOrdersDto {
   @ApiPropertyOptional({
     example: 1,

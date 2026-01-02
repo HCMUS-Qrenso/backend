@@ -1381,6 +1381,7 @@ export class TablesService {
       party_size?: number;
       guest_name?: string;
       device_id?: string;
+      customerId?: string; // For authenticated users
     },
   ) {
     // 1. Verify table exists and is available
@@ -1446,6 +1447,8 @@ export class TablesService {
           lastActivityAt: new Date(),
           // Update session token to the new one (all devices will use latest)
           sessionToken: newSessionToken,
+          // Update customerId if provided and session doesn't have one yet
+          customerId: existingSession.customerId || startSessionDto.customerId || null,
         },
       });
 
@@ -1508,6 +1511,7 @@ export class TablesService {
         expiresAt,
         lastActivityAt: now,
         deviceIds: [deviceId],
+        customerId: startSessionDto.customerId || null, // Link to authenticated user if provided
       },
     });
 

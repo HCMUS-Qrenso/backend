@@ -69,6 +69,7 @@ export class AuthService {
       email,
       verificationToken,
       fullName,
+      ROLES.CUSTOMER, // Customer signup always uses customer frontend
     );
 
     this.logger.log(`User registered: ${email}`);
@@ -172,6 +173,7 @@ export class AuthService {
       email,
       resetToken,
       user.fullName,
+      user.role, // Use user's role to determine frontend URL
     );
 
     this.logger.log(`Password reset requested for: ${email}`);
@@ -366,6 +368,7 @@ export class AuthService {
         email,
         verificationToken,
         user.fullName,
+        user.role, // Use user's role to determine frontend URL
       );
       this.logger.log(`Password reset email resent for: ${email}`);
     } else {
@@ -373,6 +376,7 @@ export class AuthService {
         email,
         verificationToken,
         user.fullName,
+        user.role, // Use user's role to determine frontend URL
       );
       this.logger.log(`Verification email resent for: ${email}`);
     }

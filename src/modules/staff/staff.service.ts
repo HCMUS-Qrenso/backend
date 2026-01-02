@@ -377,6 +377,7 @@ export class StaffService {
       existing.email,
       resetToken,
       existing.fullName,
+      existing.role, // Use staff role (will default to FRONTEND_URL)
     );
 
     this.logger.log(

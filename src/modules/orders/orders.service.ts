@@ -14,6 +14,7 @@ import {
   QueryOrdersDto,
   OrderStatus,
   PaymentStatus,
+  OrderPaymentStatus,
   CreateOrderDto,
   AddOrderItemsDto,
   UpdateOrderStatusDto,
@@ -358,16 +359,27 @@ export class OrdersService {
   }
 
   /**
-   * Create a new order
-   * Called when customer places order from customer-frontend
+   * Create order or add items to existing order (Single Order Per Session pattern)
+   * 
+   * Business Logic:
+   * - If session has NO active order → Create new order
+   * - If session HAS active order → Append items to existing order (auto-delegate to addItems)
+   * - If payment is initiated → Block with ConflictException
+   * 
+   * This ensures:
+   * - Only 1 active order per table session (as per project description)
+   * - Customers can add items throughout their meal
+   * - KDS/Waiter sees 1 consolidated bill per table
    */
   async create(
     tenantId: string,
     tableSessionId: string,
     createOrderDto: CreateOrderDto,
     customerId?: string,
+    deviceId?: string,
   ) {
-    const { items, special_instructions } = createOrderDto;
+    const { items, special_instructions, device_id } = createOrderDto;
+    const effectiveDeviceId = deviceId || device_id;
 
     // 1. Validate table session
     const session = await this.prisma.tableSession.findFirst({
@@ -384,6 +396,13 @@ export class OrdersService {
               notIn: ['completed', 'cancelled', 'rejected', 'abandoned'],
             },
           },
+          include: {
+            payments: {
+              where: {
+                status: { in: ['pending', 'processing'] },
+              },
+            },
+          },
         },
       },
     });
@@ -393,9 +412,36 @@ export class OrdersService {
     }
 
     // 2. Check if there's already an active order for this session
-    if (session.orders.length > 0) {
-      throw new BadRequestException(
-        'This table already has an active order. Use add items endpoint instead.',
+    const existingOrder = session.orders[0];
+    
+    if (existingOrder) {
+      // 2a. Check payment lock - cannot add items after payment initiated
+      if (existingOrder.payments && existingOrder.payments.length > 0) {
+        throw new ConflictException(
+          'Cannot add items after payment has been initiated. Please contact staff for assistance.',
+        );
+      }
+
+      // 2b. Also check paymentStatus field (new field)
+      if (existingOrder.paymentStatus && 
+          existingOrder.paymentStatus !== OrderPaymentStatus.NONE &&
+          existingOrder.paymentStatus !== OrderPaymentStatus.FAILED) {
+        throw new ConflictException(
+          'Cannot add items after payment has been initiated. Please contact staff for assistance.',
+        );
+      }
+
+      // 2c. Append items to existing order (auto-delegate)
+      this.logger.log(
+        `Session ${tableSessionId} has existing order ${existingOrder.orderNumber}, appending items`,
+      );
+      
+      return this.addItems(
+        tenantId,
+        existingOrder.id,
+        { items },
+        customerId,
+        effectiveDeviceId,
       );
     }
 
@@ -485,6 +531,9 @@ export class OrdersService {
         status: 'pending',
         specialInstructions: item.special_instructions,
         estimatedPrepTime: menuItem.preparationTime,
+        // Multi-device tracking
+        createdByDeviceId: effectiveDeviceId,
+        createdByCustomerId: customerId,
       });
 
       orderItemModifiersData.push({
@@ -500,7 +549,7 @@ export class OrdersService {
 
     // 6. Create order with items in a transaction
     const order = await this.prisma.$transaction(async (tx) => {
-      // Create the order
+      // Create the order with payment status field
       const newOrder = await tx.order.create({
         data: {
           orderNumber,
@@ -510,6 +559,7 @@ export class OrdersService {
           customerId,
           status: 'pending',
           priority: 'normal',
+          paymentStatus: OrderPaymentStatus.NONE, // New field
           subtotal,
           taxAmount,
           discountAmount: 0,
@@ -579,12 +629,18 @@ export class OrdersService {
 
   /**
    * Add items to an existing order
+   * 
+   * Business Rules:
+   * - Order must be active (not completed/cancelled/rejected/abandoned)
+   * - Payment must NOT be initiated (paymentStatus = none or failed)
+   * - Tracks which device/customer added each item for multi-device support
    */
   async addItems(
     tenantId: string,
     orderId: string,
     addItemsDto: AddOrderItemsDto,
     customerId?: string,
+    deviceId?: string,
   ) {
     const order = await this.prisma.order.findFirst({
       where: {
@@ -606,17 +662,25 @@ export class OrdersService {
       throw new NotFoundException('Order not found or cannot be modified');
     }
 
-    // Check if payment has been initiated - cannot add items after payment starts
+    // Check payment lock via Payment records
     if (order.payments && order.payments.length > 0) {
       throw new ConflictException(
         'Cannot add items after payment has been initiated. Please contact staff for assistance.',
       );
     }
 
-    // Validate customer access
-    if (customerId && order.customerId && order.customerId !== customerId) {
-      throw new ForbiddenException('You cannot modify this order');
+    // Check payment lock via paymentStatus field (new field)
+    if (order.paymentStatus && 
+        order.paymentStatus !== OrderPaymentStatus.NONE &&
+        order.paymentStatus !== OrderPaymentStatus.FAILED) {
+      throw new ConflictException(
+        'Cannot add items after payment has been initiated. Please contact staff for assistance.',
+      );
     }
+
+    // Note: We don't validate customerId strictly anymore
+    // Multiple customers at same table can add items to the same order
+    // We track who added what via createdByCustomerId field
 
     // Similar logic to create, but add to existing order
     const { items } = addItemsDto;
@@ -701,6 +765,9 @@ export class OrdersService {
         status: 'pending',
         specialInstructions: item.special_instructions,
         estimatedPrepTime: menuItem.preparationTime,
+        // Multi-device tracking: who added this item
+        createdByDeviceId: deviceId,
+        createdByCustomerId: customerId,
       });
 
       orderItemModifiersData.push({
@@ -1028,6 +1095,7 @@ export class OrdersService {
 
   /**
    * Get current order for a table session (customer)
+   * Returns the single active order for the session (single order per session pattern)
    */
   async getMyOrder(tableSessionId: string, tenantId: string) {
     // Find active order for this session
@@ -1093,7 +1161,8 @@ export class OrdersService {
         orderNumber: order.orderNumber,
         status: order.status,
         priority: order.priority,
-        paymentStatus: this.getPaymentStatus(order.payments),
+        paymentStatus: order.paymentStatus || this.getPaymentStatus(order.payments),
+        canAddItems: this.canAddItems(order),
         table: order.table,
         items: order.items.map((item) => ({
           id: item.id,
@@ -1114,7 +1183,10 @@ export class OrdersService {
             name: mod.modifierName,
             priceAdjustment: Number(mod.priceAdjustment),
           })),
-          createdAt: item.createdAt, // When this item was added to the order
+          // Multi-device tracking
+          createdByDeviceId: item.createdByDeviceId,
+          createdByCustomerId: item.createdByCustomerId,
+          createdAt: item.createdAt,
         })),
         subtotal: Number(order.subtotal),
         taxAmount: Number(order.taxAmount),
@@ -1125,6 +1197,85 @@ export class OrdersService {
         updatedAt: order.updatedAt,
       },
     };
+  }
+
+  /**
+   * Check if items can be added to an order
+   * Returns false if payment has been initiated
+   */
+  private canAddItems(order: { paymentStatus?: string; payments?: { status: string }[] }): boolean {
+    // Check paymentStatus field
+    if (order.paymentStatus && 
+        order.paymentStatus !== OrderPaymentStatus.NONE &&
+        order.paymentStatus !== OrderPaymentStatus.FAILED) {
+      return false;
+    }
+
+    // Check Payment records (legacy)
+    if (order.payments && order.payments.some(p => 
+        p.status === 'pending' || p.status === 'processing')) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Get current order for session (alias for consistent API naming)
+   * Used by /orders/current endpoint
+   */
+  async getCurrentOrder(tableSessionId: string, tenantId: string) {
+    return this.getMyOrder(tableSessionId, tenantId);
+  }
+
+  /**
+   * Add items to current order (create-or-append pattern)
+   * Used by POST /orders/current/items endpoint
+   */
+  async addItemsToCurrentOrder(
+    tenantId: string,
+    tableSessionId: string,
+    addItemsDto: AddOrderItemsDto,
+    customerId?: string,
+    deviceId?: string,
+  ) {
+    // First, get or find current order
+    const session = await this.prisma.tableSession.findFirst({
+      where: {
+        id: tableSessionId,
+        status: 'active',
+        table: { tenantId },
+      },
+      include: {
+        orders: {
+          where: {
+            status: {
+              notIn: ['completed', 'cancelled', 'rejected', 'abandoned'],
+            },
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Active table session not found');
+    }
+
+    const existingOrder = session.orders[0];
+
+    if (!existingOrder) {
+      // No order exists, create one
+      return this.create(
+        tenantId,
+        tableSessionId,
+        { items: addItemsDto.items, special_instructions: undefined },
+        customerId,
+        deviceId,
+      );
+    }
+
+    // Add items to existing order
+    return this.addItems(tenantId, existingOrder.id, addItemsDto, customerId, deviceId);
   }
 
   // ============================================

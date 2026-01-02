@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -36,7 +37,6 @@ import {
   TenantContext,
   CurrentUser,
   Idempotent,
-  Public,
 } from '../../common/decorators';
 import { ROLES } from '../../common/constants';
 import {
@@ -92,15 +92,18 @@ export class OrdersController {
   // ============================================
 
   @Get('my-order')
-  @Public()
   @UseGuards(QrTokenGuard)
   @UseInterceptors(SessionActivityInterceptor)
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
-  @ApiOperation({ summary: 'Get current order for table session (customer)' })
+  @ApiOperation({
+    summary: 'Get current order for table session (customer)',
+    description:
+      'Returns the single active order for the current table session. Alias for GET /orders/current',
+  })
   @ApiHeader({
-    name: 'Authorization',
+    name: 'x-table-session-token',
     required: true,
-    description: 'Bearer token from QR scan (session token)',
+    description: 'Session token from POST /tables/session/start',
   })
   @ApiResponse({
     status: 200,
@@ -123,31 +126,130 @@ export class OrdersController {
     );
   }
 
+  @Get('current')
+  @UseGuards(QrTokenGuard)
+  @UseInterceptors(SessionActivityInterceptor)
+  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @ApiOperation({
+    summary: 'Get current order for table session',
+    description:
+      'Returns the single active order for the current table session (single order per session pattern)',
+  })
+  @ApiHeader({
+    name: 'x-table-session-token',
+    required: true,
+    description: 'Session token from POST /tables/session/start',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns current order with canAddItems flag',
+  })
+  async getCurrentOrder(@Req() request: any) {
+    const { qrContext } = request;
+
+    if (!qrContext.tableSessionId) {
+      return {
+        success: true,
+        data: null,
+        message: 'No active session. Please start a session first.',
+      };
+    }
+
+    return this.ordersService.getCurrentOrder(
+      qrContext.tableSessionId,
+      qrContext.tenantId,
+    );
+  }
+
+  @Post('current/items')
+  @UseGuards(QrTokenGuard)
+  @UseInterceptors(SessionActivityInterceptor, IdempotencyInterceptor)
+  @Idempotent(60)
+  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Add items to current order',
+    description:
+      'Adds items to the current order. Creates a new order if none exists (create-or-append pattern).',
+  })
+  @ApiHeader({
+    name: 'x-table-session-token',
+    required: true,
+    description: 'Session token from POST /tables/session/start',
+  })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: false,
+    description: 'Unique key for idempotent requests',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Items added successfully',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Cannot add items after payment has been initiated',
+  })
+  async addItemsToCurrentOrder(
+    @Body() addItemsDto: AddOrderItemsDto,
+    @Req() request: any,
+  ) {
+    const { qrContext } = request;
+
+    if (!qrContext.tableSessionId) {
+      throw new BadRequestException(
+        'No active session. Please start a session first.',
+      );
+    }
+
+    return this.ordersService.addItemsToCurrentOrder(
+      qrContext.tenantId,
+      qrContext.tableSessionId,
+      addItemsDto,
+      qrContext.customerId,
+      qrContext.deviceId,
+    );
+  }
+
   @Post()
-  @Public()
   @UseGuards(QrTokenGuard)
   @UseInterceptors(SessionActivityInterceptor, IdempotencyInterceptor)
   @Idempotent(60) // Cache response for 60 minutes
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new order (customer)' })
+  @ApiOperation({
+    summary: 'Create order or add items to existing order (customer)',
+    description:
+      'If session has no active order, creates new order. If session has active order, appends items to it (single order per session pattern).',
+  })
+  @ApiHeader({
+    name: 'x-table-session-token',
+    required: true,
+    description:
+      'Session token from POST /tables/session/start (required for order operations)',
+  })
   @ApiHeader({
     name: 'Authorization',
-    required: true,
-    description: 'Bearer token from QR scan (session token)',
+    required: false,
+    description: 'Bearer {accessToken} for authenticated users (optional)',
   })
   @ApiHeader({
     name: 'Idempotency-Key',
     required: false,
-    description: 'Unique key for idempotent requests (prevents double orders)',
+    description:
+      'Unique key for idempotent requests (prevents duplicate orders/items)',
   })
   @ApiResponse({
     status: 201,
-    description: 'Order created successfully',
+    description: 'Order created or items added successfully',
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid request or table already has active order',
+    description: 'Invalid request',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Cannot add items after payment has been initiated',
   })
   async create(@Body() createOrderDto: CreateOrderDto, @Req() request: any) {
     const { qrContext } = request;
@@ -156,32 +258,45 @@ export class OrdersController {
       qrContext.tableSessionId,
       createOrderDto,
       qrContext.customerId,
+      qrContext.deviceId, // Pass deviceId for multi-device tracking
     );
   }
 
   @Post(':id/items')
-  @Public()
   @UseGuards(QrTokenGuard)
   @UseInterceptors(SessionActivityInterceptor, IdempotencyInterceptor)
   @Idempotent(60) // Cache response for 60 minutes
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Add items to an existing order (customer)' })
+  @ApiOperation({
+    summary: 'Add items to an existing order (customer)',
+    description:
+      'Appends items to an existing order. Will fail if payment has been initiated.',
+  })
   @ApiParam({ name: 'id', description: 'Order ID (UUID)' })
   @ApiHeader({
-    name: 'Authorization',
+    name: 'x-table-session-token',
     required: true,
-    description: 'Bearer token from QR scan (session token)',
+    description: 'Session token from POST /tables/session/start',
+  })
+  @ApiHeader({
+    name: 'Authorization',
+    required: false,
+    description: 'Bearer {accessToken} for authenticated users (optional)',
   })
   @ApiHeader({
     name: 'Idempotency-Key',
     required: false,
     description:
-      'Unique key for idempotent requests (prevents duplicate item additions)',
+      'Unique key for idempotent requests (prevents duplicate items)',
   })
   @ApiResponse({
     status: 200,
     description: 'Items added to order successfully',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Cannot add items after payment has been initiated',
   })
   async addItems(
     @Param('id') id: string,
@@ -194,6 +309,7 @@ export class OrdersController {
       id,
       addItemsDto,
       qrContext.customerId,
+      qrContext.deviceId, // Pass deviceId for multi-device tracking
     );
   }
 
