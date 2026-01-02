@@ -8,7 +8,7 @@ export enum TableStatusEnum {
   MAINTENANCE = 'maintenance',
 }
 
-export class UpdateStatusDto {
+export class UpdateTableStatusDto {
   @ApiProperty({
     enum: TableStatusEnum,
     example: TableStatusEnum.AVAILABLE,
