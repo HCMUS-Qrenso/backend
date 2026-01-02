@@ -13,7 +13,7 @@ import { IDEMPOTENT_KEY } from '../decorators/idempotent.decorator';
 
 /**
  * Interceptor to handle idempotency for POST requests
- * 
+ *
  * How it works:
  * 1. Check for Idempotency-Key header
  * 2. If key exists in DB and not expired, return cached response
@@ -70,10 +70,14 @@ export class IdempotencyInterceptor implements NestInterceptor {
           await this.prisma.idempotencyKey.delete({
             where: { key: idempotencyKey },
           });
-          this.logger.debug(`Expired idempotency key deleted: ${idempotencyKey}`);
+          this.logger.debug(
+            `Expired idempotency key deleted: ${idempotencyKey}`,
+          );
         } else {
           // Return cached response
-          this.logger.log(`Returning cached response for idempotency key: ${idempotencyKey}`);
+          this.logger.log(
+            `Returning cached response for idempotency key: ${idempotencyKey}`,
+          );
           response.status(existingKey.statusCode || 200);
           return of(existingKey.response);
         }
@@ -98,13 +102,19 @@ export class IdempotencyInterceptor implements NestInterceptor {
               },
             });
 
-            this.logger.debug(`Cached response for idempotency key: ${idempotencyKey}`);
+            this.logger.debug(
+              `Cached response for idempotency key: ${idempotencyKey}`,
+            );
           } catch (error) {
             // Duplicate key (race condition) - ignore
             if (error.code === 'P2002') {
-              this.logger.warn(`Duplicate idempotency key ignored: ${idempotencyKey}`);
+              this.logger.warn(
+                `Duplicate idempotency key ignored: ${idempotencyKey}`,
+              );
             } else {
-              this.logger.error(`Failed to cache idempotency key: ${error.message}`);
+              this.logger.error(
+                `Failed to cache idempotency key: ${error.message}`,
+              );
             }
           }
         }),
@@ -116,4 +126,3 @@ export class IdempotencyInterceptor implements NestInterceptor {
     }
   }
 }
-

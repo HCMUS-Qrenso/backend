@@ -1448,7 +1448,8 @@ export class TablesService {
           // Update session token to the new one (all devices will use latest)
           sessionToken: newSessionToken,
           // Update customerId if provided and session doesn't have one yet
-          customerId: existingSession.customerId || startSessionDto.customerId || null,
+          customerId:
+            existingSession.customerId || startSessionDto.customerId || null,
         },
       });
 
@@ -1548,6 +1549,128 @@ export class TablesService {
         expires_at: session.expiresAt,
         has_active_order: false,
       },
+    };
+  }
+
+  /**
+   * Ensure session exists for table (create or join existing)
+   * Used when verifying QR token to automatically create session
+   */
+  async ensureSession(
+    tableId: string,
+    tenantId: string,
+    options: {
+      device_id?: string;
+      customerId?: string;
+    },
+  ) {
+    // Generate unique device ID if not provided
+    const deviceId =
+      options.device_id ||
+      `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Check if there's already an active session for this table
+    const existingSession = await this.prisma.tableSession.findFirst({
+      where: {
+        tableId,
+        status: 'active',
+      },
+    });
+
+    if (existingSession) {
+      // JOIN existing session - generate new token for this device
+      const sessionPayload = {
+        role: 'guest',
+        tableId,
+        tenantId,
+        type: 'session',
+        sessionId: existingSession.id,
+        deviceId,
+      };
+
+      const newSessionToken = jwt.sign(sessionPayload, this.JWT_SECRET, {
+        expiresIn: '4h',
+      });
+
+      // Add device to session's deviceIds array and update activity
+      const updatedDeviceIds = existingSession.deviceIds.includes(deviceId)
+        ? existingSession.deviceIds
+        : [...existingSession.deviceIds, deviceId];
+
+      await this.prisma.tableSession.update({
+        where: { id: existingSession.id },
+        data: {
+          deviceIds: updatedDeviceIds,
+          lastActivityAt: new Date(),
+          sessionToken: newSessionToken,
+          customerId: existingSession.customerId || options.customerId || null,
+        },
+      });
+
+      return {
+        session_id: existingSession.id,
+        session_token: newSessionToken,
+        is_join: true,
+      };
+    }
+
+    // Create NEW session
+    const table = await this.prisma.table.findFirst({
+      where: { id: tableId, tenantId, isActive: true },
+      include: {
+        tenant: { select: { slug: true, name: true } },
+        zone: { select: { name: true } },
+      },
+    });
+
+    if (!table) {
+      throw new NotFoundException(t('tables.tableNotFound', 'Table not found'));
+    }
+
+    const sessionPayload = {
+      role: 'guest',
+      tableId: table.id,
+      tenantId: table.tenantId,
+      tableNumber: table.tableNumber,
+      type: 'session',
+      deviceId,
+    };
+
+    const sessionToken = jwt.sign(sessionPayload, this.JWT_SECRET, {
+      expiresIn: '4h',
+    });
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes
+
+    const session = await this.prisma.tableSession.create({
+      data: {
+        tableId: table.id,
+        sessionToken,
+        guestCount: 1,
+        status: 'active',
+        startedAt: now,
+        expiresAt,
+        lastActivityAt: now,
+        deviceIds: [deviceId],
+        customerId: options.customerId || null,
+      },
+    });
+
+    // Update table status to occupied
+    await this.prisma.table.update({
+      where: { id: tableId },
+      data: { status: 'occupied' },
+    });
+
+    this.logger.log(
+      `Session ${session.id} auto-created for table ${table.tableNumber} by device ${deviceId}`,
+    );
+
+    return {
+      session_id: session.id,
+      session_token: sessionToken,
+      is_join: false,
     };
   }
 

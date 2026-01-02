@@ -12,6 +12,7 @@ import { PrismaService } from '../../prisma.service';
 import { Prisma } from '@prisma/client';
 import {
   QueryOrdersDto,
+  QueryMyOrdersDto,
   OrderStatus,
   PaymentStatus,
   OrderPaymentStatus,
@@ -107,8 +108,8 @@ export class OrdersService {
       ...(status && { status }),
       ...(priority && { priority }),
       ...(table_id && { tableId: table_id }),
-      ...(zone_id && { 
-        table: { zoneId: zone_id } 
+      ...(zone_id && {
+        table: { zoneId: zone_id },
       }),
       ...(waiter_id && { waiterId: waiter_id }),
       ...(date_from || date_to
@@ -359,13 +360,288 @@ export class OrdersService {
   }
 
   /**
+   * Get paginated list of orders for a specific customer (order history)
+   */
+  async getMyOrders(customerId: string, query: QueryMyOrdersDto) {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+      payment_status,
+      date_from,
+      date_to,
+      sort_by = 'createdAt',
+      sort_order = 'desc',
+    } = query;
+
+    const skip = (page - 1) * limit;
+
+    // Build where clause - filter by customerId
+    const where: Prisma.OrderWhereInput = {
+      customerId,
+      ...(search && {
+        orderNumber: { contains: search, mode: 'insensitive' },
+      }),
+      ...(status && { status }),
+      ...(date_from || date_to
+        ? {
+            createdAt: {
+              ...(date_from && { gte: new Date(date_from) }),
+              ...(date_to && { lte: new Date(date_to + 'T23:59:59.999Z') }),
+            },
+          }
+        : {}),
+    };
+
+    // Add payment status filter
+    let paymentStatusFilter: Prisma.OrderWhereInput | undefined;
+    if (payment_status) {
+      if (payment_status === PaymentStatus.PAID) {
+        paymentStatusFilter = {
+          payments: { some: { status: 'completed' } },
+        };
+      } else if (payment_status === PaymentStatus.UNPAID) {
+        paymentStatusFilter = {
+          OR: [
+            { payments: { none: {} } },
+            { payments: { every: { status: { not: 'completed' } } } },
+          ],
+        };
+      }
+    }
+
+    const finalWhere = paymentStatusFilter
+      ? { AND: [where, paymentStatusFilter] }
+      : where;
+
+    // Build orderBy
+    const sortFieldMap: Record<string, string> = {
+      orderNumber: 'orderNumber',
+      status: 'status',
+      totalAmount: 'totalAmount',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    };
+
+    const orderBy: Prisma.OrderOrderByWithRelationInput = {
+      [sortFieldMap[sort_by] || 'createdAt']: sort_order,
+    };
+
+    // Execute queries
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where: finalWhere,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          table: {
+            select: {
+              id: true,
+              tableNumber: true,
+              zone: { select: { id: true, name: true } },
+            },
+          },
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+          items: {
+            select: {
+              id: true,
+              menuItem: {
+                select: { id: true, name: true },
+              },
+              quantity: true,
+              status: true,
+              subtotal: true,
+            },
+          },
+          payments: {
+            select: { id: true, status: true, amount: true, paidAt: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+          _count: {
+            select: { items: true },
+          },
+        },
+      }),
+      this.prisma.order.count({ where: finalWhere }),
+    ]);
+
+    // Transform orders to include payment status
+    const transformedOrders = orders.map((order) => ({
+      id: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      priority: order.priority,
+      paymentStatus: this.getPaymentStatus(order.payments),
+      table: order.table,
+      tenant: order.tenant,
+      items: order.items.map((item) => ({
+        id: item.id,
+        name: item.menuItem.name,
+        quantity: item.quantity,
+        status: item.status,
+        subtotal: Number(item.subtotal),
+      })),
+      itemCount: order._count.items,
+      subtotal: Number(order.subtotal),
+      taxAmount: Number(order.taxAmount),
+      discountAmount: Number(order.discountAmount),
+      totalAmount: Number(order.totalAmount),
+      specialInstructions: order.specialInstructions,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+    }));
+
+    return {
+      success: true,
+      data: transformedOrders,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Get order details by ID for a specific customer
+   */
+  async getMyOrderById(customerId: string, orderId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: {
+        id: orderId,
+        customerId,
+      },
+      include: {
+        table: {
+          select: {
+            id: true,
+            tableNumber: true,
+            zone: { select: { id: true, name: true } },
+          },
+        },
+        tableSession: {
+          select: {
+            id: true,
+            startedAt: true,
+            status: true,
+          },
+        },
+        waiter: {
+          select: { id: true, fullName: true, email: true },
+        },
+        customer: {
+          select: { id: true, fullName: true, email: true, phone: true },
+        },
+        items: {
+          include: {
+            menuItem: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                images: {
+                  select: { imageUrl: true },
+                  orderBy: { displayOrder: 'asc' },
+                  take: 1,
+                },
+              },
+            },
+            modifiers: {
+              select: {
+                id: true,
+                modifierName: true,
+                priceAdjustment: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+        payments: {
+          orderBy: { createdAt: 'desc' },
+        },
+        statusHistory: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            user: { select: { id: true, fullName: true } },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found or does not belong to you');
+    }
+
+    return {
+      success: true,
+      data: {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        priority: order.priority,
+        paymentStatus: this.getPaymentStatus(order.payments),
+        table: order.table,
+        tableSession: order.tableSession,
+        waiter: order.waiter,
+        customer: order.customer,
+        items: order.items.map((item) => ({
+          id: item.id,
+          menuItem: {
+            id: item.menuItem.id,
+            name: item.menuItem.name,
+            description: item.menuItem.description,
+            image: item.menuItem.images[0]?.imageUrl,
+          },
+          quantity: item.quantity,
+          unitPrice: Number(item.unitPrice),
+          modifiersTotal: Number(item.modifiersTotal),
+          subtotal: Number(item.subtotal),
+          status: item.status,
+          specialInstructions: item.specialInstructions,
+          modifiers: item.modifiers.map((mod) => ({
+            id: mod.id,
+            name: mod.modifierName,
+            priceAdjustment: Number(mod.priceAdjustment),
+          })),
+          preparationStartedAt: item.preparationStartedAt,
+          preparationCompletedAt: item.preparationCompletedAt,
+          servedAt: item.servedAt,
+          createdAt: item.createdAt,
+        })),
+        subtotal: Number(order.subtotal),
+        taxAmount: Number(order.taxAmount),
+        discountAmount: Number(order.discountAmount),
+        totalAmount: Number(order.totalAmount),
+        specialInstructions: order.specialInstructions,
+        rejectionReason: order.rejectionReason,
+        acceptedAt: order.acceptedAt,
+        completedAt: order.completedAt,
+        statusHistory: order.statusHistory,
+        payments: order.payments,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+      },
+    };
+  }
+
+  /**
    * Create order or add items to existing order (Single Order Per Session pattern)
-   * 
+   *
    * Business Logic:
    * - If session has NO active order → Create new order
    * - If session HAS active order → Append items to existing order (auto-delegate to addItems)
    * - If payment is initiated → Block with ConflictException
-   * 
+   *
    * This ensures:
    * - Only 1 active order per table session (as per project description)
    * - Customers can add items throughout their meal
@@ -413,7 +689,7 @@ export class OrdersService {
 
     // 2. Check if there's already an active order for this session
     const existingOrder = session.orders[0];
-    
+
     if (existingOrder) {
       // 2a. Check payment lock - cannot add items after payment initiated
       if (existingOrder.payments && existingOrder.payments.length > 0) {
@@ -423,9 +699,11 @@ export class OrdersService {
       }
 
       // 2b. Also check paymentStatus field (new field)
-      if (existingOrder.paymentStatus && 
-          existingOrder.paymentStatus !== OrderPaymentStatus.NONE &&
-          existingOrder.paymentStatus !== OrderPaymentStatus.FAILED) {
+      if (
+        existingOrder.paymentStatus &&
+        existingOrder.paymentStatus !== OrderPaymentStatus.NONE &&
+        existingOrder.paymentStatus !== OrderPaymentStatus.FAILED
+      ) {
         throw new ConflictException(
           'Cannot add items after payment has been initiated. Please contact staff for assistance.',
         );
@@ -435,7 +713,7 @@ export class OrdersService {
       this.logger.log(
         `Session ${tableSessionId} has existing order ${existingOrder.orderNumber}, appending items`,
       );
-      
+
       return this.addItems(
         tenantId,
         existingOrder.id,
@@ -620,7 +898,7 @@ export class OrdersService {
 
     // Get the full order and emit real-time event
     const result = await this.findOne(tenantId, order.id);
-    
+
     // Emit real-time event to notify staff
     this.eventsGateway.emitOrderCreated(tenantId, result.data);
 
@@ -629,7 +907,7 @@ export class OrdersService {
 
   /**
    * Add items to an existing order
-   * 
+   *
    * Business Rules:
    * - Order must be active (not completed/cancelled/rejected/abandoned)
    * - Payment must NOT be initiated (paymentStatus = none or failed)
@@ -670,9 +948,11 @@ export class OrdersService {
     }
 
     // Check payment lock via paymentStatus field (new field)
-    if (order.paymentStatus && 
-        order.paymentStatus !== OrderPaymentStatus.NONE &&
-        order.paymentStatus !== OrderPaymentStatus.FAILED) {
+    if (
+      order.paymentStatus &&
+      order.paymentStatus !== OrderPaymentStatus.NONE &&
+      order.paymentStatus !== OrderPaymentStatus.FAILED
+    ) {
       throw new ConflictException(
         'Cannot add items after payment has been initiated. Please contact staff for assistance.',
       );
@@ -831,11 +1111,13 @@ export class OrdersService {
       });
     });
 
-    this.logger.log(`Added ${items.length} items to order ${order.orderNumber}`);
+    this.logger.log(
+      `Added ${items.length} items to order ${order.orderNumber}`,
+    );
 
     // Get the full order and emit real-time event
     const result = await this.findOne(tenantId, order.id);
-    
+
     // Emit real-time event
     this.eventsGateway.emitItemsAdded(tenantId, order.id, result.data);
 
@@ -934,7 +1216,7 @@ export class OrdersService {
 
     // Get the full order and emit real-time event
     const result = await this.findOne(tenantId, updatedOrder.id);
-    
+
     // Emit real-time event to notify all connected clients
     this.eventsGateway.emitOrderUpdated(tenantId, updatedOrder.id, result.data);
 
@@ -997,15 +1279,18 @@ export class OrdersService {
       data: {
         status,
         cancellationReason:
-          status === OrderItemStatus.CANCELLED ? cancellation_reason : undefined,
+          status === OrderItemStatus.CANCELLED
+            ? cancellation_reason
+            : undefined,
         preparationStartedAt:
           status === OrderItemStatus.PREPARING
             ? now
             : orderItem.preparationStartedAt,
         preparationCompletedAt:
-          status === OrderItemStatus.READY ? now : orderItem.preparationCompletedAt,
-        servedAt:
-          status === OrderItemStatus.SERVED ? now : orderItem.servedAt,
+          status === OrderItemStatus.READY
+            ? now
+            : orderItem.preparationCompletedAt,
+        servedAt: status === OrderItemStatus.SERVED ? now : orderItem.servedAt,
         actualPrepTime:
           status === OrderItemStatus.READY && orderItem.preparationStartedAt
             ? Math.floor(
@@ -1062,7 +1347,10 @@ export class OrdersService {
         where: { tenantId, status: 'pending' },
       }),
       this.prisma.order.count({
-        where: { tenantId, status: { in: ['accepted', 'in_progress', 'ready'] } },
+        where: {
+          tenantId,
+          status: { in: ['accepted', 'in_progress', 'ready'] },
+        },
       }),
       this.prisma.order.count({
         where: {
@@ -1161,7 +1449,8 @@ export class OrdersService {
         orderNumber: order.orderNumber,
         status: order.status,
         priority: order.priority,
-        paymentStatus: order.paymentStatus || this.getPaymentStatus(order.payments),
+        paymentStatus:
+          order.paymentStatus || this.getPaymentStatus(order.payments),
         canAddItems: this.canAddItems(order),
         table: order.table,
         items: order.items.map((item) => ({
@@ -1203,17 +1492,26 @@ export class OrdersService {
    * Check if items can be added to an order
    * Returns false if payment has been initiated
    */
-  private canAddItems(order: { paymentStatus?: string; payments?: { status: string }[] }): boolean {
+  private canAddItems(order: {
+    paymentStatus?: string;
+    payments?: { status: string }[];
+  }): boolean {
     // Check paymentStatus field
-    if (order.paymentStatus && 
-        order.paymentStatus !== OrderPaymentStatus.NONE &&
-        order.paymentStatus !== OrderPaymentStatus.FAILED) {
+    if (
+      order.paymentStatus &&
+      order.paymentStatus !== OrderPaymentStatus.NONE &&
+      order.paymentStatus !== OrderPaymentStatus.FAILED
+    ) {
       return false;
     }
 
     // Check Payment records (legacy)
-    if (order.payments && order.payments.some(p => 
-        p.status === 'pending' || p.status === 'processing')) {
+    if (
+      order.payments &&
+      order.payments.some(
+        (p) => p.status === 'pending' || p.status === 'processing',
+      )
+    ) {
       return false;
     }
 
@@ -1275,16 +1573,20 @@ export class OrdersService {
     }
 
     // Add items to existing order
-    return this.addItems(tenantId, existingOrder.id, addItemsDto, customerId, deviceId);
+    return this.addItems(
+      tenantId,
+      existingOrder.id,
+      addItemsDto,
+      customerId,
+      deviceId,
+    );
   }
 
   // ============================================
   // Helper Methods
   // ============================================
 
-  private getPaymentStatus(
-    payments: { status: string }[],
-  ): PaymentStatus {
+  private getPaymentStatus(payments: { status: string }[]): PaymentStatus {
     if (!payments || payments.length === 0) {
       return PaymentStatus.UNPAID;
     }

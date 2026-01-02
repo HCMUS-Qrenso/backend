@@ -24,6 +24,7 @@ import {
 import { OrdersService } from './orders.service';
 import {
   QueryOrdersDto,
+  QueryMyOrdersDto,
   CreateOrderDto,
   AddOrderItemsDto,
   UpdateOrderStatusDto,
@@ -87,12 +88,74 @@ export class OrdersController {
   }
 
   // ============================================
+  // Customer Endpoints (JWT Auth - Order History)
+  // ============================================
+
+  @Get('my-orders')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(ROLES.CUSTOMER)
+  @ApiOperation({
+    summary: 'Get order history for authenticated customer',
+    description:
+      'Returns paginated list of orders placed by the authenticated customer. Requires JWT authentication.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns paginated list of customer orders',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - JWT token required',
+  })
+  async getMyOrders(
+    @CurrentUser() user: any,
+    @Query() query: QueryMyOrdersDto,
+  ) {
+    // JWT strategy returns user from database with 'id' field
+    // Fallback to 'sub' in case payload is used directly
+    const customerId = user?.id || user?.sub;
+    if (!customerId) {
+      throw new BadRequestException('User ID is required');
+    }
+    return this.ordersService.getMyOrders(customerId, query);
+  }
+
+  @Get('my-orders/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(ROLES.CUSTOMER)
+  @ApiOperation({
+    summary: 'Get order details by ID for authenticated customer',
+    description:
+      'Returns order details for a specific order that belongs to the authenticated customer. Requires JWT authentication.',
+  })
+  @ApiParam({ name: 'id', description: 'Order ID (UUID)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns order details',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - JWT token required',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Order not found or does not belong to customer',
+  })
+  async getMyOrderById(@CurrentUser() user: any, @Param('id') orderId: string) {
+    const customerId = user?.id || user?.sub;
+    if (!customerId) {
+      throw new BadRequestException('User ID is required');
+    }
+    return this.ordersService.getMyOrderById(customerId, orderId);
+  }
+
+  // ============================================
   // Customer Endpoints (QR Token Auth)
   // IMPORTANT: These must be defined BEFORE :id routes
   // ============================================
 
   @Get('my-order')
-  @UseGuards(QrTokenGuard)
+  @UseGuards(JwtAuthGuard, QrTokenGuard)
   @UseInterceptors(SessionActivityInterceptor)
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
   @ApiOperation({
@@ -127,7 +190,7 @@ export class OrdersController {
   }
 
   @Get('current')
-  @UseGuards(QrTokenGuard)
+  @UseGuards(JwtAuthGuard, QrTokenGuard)
   @UseInterceptors(SessionActivityInterceptor)
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
   @ApiOperation({
@@ -162,7 +225,7 @@ export class OrdersController {
   }
 
   @Post('current/items')
-  @UseGuards(QrTokenGuard)
+  @UseGuards(JwtAuthGuard, QrTokenGuard)
   @UseInterceptors(SessionActivityInterceptor, IdempotencyInterceptor)
   @Idempotent(60)
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
@@ -212,7 +275,7 @@ export class OrdersController {
   }
 
   @Post()
-  @UseGuards(QrTokenGuard)
+  @UseGuards(JwtAuthGuard, QrTokenGuard)
   @UseInterceptors(SessionActivityInterceptor, IdempotencyInterceptor)
   @Idempotent(60) // Cache response for 60 minutes
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
@@ -263,7 +326,7 @@ export class OrdersController {
   }
 
   @Post(':id/items')
-  @UseGuards(QrTokenGuard)
+  @UseGuards(JwtAuthGuard, QrTokenGuard)
   @UseInterceptors(SessionActivityInterceptor, IdempotencyInterceptor)
   @Idempotent(60) // Cache response for 60 minutes
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)

@@ -15,11 +15,11 @@ import { PrismaService } from '../../prisma.service';
 
 /**
  * WebSocket Gateway for real-time order events
- * 
+ *
  * Authentication:
  * - Staff (admin/waiter/kitchen): JWT token via query.accessToken
  * - Customer/Guest: Session token via query.sessionToken
- * 
+ *
  * Rooms:
  * - tenant:{tenantId} - All orders for a restaurant (staff)
  * - tenant:{tenantId}:waiters - Waiter-specific notifications

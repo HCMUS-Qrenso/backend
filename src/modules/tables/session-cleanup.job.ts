@@ -4,7 +4,7 @@ import { PrismaService } from '../../prisma.service';
 
 /**
  * Cron job to cleanup abandoned/expired table sessions
- * 
+ *
  * Runs every 5 minutes to:
  * 1. Mark sessions as ABANDONED if:
  *    - Session has no orders AND expiresAt has passed (15 min timeout)
@@ -50,7 +50,9 @@ export class SessionCleanupJob {
           table: { select: { id: true, tableNumber: true } },
           orders: {
             where: {
-              status: { notIn: ['completed', 'cancelled', 'rejected', 'abandoned'] },
+              status: {
+                notIn: ['completed', 'cancelled', 'rejected', 'abandoned'],
+              },
             },
           },
         },
@@ -84,7 +86,9 @@ export class SessionCleanupJob {
               await tx.order.updateMany({
                 where: {
                   tableSessionId: session.id,
-                  status: { notIn: ['completed', 'cancelled', 'rejected', 'abandoned'] },
+                  status: {
+                    notIn: ['completed', 'cancelled', 'rejected', 'abandoned'],
+                  },
                 },
                 data: { status: 'abandoned' },
               });
@@ -107,7 +111,9 @@ export class SessionCleanupJob {
         }
       }
 
-      this.logger.log(`Session cleanup completed. Abandoned ${sessionsToAbandon.length} sessions`);
+      this.logger.log(
+        `Session cleanup completed. Abandoned ${sessionsToAbandon.length} sessions`,
+      );
     } catch (error) {
       this.logger.error(`Session cleanup job failed: ${error.message}`);
     }
@@ -135,4 +141,3 @@ export class SessionCleanupJob {
     }
   }
 }
-

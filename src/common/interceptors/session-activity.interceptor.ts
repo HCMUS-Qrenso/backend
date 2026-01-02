@@ -45,4 +45,3 @@ export class SessionActivityInterceptor implements NestInterceptor {
     );
   }
 }
-

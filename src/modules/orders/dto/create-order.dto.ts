@@ -66,7 +66,7 @@ export class CreateOrderItemDto {
 /**
  * DTO for creating a new order
  * Used by customer when placing an order from customer-frontend
- * 
+ *
  * Note: If table session already has an active order, items will be appended
  * to the existing order instead of creating a new one (single order per session pattern)
  */
@@ -91,7 +91,8 @@ export class CreateOrderDto {
 
   @ApiPropertyOptional({
     example: 'device_abc123',
-    description: 'Device identifier for multi-device tracking (auto-generated if not provided)',
+    description:
+      'Device identifier for multi-device tracking (auto-generated if not provided)',
   })
   @IsOptional()
   @IsString()

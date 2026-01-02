@@ -51,7 +51,7 @@ export class QrTokenGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<{
-      user?: JwtPayload;
+      user?: JwtPayload & { id?: string }; // JWT strategy returns user from database with 'id' field
       headers: Record<string, string>;
       url?: string;
       method?: string;
@@ -179,7 +179,8 @@ export class QrTokenGuard implements CanActivate {
         }
 
         // Attach session context to request
-        // Priority for customerId: session.customerId > request.user.sub (for authenticated users)
+        // Priority for customerId: session.customerId > request.user.id (for authenticated users)
+        // JWT strategy returns user from database with 'id' field, not 'sub'
         // Priority for deviceId: decoded.deviceId (from session token)
         request.qrContext = {
           tableId: session.tableId,
@@ -190,7 +191,11 @@ export class QrTokenGuard implements CanActivate {
           tenantImage: session.table.tenant.image || '',
           zoneName: session.table.zone?.name || '',
           tableSessionId: session.id,
-          customerId: session.customerId || (user?.sub as string) || undefined,
+          customerId:
+            session.customerId ||
+            (user?.id as string) ||
+            (user?.sub as string) ||
+            undefined,
           deviceId: decoded.deviceId,
         };
 
