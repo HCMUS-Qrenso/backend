@@ -1241,7 +1241,12 @@ export class OrdersService {
         orderId,
         order: { tenantId },
       },
-      include: { order: true },
+      include: {
+        order: {
+          include: { table: true },
+        },
+        menuItem: true,  // Include menuItem to get name for notifications
+      },
     });
 
     if (!orderItem) {
@@ -1311,7 +1316,8 @@ export class OrdersService {
     // Emit real-time event for item status change
     this.eventsGateway.emitItemStatusChanged(tenantId, orderId, itemId, {
       ...updatedItem,
-      menuItem: orderItem.order,
+      menuItem: orderItem.menuItem,  // Pass menuItem for name
+      order: orderItem.order,         // Pass order for table info
     });
 
     return {

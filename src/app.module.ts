@@ -24,6 +24,7 @@ import { JwtAuthGuard } from './modules/auth/guards';
 import { StaffModule } from './modules/staff/staff.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { EventsModule } from './modules/events/events.module';
+import { KdsModule } from './modules/kds/kds.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { EventsModule } from './modules/events/events.module';
     StaffModule,
     OrdersModule,
     EventsModule,
+    KdsModule,
   ],
   controllers: [AppController],
   providers: [

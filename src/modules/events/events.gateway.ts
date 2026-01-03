@@ -277,7 +277,8 @@ export class EventsGateway
   }
 
   /**
-   * Emit when individual item status changes (for kitchen)
+   * Emit when individual item status changes
+   * Notifies: Kitchen, Waiters, and Customer
    */
   emitItemStatusChanged(
     tenantId: string,
@@ -285,19 +286,28 @@ export class EventsGateway
     itemId: string,
     item: any,
   ) {
-    // Notify kitchen
-    this.server.to(`tenant:${tenantId}:kitchen`).emit('item:status', {
+    const eventData = {
       type: 'item:status',
       data: {
         orderId,
         itemId,
         status: item.status,
         menuItemName: item.menuItem?.name,
+        table: item.order?.table,
       },
       timestamp: new Date().toISOString(),
-    });
+    };
 
-    // Notify waiters when item is ready
+    // Notify ALL staff in tenant (Admin, Owner, etc.)
+    this.server.to(`tenant:${tenantId}`).emit('item:status', eventData);
+
+    // Also notify kitchen specifically (they're in both rooms, but this ensures delivery)
+    this.server.to(`tenant:${tenantId}:kitchen`).emit('item:status', eventData);
+
+    // Also notify waiters specifically
+    this.server.to(`tenant:${tenantId}:waiters`).emit('item:status', eventData);
+
+    // Special notification when item is ready (for waiter to serve)
     if (item.status === 'ready') {
       this.server.to(`tenant:${tenantId}:waiters`).emit('item:ready', {
         type: 'item:ready',
@@ -311,7 +321,7 @@ export class EventsGateway
       });
     }
 
-    // Notify customer
+    // Notify customer watching this order
     this.server.to(`order:${orderId}`).emit('item:status', {
       type: 'item:status',
       data: {
@@ -320,6 +330,10 @@ export class EventsGateway
       },
       timestamp: new Date().toISOString(),
     });
+
+    this.logger.log(
+      `Emitted item:status for ${item.menuItem?.name} -> ${item.status} (order: ${orderId})`,
+    );
   }
 
   // ============================================
