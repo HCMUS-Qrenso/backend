@@ -25,6 +25,7 @@ import { StaffModule } from './modules/staff/staff.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { EventsModule } from './modules/events/events.module';
 import { KdsModule } from './modules/kds/kds.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { KdsModule } from './modules/kds/kds.module';
     OrdersModule,
     EventsModule,
     KdsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [
