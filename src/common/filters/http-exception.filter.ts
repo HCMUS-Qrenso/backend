@@ -22,6 +22,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let status: number;
     let message: string | string[];
     let error: string;
+    let code: string | undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -30,6 +31,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
         message = (exceptionResponse as any).message || exception.message;
         error = (exceptionResponse as any).error || exception.name;
+        code = (exceptionResponse as any).code || undefined;
       } else {
         message = exceptionResponse;
         error = exception.name;
@@ -49,13 +51,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error = 'Internal Server Error';
     }
 
-    const errorResponse = {
+    const errorResponse: Record<string, any> = {
       statusCode: status,
       message,
       error,
       timestamp: new Date().toISOString(),
       path: request.url,
     };
+
+    // Include code if present (for session expired, etc.)
+    if (code) {
+      errorResponse.code = code;
+    }
 
     // Log error details
     if (status >= 500) {
