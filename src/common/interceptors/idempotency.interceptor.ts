@@ -96,7 +96,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
                 key: idempotencyKey,
                 endpoint,
                 method,
-                response: responseData as any,
+                response: responseData,
                 statusCode: response.statusCode,
                 expiresAt,
               },

@@ -25,6 +25,7 @@ import { StaffModule } from './modules/staff/staff.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { EventsModule } from './modules/events/events.module';
 import { KdsModule } from './modules/kds/kds.module';
+import { PaymentModule } from './modules/payment/payment.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
@@ -55,6 +56,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     OrdersModule,
     EventsModule,
     KdsModule,
+    PaymentModule,
     DashboardModule,
   ],
   controllers: [AppController],

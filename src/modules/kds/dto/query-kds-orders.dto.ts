@@ -39,7 +39,8 @@ export class QueryKdsOrdersDto {
     enum: KdsItemStatus,
     isArray: true,
     example: [KdsItemStatus.PENDING, KdsItemStatus.PREPARING],
-    description: 'Filter by item statuses (orders containing items with these statuses)',
+    description:
+      'Filter by item statuses (orders containing items with these statuses)',
   })
   @IsOptional()
   @IsArray()

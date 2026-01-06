@@ -53,7 +53,9 @@ export class KdsController {
                   specialInstructions: 'Ít hành',
                   estimatedPrepTime: 15,
                   allergenInfo: 'gluten',
-                  modifiers: [{ modifierName: 'Thêm thịt', priceAdjustment: 20000 }],
+                  modifiers: [
+                    { modifierName: 'Thêm thịt', priceAdjustment: 20000 },
+                  ],
                 },
               ],
             },
