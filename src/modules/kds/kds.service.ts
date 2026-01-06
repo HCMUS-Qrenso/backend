@@ -114,23 +114,31 @@ export class KdsService {
       ],
     });
 
-    this.logger.log(`KDS: Found ${orders.length} orders with status in [${KDS_ACTIVE_ORDER_STATUSES.join(', ')}]`);
-    
+    this.logger.log(
+      `KDS: Found ${orders.length} orders with status in [${KDS_ACTIVE_ORDER_STATUSES.join(', ')}]`,
+    );
+
     if (orders.length > 0) {
-      this.logger.log(`KDS: First order: id=${orders[0].id}, status=${orders[0].status}, items=${orders[0].items?.length || 0}`);
+      this.logger.log(
+        `KDS: First order: id=${orders[0].id}, status=${orders[0].status}, items=${orders[0].items?.length || 0}`,
+      );
     }
 
     // For KDS, we want orders that have at least one item to process
     // But we show all items regardless of status
     const filteredOrders = orders.filter((order) => order.items.length > 0);
-    
-    this.logger.log(`KDS: After filtering orders with items: ${filteredOrders.length} orders`);
+
+    this.logger.log(
+      `KDS: After filtering orders with items: ${filteredOrders.length} orders`,
+    );
 
     // Sort by priority algorithm
     const sortedOrders = this.sortByPriority(filteredOrders);
 
     // Transform to KDS response format
-    const kdsOrders = sortedOrders.map((order) => this.transformToKdsOrder(order));
+    const kdsOrders = sortedOrders.map((order) =>
+      this.transformToKdsOrder(order),
+    );
 
     // Calculate stats
     const stats = this.calculateStats(filteredOrders);

@@ -25,6 +25,9 @@ model Tenant {
   subscriptionTier  String   @default("basic") @map("subscription_tier") @db.VarChar(50)
   status            String   @default("active") @db.VarChar(20)
   settings          Json?    @db.JsonB
+  payosClientId     String?  @map("payos_client_id") @db.VarChar(255)
+  payosApiKey       String?  @map("payos_api_key") @db.VarChar(255)
+  payosChecksumKey  String?  @map("payos_checksum_key") @db.VarChar(255)
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 

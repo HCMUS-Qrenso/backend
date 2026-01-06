@@ -1245,7 +1245,7 @@ export class OrdersService {
         order: {
           include: { table: true },
         },
-        menuItem: true,  // Include menuItem to get name for notifications
+        menuItem: true, // Include menuItem to get name for notifications
       },
     });
 
@@ -1316,8 +1316,8 @@ export class OrdersService {
     // Emit real-time event for item status change
     this.eventsGateway.emitItemStatusChanged(tenantId, orderId, itemId, {
       ...updatedItem,
-      menuItem: orderItem.menuItem,  // Pass menuItem for name
-      order: orderItem.order,         // Pass order for table info
+      menuItem: orderItem.menuItem, // Pass menuItem for name
+      order: orderItem.order, // Pass order for table info
     });
 
     return {
@@ -1597,6 +1597,13 @@ export class OrdersService {
       return PaymentStatus.UNPAID;
     }
 
+    // Check for paid payments
+    const hasPaid = payments.some((p) => p.status === 'paid');
+    if (hasPaid) {
+      return PaymentStatus.PAID;
+    }
+
+    // Check for completed payments (legacy support)
     const hasCompleted = payments.some((p) => p.status === 'completed');
     if (hasCompleted) {
       return PaymentStatus.PAID;
