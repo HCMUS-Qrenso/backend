@@ -6,12 +6,10 @@ import {
   Param,
   Query,
   UseGuards,
-  Req,
   Delete,
   HttpCode,
   HttpStatus,
   BadRequestException,
-  Logger,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -25,7 +23,7 @@ import { PaymentService } from './payment.service';
 import { CreatePaymentDto, QueryPaymentsDto, WebhookDataDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
 import { RolesGuard } from '../../common/guards';
-import { Roles, Public } from '../../common/decorators';
+import { Roles, Public, TenantContext } from '../../common/decorators';
 import { ROLES } from 'src/common/constants';
 
 @ApiTags('payments')
@@ -58,10 +56,9 @@ export class PaymentController {
     description: 'Payment already exists for this order',
   })
   async createPayment(
-    @Req() req: any,
+    @TenantContext() tenantId: string,
     @Body() createPaymentDto: CreatePaymentDto,
   ) {
-    const tenantId = req.user.tenantId;
     return this.paymentService.createPaymentLink(tenantId, createPaymentDto);
   }
 
@@ -95,8 +92,10 @@ export class PaymentController {
     status: 200,
     description: 'Payments retrieved successfully',
   })
-  async findAll(@Req() req: any, @Query() query: QueryPaymentsDto) {
-    const tenantId = req.user.tenantId;
+  async findAll(
+    @TenantContext() tenantId: string,
+    @Query() query: QueryPaymentsDto,
+  ) {
     return this.paymentService.findAll(tenantId, query);
   }
 
@@ -119,8 +118,7 @@ export class PaymentController {
     status: 404,
     description: 'Payment not found',
   })
-  async findOne(@Req() req: any, @Param('id') id: string) {
-    const tenantId = req.user.tenantId;
+  async findOne(@TenantContext() tenantId: string, @Param('id') id: string) {
     return this.paymentService.findOne(tenantId, id);
   }
 
@@ -145,10 +143,9 @@ export class PaymentController {
     description: 'Payment not found',
   })
   async checkPaymentStatus(
-    @Req() req: any,
+    @TenantContext() tenantId: string,
     @Param('orderCode') orderCode: string,
   ) {
-    const tenantId = req.user.tenantId;
     const orderCodeNumber = parseInt(orderCode, 10);
 
     if (isNaN(orderCodeNumber)) {
@@ -189,11 +186,10 @@ export class PaymentController {
     description: 'Payment not found',
   })
   async cancelPayment(
-    @Req() req: any,
+    @TenantContext() tenantId: string,
     @Param('id') id: string,
     @Query('reason') reason?: string,
   ) {
-    const tenantId = req.user.tenantId;
     return this.paymentService.cancelPaymentLink(tenantId, id, reason);
   }
 }
