@@ -163,19 +163,21 @@ export class QrTokenGuard implements CanActivate {
         });
 
         if (!session) {
-          throw new UnauthorizedException(
-            t('auth.sessionNotFound', 'Session not found or expired'),
-          );
+          throw new UnauthorizedException({
+            message: t('auth.sessionNotFound', 'Session not found or expired'),
+            code: 'SESSION_NOT_FOUND',
+          });
         }
 
         // Check session expiration
         if (session.expiresAt && new Date() > session.expiresAt) {
-          throw new UnauthorizedException(
-            t(
+          throw new UnauthorizedException({
+            message: t(
               'auth.sessionExpired',
               'Session has expired. Please scan the QR code again.',
             ),
-          );
+            code: 'SESSION_EXPIRED',
+          });
         }
 
         // Attach session context to request

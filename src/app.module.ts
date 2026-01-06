@@ -26,6 +26,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { EventsModule } from './modules/events/events.module';
 import { KdsModule } from './modules/kds/kds.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { PaymentModule } from './modules/payment/payment.module';
     EventsModule,
     KdsModule,
     PaymentModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

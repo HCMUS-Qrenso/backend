@@ -1207,6 +1207,14 @@ export class OrdersService {
         });
       }
 
+      // If served, update all ready items to served
+      if (status === OrderStatus.SERVED) {
+        await tx.orderItem.updateMany({
+          where: { orderId, status: 'ready' },
+          data: { status: 'served' },
+        });
+      }
+
       return updated;
     });
 
@@ -1614,6 +1622,7 @@ export class OrdersService {
 
   /**
    * Auto-update order status based on item statuses
+   * Also emits socket event to notify customer
    */
   private async updateOrderStatusFromItems(orderId: string) {
     const items = await this.prisma.orderItem.findMany({
@@ -1643,7 +1652,7 @@ export class OrdersService {
     if (newStatus) {
       const order = await this.prisma.order.findUnique({
         where: { id: orderId },
-        select: { status: true },
+        select: { id: true, status: true, tenantId: true },
       });
 
       if (order && order.status !== newStatus && order.status !== 'completed') {
@@ -1651,6 +1660,17 @@ export class OrdersService {
           where: { id: orderId },
           data: { status: newStatus },
         });
+
+        // Emit socket event to notify customer of order status change
+        this.eventsGateway.emitOrderStatusAutoUpdated(
+          order.tenantId,
+          orderId,
+          newStatus,
+        );
+
+        this.logger.log(
+          `Order ${orderId} status auto-updated to ${newStatus} based on items`,
+        );
       }
     }
   }

@@ -325,14 +325,46 @@ export class EventsGateway
     this.server.to(`order:${orderId}`).emit('item:status', {
       type: 'item:status',
       data: {
+        orderId, // Include orderId so customer frontend can match
         itemId,
         status: item.status,
+        itemName: item.menuItem?.name, // Include item name for display
       },
       timestamp: new Date().toISOString(),
     });
 
     this.logger.log(
       `Emitted item:status for ${item.menuItem?.name} -> ${item.status} (order: ${orderId})`,
+    );
+  }
+
+  /**
+   * Emit when order status auto-updates based on item statuses
+   * Called when all items reach a certain status (e.g., all items ready -> order ready)
+   */
+  emitOrderStatusAutoUpdated(tenantId: string, orderId: string, newStatus: string) {
+    // Notify staff
+    this.server.to(`tenant:${tenantId}`).emit('order:status', {
+      type: 'order:status',
+      data: {
+        id: orderId,
+        status: newStatus,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    // Notify customer watching this order
+    this.server.to(`order:${orderId}`).emit('order:status', {
+      type: 'order:status',
+      data: {
+        id: orderId,
+        status: newStatus,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    this.logger.log(
+      `Emitted order:status auto-update for order ${orderId} -> ${newStatus}`,
     );
   }
 

@@ -111,6 +111,7 @@ export class MenuService {
             modifierGroup: {
               select: {
                 id: true,
+                isRequired: true,
               },
             },
           },
@@ -150,6 +151,7 @@ export class MenuService {
       })),
       modifier_groups: item.modifierGroups.map((mg) => ({
         id: mg.modifierGroup.id,
+        is_required: mg.modifierGroup.isRequired,
       })),
       review_count: item._count.reviews,
       order_count: item._count.orderItems,
