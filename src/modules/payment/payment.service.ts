@@ -18,6 +18,7 @@ import {
 } from '../../common/constants';
 import { CreatePaymentDto, QueryPaymentsDto, WebhookDataDto } from './dto';
 import { Prisma } from '@prisma/client';
+import { EventsGateway } from '../events/events.gateway';
 
 @Injectable()
 export class PaymentService {
@@ -28,6 +29,7 @@ export class PaymentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly eventsGateway: EventsGateway,
   ) {}
 
   /**
@@ -502,6 +504,19 @@ export class PaymentService {
       this.logger.log(
         `Payment ${payment.id} updated to status: ${paymentStatus}`,
       );
+
+      // Emit socket event for payment status update
+      const order = await this.prisma.order.findUnique({
+        where: { id: payment.orderId },
+        select: { tenantId: true },
+      });
+      if (order) {
+        this.eventsGateway.emitPaymentUpdated(
+          order.tenantId,
+          payment.orderId,
+          result,
+        );
+      }
 
       return {
         message: t(

@@ -1,5 +1,10 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import {
   QueryPerformanceDto,
@@ -24,7 +29,7 @@ export class DashboardController {
 
   @Get('today-stats')
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN)
-  @ApiOperation({ summary: 'Get today\'s KPI statistics' })
+  @ApiOperation({ summary: "Get today's KPI statistics" })
   @ApiResponse({ status: 200, type: TodayStatsResponseDto })
   async getTodayStats(@TenantContext() tenantId: string) {
     return this.dashboardService.getTodayStats(tenantId);

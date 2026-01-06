@@ -41,7 +41,8 @@ export class QueryTopItemsDto {
   limit?: number = 6;
 
   @ApiPropertyOptional({
-    description: 'Date to get top items for (YYYY-MM-DD format, defaults to today)',
+    description:
+      'Date to get top items for (YYYY-MM-DD format, defaults to today)',
   })
   @IsOptional()
   @IsString()
