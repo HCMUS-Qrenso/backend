@@ -21,7 +21,8 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PaymentService {
-  private readonly logger = new Logger(PaymentService.name);
+    private readonly logger = new Logger(PaymentService.name);
+    private readonly qrApiUrl = process.env.QR_API_URL || 'https://api.qrserver.com/v1/create-qr-code/';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -172,7 +173,8 @@ export class PaymentService {
           : fullDescription,
       items,
       returnUrl: finalReturnUrl,
-      cancelUrl: finalCancelUrl,
+        cancelUrl: finalCancelUrl,
+      
     };
 
     try {
@@ -213,7 +215,8 @@ export class PaymentService {
         paymentLinkId: paymentLinkResponse.paymentLinkId,
         orderCode,
         amount,
-        qrCode: paymentLinkResponse.qrCode,
+        qrCode: `${this.qrApiUrl}?data=${encodeURIComponent(paymentLinkResponse.qrCode)}&size=250x250`,
+        qrCodeData: paymentLinkResponse.qrCode,
       };
     } catch (error) {
       this.logger.error('Failed to create PayOS payment link', error);
@@ -677,4 +680,5 @@ export class PaymentService {
       );
     }
   }
+}
 }
