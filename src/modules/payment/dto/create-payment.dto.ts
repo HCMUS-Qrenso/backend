@@ -7,9 +7,12 @@ import {
   ValidateNested,
   Min,
   IsUUID,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PaymentMethodType } from '../../../common/constants';
+import type { PaymentMethodTypeValue } from '../../../common/constants';
 
 export class CreatePaymentDto {
   @ApiProperty({
@@ -19,6 +22,15 @@ export class CreatePaymentDto {
   @IsNotEmpty()
   @IsUUID()
   orderId: string;
+
+  @ApiProperty({
+    description: 'Payment method type',
+    enum: [PaymentMethodType.CASH, PaymentMethodType.QR],
+    example: PaymentMethodType.QR,
+  })
+  @IsNotEmpty()
+  @IsIn([PaymentMethodType.CASH, PaymentMethodType.QR])
+  paymentMethod: PaymentMethodTypeValue;
 
   @ApiPropertyOptional({
     description: 'Description for the payment',

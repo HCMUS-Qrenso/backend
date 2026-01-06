@@ -10,19 +10,20 @@ import { PayOS } from '@payos/node';
 import { PrismaService } from '../../prisma.service';
 import { t } from '../../common/utils';
 import {
-  CreatePaymentDto,
-  QueryPaymentsDto,
-  WebhookDataDto,
   PaymentStatus,
   OrderPaymentStatus,
   PayOSStatus,
-} from './dto';
+  PaymentMethodType,
+  OrderStatus,
+} from '../../common/constants';
+import { CreatePaymentDto, QueryPaymentsDto, WebhookDataDto } from './dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PaymentService {
-    private readonly logger = new Logger(PaymentService.name);
-    private readonly qrApiUrl = process.env.QR_API_URL || 'https://api.qrserver.com/v1/create-qr-code/';
+  private readonly logger = new Logger(PaymentService.name);
+  private readonly qrApiUrl =
+    process.env.QR_API_URL || 'https://api.qrserver.com/v1/create-qr-code/';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -67,13 +68,14 @@ export class PaymentService {
   }
 
   /**
-   * Create a payment link for an order using PayOS
+   * Create a payment link for an order using PayOS or cash
    */
   async createPaymentLink(
     tenantId: string,
     createPaymentDto: CreatePaymentDto,
   ) {
-    const { orderId, description, returnUrl, cancelUrl } = createPaymentDto;
+    const { orderId, description, returnUrl, cancelUrl, paymentMethod } =
+      createPaymentDto;
 
     // Validate order exists and belongs to tenant
     const order = await this.prisma.order.findFirst({
@@ -90,7 +92,15 @@ export class PaymentService {
         },
         tableSession: {
           include: {
-            table: true,
+            table: {
+              include: {
+                zone: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
         payments: {
@@ -124,7 +134,7 @@ export class PaymentService {
     }
 
     // Check if order is completed
-    if (order.status !== 'completed') {
+    if (order.status !== OrderStatus.COMPLETED) {
       throw new BadRequestException(
         t(
           'payment.orderNotCompleted',
@@ -140,6 +150,99 @@ export class PaymentService {
       );
     }
 
+    // Handle CASH payment method
+    if (paymentMethod === PaymentMethodType.CASH) {
+      // Generate unique transaction ID for cash payment
+      const transactionId = `CASH-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+      // Calculate total amount
+      const amount = Number(order.totalAmount);
+
+      // Create payment record in database
+      const payment = await this.prisma.payment.create({
+        data: {
+          orderId: order.id,
+          tenantId,
+          paymentMethod: 'cash',
+          amount: order.totalAmount,
+          currency: 'VND',
+          status: PaymentStatus.PENDING,
+          transactionId,
+          gatewayResponse: Prisma.JsonNull,
+        },
+      });
+
+      // Update order payment status to initiated
+      await this.prisma.order.update({
+        where: { id: order.id },
+        data: { paymentStatus: OrderPaymentStatus.INITIATED },
+      });
+
+      this.logger.log(
+        `Cash payment created for order ${order.orderNumber}, payment ID: ${payment.id}`,
+      );
+
+      // Get tenant details for invoice
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          name: true,
+          slug: true,
+          address: true,
+        },
+      });
+
+      // Format items for invoice
+      const invoiceItems = order.items.map((item) => ({
+        id: item.id,
+        name: item.menuItem.name,
+        quantity: item.quantity,
+        unitPrice: Number(item.unitPrice),
+        subtotal: Number(item.subtotal),
+        modifiersTotal: Number(item.modifiersTotal),
+        specialInstructions: item.specialInstructions,
+        modifiers: item.modifiers.map((mod) => ({
+          name: mod.modifierName,
+          priceAdjustment: Number(mod.priceAdjustment),
+        })),
+      }));
+
+      return {
+        paymentId: payment.id,
+        paymentMethod: 'cash',
+        transactionId,
+        amount,
+        currency: 'VND',
+        status: PaymentStatus.PENDING,
+        createdAt: payment.createdAt,
+        message: t(
+          'payment.cashCreated',
+          'Cash payment created. Please complete payment manually.',
+        ),
+        // Invoice data
+        invoice: {
+          tenant: {
+            name: tenant?.name,
+            address: tenant?.address,
+          },
+          order: {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            totalAmount: Number(order.totalAmount),
+            subtotal: Number(order.subtotal),
+            finalAmount: Number(order.totalAmount),
+            createdAt: order.createdAt,
+            items: invoiceItems,
+          },
+          table: {
+            tableNumber: order.tableSession.table.tableNumber,
+            zoneName: order.tableSession.table.zone?.name || '',
+          },
+        },
+      };
+    }
+
+    // Handle QR payment method with PayOS
     // Generate unique order code for PayOS (use timestamp + random number)
     const orderCode = Date.now() + Math.floor(Math.random() * 1000);
 
@@ -173,8 +276,7 @@ export class PaymentService {
           : fullDescription,
       items,
       returnUrl: finalReturnUrl,
-        cancelUrl: finalCancelUrl,
-      
+      cancelUrl: finalCancelUrl,
     };
 
     try {
@@ -183,6 +285,7 @@ export class PaymentService {
 
       // Create payment link with PayOS
       const paymentLinkResponse =
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         await payOS.paymentRequests.create(paymentLinkData);
 
       // Create payment record in database
@@ -195,7 +298,7 @@ export class PaymentService {
           currency: 'VND',
           status: PaymentStatus.PENDING,
           transactionId: String(orderCode),
-          gatewayResponse: paymentLinkResponse as any,
+          gatewayResponse: paymentLinkResponse as Prisma.InputJsonValue,
         },
       });
 
@@ -209,14 +312,64 @@ export class PaymentService {
         `Payment link created for order ${order.orderNumber}: ${paymentLinkResponse.checkoutUrl}`,
       );
 
+      // Get tenant details for invoice
+      const qrTenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          name: true,
+          slug: true,
+          address: true,
+        },
+      });
+
+      // Format items for invoice
+      const qrInvoiceItems = order.items.map((item) => ({
+        id: item.id,
+        name: item.menuItem.name,
+        quantity: item.quantity,
+        unitPrice: Number(item.unitPrice),
+        subtotal: Number(item.subtotal),
+        modifiersTotal: Number(item.modifiersTotal),
+        specialInstructions: item.specialInstructions,
+        modifiers: item.modifiers.map((mod) => ({
+          name: mod.modifierName,
+          priceAdjustment: Number(mod.priceAdjustment),
+        })),
+      }));
+
       return {
         paymentId: payment.id,
+        paymentMethod: 'payos',
+        transactionId: String(orderCode),
         checkoutUrl: paymentLinkResponse.checkoutUrl,
         paymentLinkId: paymentLinkResponse.paymentLinkId,
         orderCode,
         amount,
+        currency: 'VND',
+        status: PaymentStatus.PENDING,
         qrCode: `${this.qrApiUrl}?data=${encodeURIComponent(paymentLinkResponse.qrCode)}&size=250x250`,
         qrCodeData: paymentLinkResponse.qrCode,
+        createdAt: payment.createdAt,
+        // Invoice data
+        invoice: {
+          tenant: {
+            name: qrTenant?.name,
+            address: qrTenant?.address,
+          },
+          order: {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            totalAmount: Number(order.totalAmount),
+            subtotal: Number(order.subtotal),
+            finalAmount: Number(order.totalAmount),
+            createdAt: order.createdAt,
+            items: qrInvoiceItems,
+          },
+          table: {
+            tableNumber: order.tableSession.table.tableNumber,
+            zoneName: order.tableSession.table.zone?.name || '',
+          },
+        },
       };
     } catch (error) {
       this.logger.error('Failed to create PayOS payment link', error);
@@ -302,8 +455,8 @@ export class PaymentService {
     }
 
     // Update payment based on webhook code
-    let paymentStatus: PaymentStatus;
-    let orderPaymentStatus: OrderPaymentStatus;
+    let paymentStatus: string;
+    let orderPaymentStatus: string;
 
     if (code === '00') {
       // Success
@@ -330,7 +483,7 @@ export class PaymentService {
           where: { id: payment.id },
           data: {
             status: paymentStatus,
-            gatewayResponse: webhookData as any,
+            gatewayResponse: webhookData as unknown as Prisma.InputJsonValue,
             paidAt: paymentStatus === PaymentStatus.PAID ? new Date() : null,
           },
         });
@@ -420,16 +573,28 @@ export class PaymentService {
       );
     }
 
-    const orderCode = Number(payment.transactionId);
-
     try {
-      // Get tenant-specific PayOS instance
-      const payOS = await this.getPayOSInstance(tenantId);
+      // For PayOS payments, cancel on the gateway
+      if (payment.paymentMethod === 'payos') {
+        const orderCode = Number(payment.transactionId);
 
-      // Cancel payment link on PayOS
-      await payOS.paymentRequests.cancel(orderCode, reason);
+        // Get tenant-specific PayOS instance
+        const payOS = await this.getPayOSInstance(tenantId);
 
-      // Update payment status
+        // Cancel payment link on PayOS
+        await payOS.paymentRequests.cancel(orderCode, reason);
+
+        this.logger.log(
+          `PayOS payment link cancelled for order code: ${orderCode}`,
+        );
+      } else {
+        // For cash payments, just log the cancellation
+        this.logger.log(
+          `Cash payment ${paymentId} cancelled. No gateway action required.`,
+        );
+      }
+
+      // Update payment status in database
       const updatedPayment = await this.prisma.$transaction(async (tx) => {
         const payment = await tx.payment.update({
           where: { id: paymentId },
@@ -614,17 +779,19 @@ export class PaymentService {
    */
   async checkPaymentStatus(tenantId: string, orderCode: number) {
     try {
-      // Get tenant-specific PayOS instance
-      const payOS = await this.getPayOSInstance(tenantId);
-
-      // Get payment info from PayOS
-      const paymentInfo = await payOS.paymentRequests.get(orderCode);
-
-      // Find payment in database
+      // Find payment in database first
       const payment = await this.prisma.payment.findFirst({
         where: {
           transactionId: String(orderCode),
           tenantId,
+        },
+        include: {
+          order: {
+            select: {
+              orderNumber: true,
+              totalAmount: true,
+            },
+          },
         },
       });
 
@@ -632,8 +799,27 @@ export class PaymentService {
         throw new NotFoundException(t('payment.notFound', 'Payment not found'));
       }
 
+      // If it's a cash payment, return local status only
+      if (payment.paymentMethod === 'cash') {
+        return {
+          status: payment.status,
+          paymentMethod: 'cash',
+          amount: Number(payment.amount),
+          currency: payment.currency,
+          orderNumber: payment.order.orderNumber,
+          paidAt: payment.paidAt,
+          createdAt: payment.createdAt,
+        };
+      }
+
+      // For PayOS payments, check with gateway
+      const payOS = await this.getPayOSInstance(tenantId);
+
+      // Get payment info from PayOS
+      const paymentInfo = await payOS.paymentRequests.get(orderCode);
+
       // Map PayOS status to local status
-      const statusMap: Record<PayOSStatus, PaymentStatus> = {
+      const statusMap: Record<string, string> = {
         [PayOSStatus.PENDING]: PaymentStatus.PENDING,
         [PayOSStatus.PROCESSING]: PaymentStatus.PROCESSING,
         [PayOSStatus.PAID]: PaymentStatus.PAID,
@@ -644,29 +830,34 @@ export class PaymentService {
       };
 
       const localStatus =
-        statusMap[paymentInfo.status as PayOSStatus] || payment.status;
+        statusMap[paymentInfo.status as string] || payment.status;
 
       // Sync status if different
       if (localStatus !== payment.status) {
-        const updatedPayment = await this.prisma.payment.update({
+        await this.prisma.payment.update({
           where: { id: payment.id },
           data: {
             status: localStatus,
-            gatewayResponse: paymentInfo as any,
+            gatewayResponse: paymentInfo as Prisma.InputJsonValue,
+            paidAt:
+              localStatus === PaymentStatus.PAID && !payment.paidAt
+                ? new Date()
+                : payment.paidAt,
           },
         });
-
-        return {
-          ...paymentInfo,
-          synced: true,
-          localPayment: updatedPayment,
-        };
       }
 
+      // Return simplified response
       return {
-        ...paymentInfo,
-        synced: false,
-        localPayment: payment,
+        status: localStatus,
+        paymentMethod: 'payos',
+        amount: paymentInfo.amount,
+        currency: payment.currency,
+        orderNumber: payment.order.orderNumber,
+        payosStatus: paymentInfo.status,
+        paidAt: payment.paidAt,
+        createdAt: payment.createdAt,
+        synced: true,
       };
     } catch (error) {
       this.logger.error(
@@ -675,6 +866,87 @@ export class PaymentService {
       );
       throw new BadRequestException(
         t('payment.statusCheckFailed', 'Failed to check payment status', {
+          args: { error: (error as Error).message },
+        }),
+      );
+    }
+  }
+
+  /**
+   * Manually complete a payment (for cash payments)
+   */
+  async completePayment(tenantId: string, paymentId: string) {
+    // Find payment
+    const payment = await this.prisma.payment.findFirst({
+      where: {
+        id: paymentId,
+        tenantId,
+      },
+      include: {
+        order: true,
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(t('payment.notFound', 'Payment not found'));
+    }
+
+    // Check if payment is already completed
+    if (payment.status === PaymentStatus.PAID) {
+      throw new BadRequestException(
+        t('payment.alreadyPaid', 'Payment is already completed'),
+      );
+    }
+
+    // Check if payment is cancelled
+    if (payment.status === PaymentStatus.CANCELLED) {
+      throw new BadRequestException(
+        t('payment.cancelled', 'Cannot complete a cancelled payment'),
+      );
+    }
+
+    // Only allow manual completion for cash payments
+    if (payment.paymentMethod !== 'cash') {
+      throw new BadRequestException(
+        t(
+          'payment.onlyCashManualComplete',
+          'Only cash payments can be manually completed',
+        ),
+      );
+    }
+
+    try {
+      // Update payment and order in a transaction
+      const result = await this.prisma.$transaction(async (tx) => {
+        // Update payment
+        const updatedPayment = await tx.payment.update({
+          where: { id: payment.id },
+          data: {
+            status: PaymentStatus.PAID,
+            paidAt: new Date(),
+          },
+        });
+
+        // Update order payment status
+        await tx.order.update({
+          where: { id: payment.orderId },
+          data: {
+            paymentStatus: OrderPaymentStatus.PAID,
+          },
+        });
+
+        return updatedPayment;
+      });
+
+      this.logger.log(
+        `Cash payment ${paymentId} manually completed for order ${payment.order.orderNumber}`,
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to complete payment', error);
+      throw new BadRequestException(
+        t('payment.completeFailed', 'Failed to complete payment', {
           args: { error: (error as Error).message },
         }),
       );

@@ -192,4 +192,36 @@ export class PaymentController {
   ) {
     return this.paymentService.cancelPaymentLink(tenantId, id, reason);
   }
+
+  @Post(':id/complete')
+  @Roles(ROLES.ADMIN, ROLES.OWNER, ROLES.WAITER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Manually complete a payment',
+    description:
+      'Manually mark a cash payment as completed. Only works for cash payments.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Payment ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Payment completed successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Cannot complete this payment',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Payment not found',
+  })
+  async completePayment(
+    @TenantContext() tenantId: string,
+    @Param('id') id: string,
+  ) {
+    return this.paymentService.completePayment(tenantId, id);
+  }
 }
