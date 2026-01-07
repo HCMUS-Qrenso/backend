@@ -184,31 +184,6 @@ export class PaymentService {
         `Cash payment created for order ${order.orderNumber}, payment ID: ${payment.id}`,
       );
 
-      // Get tenant details for invoice
-      const tenant = await this.prisma.tenant.findUnique({
-        where: { id: tenantId },
-        select: {
-          name: true,
-          slug: true,
-          address: true,
-        },
-      });
-
-      // Format items for invoice
-      const invoiceItems = order.items.map((item) => ({
-        id: item.id,
-        name: item.menuItem.name,
-        quantity: item.quantity,
-        unitPrice: Number(item.unitPrice),
-        subtotal: Number(item.subtotal),
-        modifiersTotal: Number(item.modifiersTotal),
-        specialInstructions: item.specialInstructions,
-        modifiers: item.modifiers.map((mod) => ({
-          name: mod.modifierName,
-          priceAdjustment: Number(mod.priceAdjustment),
-        })),
-      }));
-
       return {
         paymentId: payment.id,
         paymentMethod: 'cash',
@@ -221,26 +196,6 @@ export class PaymentService {
           'payment.cashCreated',
           'Cash payment created. Please complete payment manually.',
         ),
-        // Invoice data
-        invoice: {
-          tenant: {
-            name: tenant?.name,
-            address: tenant?.address,
-          },
-          order: {
-            id: order.id,
-            orderNumber: order.orderNumber,
-            totalAmount: Number(order.totalAmount),
-            subtotal: Number(order.subtotal),
-            finalAmount: Number(order.totalAmount),
-            createdAt: order.createdAt,
-            items: invoiceItems,
-          },
-          table: {
-            tableNumber: order.tableSession.table.tableNumber,
-            zoneName: order.tableSession.table.zone?.name || '',
-          },
-        },
       };
     }
 
@@ -314,64 +269,18 @@ export class PaymentService {
         `Payment link created for order ${order.orderNumber}: ${paymentLinkResponse.checkoutUrl}`,
       );
 
-      // Get tenant details for invoice
-      const qrTenant = await this.prisma.tenant.findUnique({
-        where: { id: tenantId },
-        select: {
-          name: true,
-          slug: true,
-          address: true,
-        },
-      });
-
-      // Format items for invoice
-      const qrInvoiceItems = order.items.map((item) => ({
-        id: item.id,
-        name: item.menuItem.name,
-        quantity: item.quantity,
-        unitPrice: Number(item.unitPrice),
-        subtotal: Number(item.subtotal),
-        modifiersTotal: Number(item.modifiersTotal),
-        specialInstructions: item.specialInstructions,
-        modifiers: item.modifiers.map((mod) => ({
-          name: mod.modifierName,
-          priceAdjustment: Number(mod.priceAdjustment),
-        })),
-      }));
-
       return {
         paymentId: payment.id,
         paymentMethod: 'payos',
         transactionId: String(orderCode),
         checkoutUrl: paymentLinkResponse.checkoutUrl,
         paymentLinkId: paymentLinkResponse.paymentLinkId,
-        orderCode,
         amount,
         currency: 'VND',
         status: PaymentStatus.PENDING,
         qrCode: `${this.qrApiUrl}?data=${encodeURIComponent(paymentLinkResponse.qrCode)}&size=250x250`,
         qrCodeData: paymentLinkResponse.qrCode,
         createdAt: payment.createdAt,
-        // Invoice data
-        invoice: {
-          tenant: {
-            name: qrTenant?.name,
-            address: qrTenant?.address,
-          },
-          order: {
-            id: order.id,
-            orderNumber: order.orderNumber,
-            totalAmount: Number(order.totalAmount),
-            subtotal: Number(order.subtotal),
-            finalAmount: Number(order.totalAmount),
-            createdAt: order.createdAt,
-            items: qrInvoiceItems,
-          },
-          table: {
-            tableNumber: order.tableSession.table.tableNumber,
-            zoneName: order.tableSession.table.zone?.name || '',
-          },
-        },
       };
     } catch (error) {
       this.logger.error('Failed to create PayOS payment link', error);
@@ -793,12 +702,12 @@ export class PaymentService {
   /**
    * Check payment status by order code
    */
-  async checkPaymentStatus(tenantId: string, orderCode: number) {
+  async checkPaymentStatus(tenantId: string, transactionId: string) {
     try {
       // Find payment in database first
       const payment = await this.prisma.payment.findFirst({
         where: {
-          transactionId: String(orderCode),
+          transactionId: transactionId,
           tenantId,
         },
         include: {
@@ -832,7 +741,7 @@ export class PaymentService {
       const payOS = await this.getPayOSInstance(tenantId);
 
       // Get payment info from PayOS
-      const paymentInfo = await payOS.paymentRequests.get(orderCode);
+      const paymentInfo = await payOS.paymentRequests.get(transactionId);
 
       // Map PayOS status to local status
       const statusMap: Record<string, string> = {
@@ -877,7 +786,7 @@ export class PaymentService {
       };
     } catch (error) {
       this.logger.error(
-        `Failed to check payment status for order code ${orderCode}`,
+        `Failed to check payment status for transaction ID ${transactionId}`,
         error,
       );
       throw new BadRequestException(

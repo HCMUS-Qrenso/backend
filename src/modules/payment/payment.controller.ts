@@ -9,7 +9,6 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
-  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -122,16 +121,16 @@ export class PaymentController {
     return this.paymentService.findOne(tenantId, id);
   }
 
-  @Get('check/:orderCode')
+  @Get('check/:transactionId')
   @Roles(ROLES.ADMIN, ROLES.OWNER, ROLES.WAITER)
   @ApiOperation({
-    summary: 'Check payment status by order code',
+    summary: 'Check payment status by transaction ID',
     description:
       'Check the current status of a payment from PayOS and sync with local database',
   })
   @ApiParam({
-    name: 'orderCode',
-    description: 'PayOS order code',
+    name: 'transactionId',
+    description: 'PayOS order ID / transaction ID',
     example: '123456',
   })
   @ApiResponse({
@@ -144,15 +143,9 @@ export class PaymentController {
   })
   async checkPaymentStatus(
     @TenantContext() tenantId: string,
-    @Param('orderCode') orderCode: string,
+    @Param('transactionId') transactionId: string,
   ) {
-    const orderCodeNumber = parseInt(orderCode, 10);
-
-    if (isNaN(orderCodeNumber)) {
-      throw new BadRequestException('Invalid order code');
-    }
-
-    return this.paymentService.checkPaymentStatus(tenantId, orderCodeNumber);
+    return this.paymentService.checkPaymentStatus(tenantId, transactionId);
   }
 
   @Delete(':id')
