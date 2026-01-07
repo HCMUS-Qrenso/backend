@@ -16,32 +16,72 @@ datasource db {
 // ============================================
 
 model Tenant {
-  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name              String   @db.VarChar(255)
-  address           String?  @db.VarChar(255)
-  image             String?  @db.VarChar(500)
-  slug              String   @unique @db.VarChar(100)
-  ownerId           String   @map("owner_id") @db.Uuid
-  subscriptionTier  String   @default("basic") @map("subscription_tier") @db.VarChar(50)
-  status            String   @default("active") @db.VarChar(20)
-  settings          Json?    @db.JsonB
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String   @db.VarChar(255)
+  address          String?  @db.VarChar(255)
+  image            String?  @db.VarChar(500)
+  slug             String   @unique @db.VarChar(100)
+  ownerId          String   @map("owner_id") @db.Uuid
+  subscriptionTier String   @default("basic") @map("subscription_tier") @db.VarChar(50)
+  status           String   @default("active") @db.VarChar(20)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  owner                  User                    @relation("TenantOwner", fields: [ownerId], references: [id])
-  users                  User[]                  @relation("TenantUsers")
-  categories             Category[]
-  menuItems              MenuItem[]
-  modifierGroups         ModifierGroup[]
-  zones                  Zone[]
-  tables                 Table[]
-  orders                 Order[]
-  payments               Payment[]
-  dailySalesSummary      DailySalesSummary[]
-  menuItemAnalytics      MenuItemAnalytics[]
-  notifications          Notification[]
-  auditLogs              AuditLog[]
-  tenantSettings         Setting[]
+  // ========== GENERAL SETTINGS ==========
+  currency       String  @default("VND") @db.VarChar(10)
+  currencySymbol String  @default("₫") @map("currency_symbol") @db.VarChar(5)
+  timezone       String  @default("Asia/Ho_Chi_Minh") @db.VarChar(50)
+  dateFormat     String  @default("DD/MM/YYYY") @map("date_format") @db.VarChar(20)
+  language       String  @default("vi") @db.VarChar(10)
+  phone          String? @db.VarChar(20)
+  contactEmail   String? @map("contact_email") @db.VarChar(255)
+
+  // ========== TAX SETTINGS ==========
+  taxRate      Decimal @default(10) @map("tax_rate") @db.Decimal(5, 2)
+  taxInclusive Boolean @default(true) @map("tax_inclusive")
+  taxLabel     String  @default("VAT") @map("tax_label") @db.VarChar(20)
+
+  // ========== SERVICE CHARGE SETTINGS ==========
+  serviceChargeEnabled  Boolean @default(false) @map("service_charge_enabled")
+  serviceChargeRate     Decimal @default(5) @map("service_charge_rate") @db.Decimal(5, 2)
+  serviceChargeTaxable  Boolean @default(false) @map("service_charge_taxable")
+  serviceChargeMinParty Int?    @map("service_charge_min_party")
+
+  // ========== OPERATING HOURS (JSON for complex nested structure) ==========
+  operatingHours Json? @map("operating_hours") @db.JsonB
+
+  // ========== ORDER SETTINGS ==========
+  minOrderValue            Decimal? @map("min_order_value") @db.Decimal(10, 2)
+  estimatedPrepTime        Int      @default(15) @map("estimated_prep_time")
+  allowSpecialInstructions Boolean  @default(true) @map("allow_special_instructions")
+  sessionTimeoutMinutes    Int      @default(120) @map("session_timeout_minutes")
+  requireGuestCount        Boolean  @default(false) @map("require_guest_count")
+
+  // ========== NOTIFICATION SETTINGS ==========
+  notifySoundEnabled Boolean @default(true) @map("notify_sound_enabled")
+  notifyEmailEnabled Boolean @default(false) @map("notify_email_enabled")
+  notifyEmail        String? @map("notify_email") @db.VarChar(255)
+
+  // ========== RECEIPT SETTINGS ==========
+  receiptHeader   String? @map("receipt_header") @db.VarChar(500)
+  receiptFooter   String? @map("receipt_footer") @db.VarChar(500)
+  receiptShowLogo Boolean @default(true) @map("receipt_show_logo")
+  invoicePrefix   String  @default("QR-") @map("invoice_prefix") @db.VarChar(10)
+
+  // ========== RELATIONS ==========
+  owner             User                @relation("TenantOwner", fields: [ownerId], references: [id])
+  users             User[]              @relation("TenantUsers")
+  categories        Category[]
+  menuItems         MenuItem[]
+  modifierGroups    ModifierGroup[]
+  zones             Zone[]
+  tables            Table[]
+  orders            Order[]
+  payments          Payment[]
+  dailySalesSummary DailySalesSummary[]
+  menuItemAnalytics MenuItemAnalytics[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
 
   @@index([slug])
   @@index([ownerId])
@@ -54,32 +94,32 @@ model Tenant {
 // ============================================
 
 model User {
-  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email                  String    @unique @db.VarChar(255)
-  passwordHash           String?   @map("password_hash") @db.VarChar(255)
-  fullName               String    @map("full_name") @db.VarChar(255)
-  phone                  String?   @db.VarChar(20)
-  avatarUrl              String?   @map("avatar_url") @db.VarChar(500)
-  role                   String    @db.VarChar(20)
-  tenantId               String?   @map("tenant_id") @db.Uuid
-  emailVerified          Boolean   @default(false) @map("email_verified")
-  status                 String    @default("active") @db.VarChar(20)
-  lastLoginAt            DateTime? @map("last_login_at") @db.Timestamp(6)
-  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String    @unique @db.VarChar(255)
+  passwordHash  String?   @map("password_hash") @db.VarChar(255)
+  fullName      String    @map("full_name") @db.VarChar(255)
+  phone         String?   @db.VarChar(20)
+  avatarUrl     String?   @map("avatar_url") @db.VarChar(500)
+  role          String    @db.VarChar(20)
+  tenantId      String?   @map("tenant_id") @db.Uuid
+  emailVerified Boolean   @default(false) @map("email_verified")
+  status        String    @default("active") @db.VarChar(20)
+  lastLoginAt   DateTime? @map("last_login_at") @db.Timestamp(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  tenant                 Tenant?                  @relation("TenantUsers", fields: [tenantId], references: [id])
-  ownedTenants           Tenant[]                 @relation("TenantOwner")
-  verificationTokens     UserVerificationToken[]
-  oauthProviders         UserOAuthProvider[]
-  refreshTokens          RefreshToken[]
-  tableSessions          TableSession[]
-  ordersAsCustomer       Order[]                  @relation("OrderCustomer")
-  ordersAsWaiter         Order[]                  @relation("OrderWaiter")
-  orderStatusChanges     OrderStatusHistory[]
-  reviews                Review[]
-  notifications          Notification[]
-  auditLogs              AuditLog[]
+  tenant             Tenant?                 @relation("TenantUsers", fields: [tenantId], references: [id])
+  ownedTenants       Tenant[]                @relation("TenantOwner")
+  verificationTokens UserVerificationToken[]
+  oauthProviders     UserOAuthProvider[]
+  refreshTokens      RefreshToken[]
+  tableSessions      TableSession[]
+  ordersAsCustomer   Order[]                 @relation("OrderCustomer")
+  ordersAsWaiter     Order[]                 @relation("OrderWaiter")
+  orderStatusChanges OrderStatusHistory[]
+  reviews            Review[]
+  notifications      Notification[]
+  auditLogs          AuditLog[]
 
   @@index([email])
   @@index([tenantId])
@@ -175,15 +215,15 @@ model MenuItem {
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  tenant              Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category            Category?                @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  images              MenuItemImage[]
-  modifierGroups      MenuItemModifierGroup[]
-  pairings            MenuItemPairing[]        @relation("MenuItemPairings")
-  relatedPairings     MenuItemPairing[]        @relation("RelatedItemPairings")
-  orderItems          OrderItem[]
-  reviews             Review[]
-  analytics           MenuItemAnalytics[]
+  tenant          Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category        Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  images          MenuItemImage[]
+  modifierGroups  MenuItemModifierGroup[]
+  pairings        MenuItemPairing[]       @relation("MenuItemPairings")
+  relatedPairings MenuItemPairing[]       @relation("RelatedItemPairings")
+  orderItems      OrderItem[]
+  reviews         Review[]
+  analytics       MenuItemAnalytics[]
 
   @@index([tenantId])
   @@index([categoryId])
@@ -221,9 +261,9 @@ model ModifierGroup {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  tenant        Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  modifiers     Modifier[]
-  menuItems     MenuItemModifierGroup[]
+  tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  modifiers Modifier[]
+  menuItems MenuItemModifierGroup[]
 
   @@index([tenantId])
   @@map("modifier_groups")
@@ -239,7 +279,7 @@ model Modifier {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  modifierGroup     ModifierGroup        @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+  modifierGroup      ModifierGroup       @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
   orderItemModifiers OrderItemModifier[]
 
   @@index([modifierGroupId])
@@ -282,14 +322,14 @@ model MenuItemPairing {
 // ============================================
 
 model Zone {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId    String   @map("tenant_id") @db.Uuid
-  name        String   @db.VarChar(100)
-  description String?  @db.Text
-  displayOrder Int     @default(0) @map("display_order")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  name         String   @db.VarChar(100)
+  description  String?  @db.Text
+  displayOrder Int      @default(0) @map("display_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   tables Table[]
@@ -302,26 +342,26 @@ model Zone {
 }
 
 model Table {
-  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId           String    @map("tenant_id") @db.Uuid
-  zoneId             String    @map("zone_id") @db.Uuid
-  tableNumber        String    @map("table_number") @db.VarChar(20)
-  capacity           Int
-  position           String?   @db.VarChar(100)
-  shape              String?   @db.VarChar(100)
-  status             String    @default("available") @db.VarChar(20)
-  qrCodeToken        String?   @unique @map("qr_code_token") @db.Text
-  qrCodeUrl          String?   @map("qr_code_url") @db.Text
-  orderingUrl        String?   @map("ordering_url") @db.Text
-  qrCodeGeneratedAt  DateTime? @map("qr_code_generated_at") @db.Timestamp(6)
-  isActive           Boolean   @default(true) @map("is_active")
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  zoneId            String    @map("zone_id") @db.Uuid
+  tableNumber       String    @map("table_number") @db.VarChar(20)
+  capacity          Int
+  position          String?   @db.VarChar(100)
+  shape             String?   @db.VarChar(100)
+  status            String    @default("available") @db.VarChar(20)
+  qrCodeToken       String?   @unique @map("qr_code_token") @db.Text
+  qrCodeUrl         String?   @map("qr_code_url") @db.Text
+  orderingUrl       String?   @map("ordering_url") @db.Text
+  qrCodeGeneratedAt DateTime? @map("qr_code_generated_at") @db.Timestamp(6)
+  isActive          Boolean   @default(true) @map("is_active")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  zone          Zone?          @relation(fields: [zoneId], references: [id], onDelete: SetNull)
-  sessions      TableSession[]
-  orders        Order[]
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  zone     Zone?          @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  sessions TableSession[]
+  orders   Order[]
 
   @@unique([tenantId, tableNumber])
   @@index([tenantId])
@@ -367,27 +407,27 @@ model TableSession {
 // ============================================
 
 model Order {
-  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderNumber          String    @unique @map("order_number") @db.VarChar(50)
-  tenantId             String    @map("tenant_id") @db.Uuid
-  tableId              String    @map("table_id") @db.Uuid
-  tableSessionId       String    @map("table_session_id") @db.Uuid
-  customerId           String?   @map("customer_id") @db.Uuid
-  waiterId             String?   @map("waiter_id") @db.Uuid
-  status               String    @default("pending") @db.VarChar(20)
-  priority             String    @default("normal") @db.VarChar(20)
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderNumber         String    @unique @map("order_number") @db.VarChar(50)
+  tenantId            String    @map("tenant_id") @db.Uuid
+  tableId             String    @map("table_id") @db.Uuid
+  tableSessionId      String    @map("table_session_id") @db.Uuid
+  customerId          String?   @map("customer_id") @db.Uuid
+  waiterId            String?   @map("waiter_id") @db.Uuid
+  status              String    @default("pending") @db.VarChar(20)
+  priority            String    @default("normal") @db.VarChar(20)
   // Payment status for payment lock feature: none | initiated | processing | paid | failed
-  paymentStatus        String    @default("none") @map("payment_status") @db.VarChar(20)
-  subtotal             Decimal   @default(0) @db.Decimal(10, 2)
-  taxAmount            Decimal   @default(0) @map("tax_amount") @db.Decimal(10, 2)
-  discountAmount       Decimal   @default(0) @map("discount_amount") @db.Decimal(10, 2)
-  totalAmount          Decimal   @default(0) @map("total_amount") @db.Decimal(10, 2)
-  specialInstructions  String?   @map("special_instructions") @db.Text
-  rejectionReason      String?   @map("rejection_reason") @db.Text
-  acceptedAt           DateTime? @map("accepted_at") @db.Timestamp(6)
-  completedAt          DateTime? @map("completed_at") @db.Timestamp(6)
-  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  paymentStatus       String    @default("none") @map("payment_status") @db.VarChar(20)
+  subtotal            Decimal   @default(0) @db.Decimal(10, 2)
+  taxAmount           Decimal   @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  discountAmount      Decimal   @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  totalAmount         Decimal   @default(0) @map("total_amount") @db.Decimal(10, 2)
+  specialInstructions String?   @map("special_instructions") @db.Text
+  rejectionReason     String?   @map("rejection_reason") @db.Text
+  acceptedAt          DateTime? @map("accepted_at") @db.Timestamp(6)
+  completedAt         DateTime? @map("completed_at") @db.Timestamp(6)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   table         Table                @relation(fields: [tableId], references: [id])
@@ -412,26 +452,26 @@ model Order {
 }
 
 model OrderItem {
-  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId                 String    @map("order_id") @db.Uuid
-  menuItemId              String    @map("menu_item_id") @db.Uuid
-  quantity                Int       @default(1)
-  unitPrice               Decimal   @map("unit_price") @db.Decimal(10, 2)
-  modifiersTotal          Decimal   @default(0) @map("modifiers_total") @db.Decimal(10, 2)
-  subtotal                Decimal   @db.Decimal(10, 2)
-  status                  String    @default("pending") @db.VarChar(20)
-  specialInstructions     String?   @map("special_instructions") @db.Text
-  preparationStartedAt    DateTime? @map("preparation_started_at") @db.Timestamp(6)
-  preparationCompletedAt  DateTime? @map("preparation_completed_at") @db.Timestamp(6)
-  servedAt                DateTime? @map("served_at") @db.Timestamp(6)
-  estimatedPrepTime       Int?      @map("estimated_prep_time")
-  actualPrepTime          Int?      @map("actual_prep_time")
-  cancellationReason      String?   @map("cancellation_reason") @db.Text
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId                String    @map("order_id") @db.Uuid
+  menuItemId             String    @map("menu_item_id") @db.Uuid
+  quantity               Int       @default(1)
+  unitPrice              Decimal   @map("unit_price") @db.Decimal(10, 2)
+  modifiersTotal         Decimal   @default(0) @map("modifiers_total") @db.Decimal(10, 2)
+  subtotal               Decimal   @db.Decimal(10, 2)
+  status                 String    @default("pending") @db.VarChar(20)
+  specialInstructions    String?   @map("special_instructions") @db.Text
+  preparationStartedAt   DateTime? @map("preparation_started_at") @db.Timestamp(6)
+  preparationCompletedAt DateTime? @map("preparation_completed_at") @db.Timestamp(6)
+  servedAt               DateTime? @map("served_at") @db.Timestamp(6)
+  estimatedPrepTime      Int?      @map("estimated_prep_time")
+  actualPrepTime         Int?      @map("actual_prep_time")
+  cancellationReason     String?   @map("cancellation_reason") @db.Text
   // Multi-device tracking: who added this item
-  createdByDeviceId       String?   @map("created_by_device_id") @db.VarChar(255)
-  createdByCustomerId     String?   @map("created_by_customer_id") @db.Uuid
-  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt               DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  createdByDeviceId      String?   @map("created_by_device_id") @db.VarChar(255)
+  createdByCustomerId    String?   @map("created_by_customer_id") @db.Uuid
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   order     Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
   menuItem  MenuItem            @relation(fields: [menuItemId], references: [id])
@@ -460,13 +500,13 @@ model OrderItemModifier {
 }
 
 model OrderStatusHistory {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId    String    @map("order_id") @db.Uuid
-  fromStatus String?   @map("from_status") @db.VarChar(20)
-  toStatus   String    @map("to_status") @db.VarChar(20)
-  changedBy  String?   @map("changed_by") @db.Uuid
-  notes      String?   @db.Text
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId    String   @map("order_id") @db.Uuid
+  fromStatus String?  @map("from_status") @db.VarChar(20)
+  toStatus   String   @map("to_status") @db.VarChar(20)
+  changedBy  String?  @map("changed_by") @db.Uuid
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
   user  User? @relation(fields: [changedBy], references: [id], onDelete: SetNull)
@@ -636,35 +676,19 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-model Setting {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId    String   @map("tenant_id") @db.Uuid
-  key         String   @db.VarChar(100)
-  value       Json     @db.JsonB
-  description String?  @db.Text
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, key])
-  @@index([tenantId])
-  @@map("settings")
-}
-
 // ============================================
 // IDEMPOTENCY KEYS TABLE
 // ============================================
 
 model IdempotencyKey {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  key         String   @unique @db.VarChar(255)
-  endpoint    String   @db.VarChar(255)
-  method      String   @db.VarChar(10)
-  response    Json?    @db.JsonB
-  statusCode  Int?     @map("status_code")
-  expiresAt   DateTime @map("expires_at") @db.Timestamp(6)
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key        String   @unique @db.VarChar(255)
+  endpoint   String   @db.VarChar(255)
+  method     String   @db.VarChar(10)
+  response   Json?    @db.JsonB
+  statusCode Int?     @map("status_code")
+  expiresAt  DateTime @map("expires_at") @db.Timestamp(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   @@index([key])
   @@index([expiresAt])
@@ -676,13 +700,13 @@ model IdempotencyKey {
 // ============================================
 
 model AnalyticsEvent {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  tableSessionId  String?  @map("table_session_id") @db.Uuid
-  eventType       String   @map("event_type") @db.VarChar(50)
-  deviceId        String?  @map("device_id") @db.VarChar(255)
-  metadata        Json?    @db.JsonB
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  tableSessionId String?  @map("table_session_id") @db.Uuid
+  eventType      String   @map("event_type") @db.VarChar(50)
+  deviceId       String?  @map("device_id") @db.VarChar(255)
+  metadata       Json?    @db.JsonB
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   @@index([tenantId, eventType, createdAt])
   @@index([tableSessionId])

@@ -1388,7 +1388,25 @@ export class TablesService {
     const table = await this.prisma.table.findFirst({
       where: { id: tableId, tenantId, isActive: true },
       include: {
-        tenant: { select: { slug: true, name: true } },
+        tenant: {
+          select: {
+            slug: true,
+            name: true,
+            address: true,
+            image: true,
+            // Settings for customer-frontend
+            currency: true,
+            currencySymbol: true,
+            timezone: true,
+            taxRate: true,
+            taxInclusive: true,
+            taxLabel: true,
+            serviceChargeEnabled: true,
+            serviceChargeRate: true,
+            serviceChargeMinParty: true,
+            operatingHours: true,
+          },
+        },
         zone: { select: { name: true } },
       },
     });
@@ -1473,6 +1491,24 @@ export class TablesService {
           tenant: {
             slug: table.tenant.slug,
             name: table.tenant.name,
+            address: table.tenant.address || null,
+            image: table.tenant.image || null,
+            settings: {
+              currency: table.tenant.currency,
+              currency_symbol: table.tenant.currencySymbol,
+              timezone: table.tenant.timezone,
+              tax: {
+                rate: Number(table.tenant.taxRate),
+                inclusive: table.tenant.taxInclusive,
+                label: table.tenant.taxLabel,
+              },
+              service_charge: table.tenant.serviceChargeEnabled ? {
+                enabled: table.tenant.serviceChargeEnabled,
+                rate: Number(table.tenant.serviceChargeRate),
+                min_party: table.tenant.serviceChargeMinParty,
+              } : null,
+              operating_hours: table.tenant.operatingHours,
+            },
           },
           started_at: existingSession.startedAt,
           guest_name: existingSession.guestName,
@@ -1542,6 +1578,24 @@ export class TablesService {
         tenant: {
           slug: table.tenant.slug,
           name: table.tenant.name,
+          address: table.tenant.address || null,
+          image: table.tenant.image || null,
+          settings: {
+            currency: table.tenant.currency,
+            currency_symbol: table.tenant.currencySymbol,
+            timezone: table.tenant.timezone,
+            tax: {
+              rate: Number(table.tenant.taxRate),
+              inclusive: table.tenant.taxInclusive,
+              label: table.tenant.taxLabel,
+            },
+            service_charge: table.tenant.serviceChargeEnabled ? {
+              enabled: table.tenant.serviceChargeEnabled,
+              rate: Number(table.tenant.serviceChargeRate),
+              min_party: table.tenant.serviceChargeMinParty,
+            } : null,
+            operating_hours: table.tenant.operatingHours,
+          },
         },
         started_at: session.startedAt,
         guest_name: session.guestName,
