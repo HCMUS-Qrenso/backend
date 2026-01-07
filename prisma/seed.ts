@@ -55,6 +55,7 @@ async function main() {
       role: 'super_admin',
       emailVerified: true,
       status: 'active',
+      accountType: 'staff',
     },
   });
   console.log(`✓ Created Super Admin: ${superAdmin.email}\n`);
@@ -70,6 +71,7 @@ async function main() {
       role: 'owner',
       emailVerified: true,
       status: 'active',
+      accountType: 'staff',
     },
   });
   console.log(`✓ Created Owner: ${owner.email}\n`);
@@ -146,6 +148,7 @@ async function main() {
       tenantId: tenant.id,
       emailVerified: true,
       status: 'active',
+      accountType: 'staff',
     },
   });
 
@@ -159,6 +162,7 @@ async function main() {
       tenantId: tenant.id,
       emailVerified: true,
       status: 'active',
+      accountType: 'staff',
     },
   });
 
@@ -172,6 +176,7 @@ async function main() {
       tenantId: tenant.id,
       emailVerified: true,
       status: 'active',
+      accountType: 'staff',
     },
   });
 
@@ -185,6 +190,7 @@ async function main() {
       tenantId: tenant.id,
       emailVerified: true,
       status: 'active',
+      accountType: 'staff',
     },
   });
 
@@ -198,6 +204,7 @@ async function main() {
       tenantId: tenant.id,
       emailVerified: true,
       status: 'active',
+      accountType: 'staff',
     },
   });
 
@@ -215,6 +222,7 @@ async function main() {
       tenantId: tenant2.id,
       emailVerified: true,
       status: 'active',
+      accountType: 'staff',
     },
   });
 
@@ -228,6 +236,7 @@ async function main() {
       tenantId: tenant2.id,
       emailVerified: true,
       status: 'active',
+      accountType: 'staff',
     },
   });
 
@@ -241,6 +250,7 @@ async function main() {
       tenantId: tenant2.id,
       emailVerified: true,
       status: 'active',
+      accountType: 'staff',
     },
   });
 
@@ -254,6 +264,7 @@ async function main() {
       tenantId: tenant2.id,
       emailVerified: true,
       status: 'active',
+      accountType: 'staff',
     },
   });
 
@@ -267,6 +278,7 @@ async function main() {
       tenantId: tenant2.id,
       emailVerified: true,
       status: 'active',
+      accountType: 'staff',
     },
   });
 
@@ -283,6 +295,7 @@ async function main() {
       role: 'customer',
       emailVerified: true,
       status: 'active',
+      accountType: 'customer',
     },
   });
 
@@ -295,6 +308,7 @@ async function main() {
       role: 'customer',
       emailVerified: true,
       status: 'active',
+      accountType: 'customer',
     },
   });
 

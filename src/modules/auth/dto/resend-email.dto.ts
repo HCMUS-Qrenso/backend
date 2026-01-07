@@ -1,5 +1,6 @@
-import { IsEmail, IsNotEmpty, IsEnum } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsEnum, IsString, IsOptional, IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { ACCOUNT_TYPES } from '../../../common/constants';
 
 export enum ResendEmailType {
   EMAIL_VERIFICATION = 'email_verification',
@@ -23,4 +24,16 @@ export class ResendEmailDto {
   @IsEnum(ResendEmailType)
   @IsNotEmpty()
   type: ResendEmailType;
+
+  @ApiProperty({
+    description: 'Account type to resend email for',
+    enum: Object.values(ACCOUNT_TYPES),
+    example: ACCOUNT_TYPES.CUSTOMER,
+    default: ACCOUNT_TYPES.CUSTOMER,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  @IsIn(Object.values(ACCOUNT_TYPES))
+  accountType?: string = ACCOUNT_TYPES.CUSTOMER;
 }
