@@ -27,3 +27,8 @@ export const ROLES = {
   CUSTOMER: 'customer',
   GUEST: 'guest',
 } as const;
+
+export const ACCOUNT_TYPES = {
+  CUSTOMER: 'customer',
+  STAFF: 'staff',
+} as const;

@@ -20,7 +20,7 @@ import {
 } from '../dto';
 import { EmailService } from './email.service';
 import { TokenService } from './token.service';
-import { ROLES } from 'src/common/constants';
+import { ROLES, ACCOUNT_TYPES } from 'src/common/constants';
 
 @Injectable()
 export class AuthService {
@@ -36,8 +36,14 @@ export class AuthService {
   async signup(signupDto: SignupDto): Promise<{ message: string }> {
     const { email, password, fullName, phone } = signupDto;
 
+    // Check if customer account already exists for this email
     const existingUser = await this.prisma.user.findUnique({
-      where: { email },
+      where: {
+        email_accountType: {
+          email,
+          accountType: ACCOUNT_TYPES.CUSTOMER,
+        },
+      },
     });
 
     if (existingUser) {
@@ -55,6 +61,7 @@ export class AuthService {
         fullName,
         phone,
         role: ROLES.CUSTOMER, // Default role set to 'customer', no signup for other roles
+        accountType: ACCOUNT_TYPES.CUSTOMER, // Signup is only for customer accounts
         emailVerified: false,
         status: 'active',
       },
@@ -80,10 +87,16 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto): Promise<AuthResponse> {
-    const { email, password } = loginDto;
+    const { email, password, accountType = ACCOUNT_TYPES.CUSTOMER } = loginDto;
 
+    // Find user with specific email and account type
     const user = await this.prisma.user.findUnique({
-      where: { email },
+      where: {
+        email_accountType: {
+          email,
+          accountType,
+        },
+      },
     });
 
     if (!user) {
@@ -149,10 +162,15 @@ export class AuthService {
   async forgotPassword(
     forgotPasswordDto: ForgotPasswordDto,
   ): Promise<{ message: string }> {
-    const { email } = forgotPasswordDto;
+    const { email, accountType = ACCOUNT_TYPES.CUSTOMER } = forgotPasswordDto;
 
     const user = await this.prisma.user.findUnique({
-      where: { email },
+      where: {
+        email_accountType: {
+          email,
+          accountType,
+        },
+      },
     });
 
     if (!user) {
@@ -189,7 +207,11 @@ export class AuthService {
   async resetPassword(
     resetPasswordDto: ResetPasswordDto,
   ): Promise<{ message: string }> {
-    const { token, newPassword } = resetPasswordDto;
+    const {
+      token,
+      newPassword,
+      accountType = ACCOUNT_TYPES.CUSTOMER,
+    } = resetPasswordDto;
 
     const validation = await this.tokenService.validateVerificationToken(
       token,
@@ -198,6 +220,13 @@ export class AuthService {
 
     if (!validation.valid) {
       throw new BadRequestException(validation.error);
+    }
+
+    // Verify the token belongs to a user with the specified account type
+    if (validation.user!.accountType !== accountType) {
+      throw new BadRequestException(
+        t('auth.invalidAccountType', 'Invalid account type for this token'),
+      );
     }
 
     const passwordHash = await HashUtil.hash(newPassword);
@@ -318,9 +347,15 @@ export class AuthService {
   async resendEmail(
     email: string,
     type: ResendEmailType,
+    accountType: string = ACCOUNT_TYPES.CUSTOMER,
   ): Promise<{ message: string }> {
     const user = await this.prisma.user.findUnique({
-      where: { email },
+      where: {
+        email_accountType: {
+          email,
+          accountType,
+        },
+      },
     });
 
     if (!user) {
@@ -418,7 +453,12 @@ export class AuthService {
       });
     } else {
       user = await this.prisma.user.findUnique({
-        where: { email },
+        where: {
+          email_accountType: {
+            email,
+            accountType: ACCOUNT_TYPES.CUSTOMER,
+          },
+        },
       });
 
       if (user) {
@@ -438,6 +478,7 @@ export class AuthService {
             fullName,
             avatarUrl,
             role: ROLES.CUSTOMER,
+            accountType: ACCOUNT_TYPES.CUSTOMER, // OAuth signup is for customers only
             emailVerified: true,
             status: 'active',
             oauthProviders: {
