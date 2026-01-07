@@ -496,6 +496,7 @@ model Payment {
   paidAt          DateTime? @map("paid_at") @db.Timestamp(6)
   refundedAt      DateTime? @map("refunded_at") @db.Timestamp(6)
   refundAmount    Decimal?  @map("refund_amount") @db.Decimal(10, 2)
+  cancelReason    String?   @map("cancel_reason") @db.Text
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 

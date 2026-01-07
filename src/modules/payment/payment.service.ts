@@ -615,6 +615,7 @@ export class PaymentService {
           where: { id: paymentId },
           data: {
             status: PaymentStatus.CANCELLED,
+            cancelReason: reason,
           },
         });
 
