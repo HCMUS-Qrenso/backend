@@ -1,4 +1,10 @@
-import { IsEmail, IsNotEmpty, IsString, IsOptional, IsIn } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsIn,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ACCOUNT_TYPES } from '../../../common/constants';
 

@@ -38,11 +38,11 @@ export class AuthService {
 
     // Check if customer account already exists for this email
     const existingUser = await this.prisma.user.findUnique({
-      where: { 
+      where: {
         email_accountType: {
           email,
-          accountType: ACCOUNT_TYPES.CUSTOMER
-        }
+          accountType: ACCOUNT_TYPES.CUSTOMER,
+        },
       },
     });
 
@@ -91,11 +91,11 @@ export class AuthService {
 
     // Find user with specific email and account type
     const user = await this.prisma.user.findUnique({
-      where: { 
+      where: {
         email_accountType: {
           email,
-          accountType
-        }
+          accountType,
+        },
       },
     });
 
@@ -165,11 +165,11 @@ export class AuthService {
     const { email, accountType = ACCOUNT_TYPES.CUSTOMER } = forgotPasswordDto;
 
     const user = await this.prisma.user.findUnique({
-      where: { 
+      where: {
         email_accountType: {
           email,
-          accountType
-        }
+          accountType,
+        },
       },
     });
 
@@ -207,7 +207,11 @@ export class AuthService {
   async resetPassword(
     resetPasswordDto: ResetPasswordDto,
   ): Promise<{ message: string }> {
-    const { token, newPassword, accountType = ACCOUNT_TYPES.CUSTOMER } = resetPasswordDto;
+    const {
+      token,
+      newPassword,
+      accountType = ACCOUNT_TYPES.CUSTOMER,
+    } = resetPasswordDto;
 
     const validation = await this.tokenService.validateVerificationToken(
       token,
@@ -346,11 +350,11 @@ export class AuthService {
     accountType: string = ACCOUNT_TYPES.CUSTOMER,
   ): Promise<{ message: string }> {
     const user = await this.prisma.user.findUnique({
-      where: { 
+      where: {
         email_accountType: {
           email,
-          accountType
-        }
+          accountType,
+        },
       },
     });
 
@@ -452,8 +456,8 @@ export class AuthService {
         where: {
           email_accountType: {
             email,
-            accountType: ACCOUNT_TYPES.CUSTOMER
-          }
+            accountType: ACCOUNT_TYPES.CUSTOMER,
+          },
         },
       });
 

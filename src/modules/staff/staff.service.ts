@@ -200,11 +200,11 @@ export class StaffService {
   async create(tenantId: string, createStaffDto: CreateStaffDto) {
     // Check for duplicate email for staff account type
     const existing = await this.prisma.user.findUnique({
-      where: { 
+      where: {
         email_accountType: {
           email: createStaffDto.email,
-          accountType: ACCOUNT_TYPES.STAFF
-        }
+          accountType: ACCOUNT_TYPES.STAFF,
+        },
       },
     });
 

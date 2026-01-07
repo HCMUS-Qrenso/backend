@@ -212,9 +212,10 @@ export class AuthController {
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Request password reset email',
-    description: 'Send password reset email to specified email for the specified account type. Supports both customer and staff accounts.'
+    description:
+      'Send password reset email to specified email for the specified account type. Supports both customer and staff accounts.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -228,9 +229,10 @@ export class AuthController {
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Reset password using token from email',
-    description: 'Reset password using the token received in email. Account type must match the account type used when requesting the password reset.'
+    description:
+      'Reset password using the token received in email. Account type must match the account type used when requesting the password reset.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -311,7 +313,11 @@ export class AuthController {
     type: ErrorResponseDto,
   })
   async resendEmail(@Body() resendDto: ResendEmailDto) {
-    return this.authService.resendEmail(resendDto.email, resendDto.type, resendDto.accountType);
+    return this.authService.resendEmail(
+      resendDto.email,
+      resendDto.type,
+      resendDto.accountType,
+    );
   }
 
   @Public()
