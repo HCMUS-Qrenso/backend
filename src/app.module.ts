@@ -1,5 +1,6 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import {
   I18nModule,
@@ -21,6 +22,11 @@ import { ModifiersModule } from './modules/modifiers/modifiers.module';
 import { UploadModule } from './modules/uploads/upload.module';
 import { JwtAuthGuard } from './modules/auth/guards';
 import { StaffModule } from './modules/staff/staff.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { EventsModule } from './modules/events/events.module';
+import { KdsModule } from './modules/kds/kds.module';
+import { PaymentModule } from './modules/payment/payment.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -28,6 +34,7 @@ import { StaffModule } from './modules/staff/staff.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    ScheduleModule.forRoot(),
     I18nModule.forRoot({
       fallbackLanguage: 'en',
       loaderOptions: {
@@ -46,6 +53,11 @@ import { StaffModule } from './modules/staff/staff.module';
     ModifiersModule,
     UploadModule,
     StaffModule,
+    OrdersModule,
+    EventsModule,
+    KdsModule,
+    PaymentModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

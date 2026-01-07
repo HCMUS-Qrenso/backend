@@ -144,5 +144,27 @@
     "unauthorized": "Unauthorized",
     "forbidden": "Forbidden",
     "internalServerError": "Internal server error"
+  },
+  "payment": {
+    "created": "Payment link created successfully",
+    "notFound": "Payment not found",
+    "orderNotFound": "Order not found",
+    "orderNotCompleted": "Order must be completed before payment can be created",
+    "alreadyExists": "Order already has a pending or completed payment",
+    "paymentLocked": "Payment is currently being processed",
+    "cancelled": "Payment cancelled successfully",
+    "cannotCancelPaid": "Cannot cancel a paid payment. Use refund instead.",
+    "alreadyCancelled": "Payment is already cancelled",
+    "webhookProcessed": "Webhook processed successfully",
+    "webhookAlreadyProcessed": "Payment already processed",
+    "statusChecked": "Payment status checked successfully",
+    "statusSynced": "Payment status synchronized with PayOS",
+    "createFailed": "Failed to create payment link",
+    "cancelFailed": "Failed to cancel payment",
+    "webhookFailed": "Failed to process webhook",
+    "statusCheckFailed": "Failed to check payment status",
+    "infoFailed": "Failed to get payment information",
+    "credentialsNotConfigured": "PayOS credentials not configured for this tenant",
+    "invalidSignature": "Invalid webhook signature"
   }
 }

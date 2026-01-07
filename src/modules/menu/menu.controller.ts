@@ -68,11 +68,27 @@ export class MenuController {
     ROLES.GUEST,
   )
   @UseGuards(QrTokenGuard) // Ensure GUEST/CUSTOMER have table context
-  @ApiOperation({ summary: 'Get paginated list of menu items' })
+  @ApiOperation({
+    summary: 'Get paginated list of menu items',
+    description:
+      'For guest/customer users, provide x-qr-token or x-table-session-token header to establish tenant context. Authenticated users can use Authorization Bearer token.',
+  })
   @ApiHeader({
     name: 'x-qr-token',
     required: false,
-    description: 'QR token for CUSTOMER roles to establish table context',
+    description:
+      'QR token for guest/customer users to establish table context (v2.0)',
+  })
+  @ApiHeader({
+    name: 'x-table-session-token',
+    required: false,
+    description:
+      'Session token for guest/customer users (can be used instead of x-qr-token) (v2.0)',
+  })
+  @ApiHeader({
+    name: 'Authorization',
+    required: false,
+    description: 'Bearer {accessToken} for authenticated users (optional)',
   })
   @ApiResponse({
     status: 200,
@@ -207,7 +223,28 @@ export class MenuController {
     ROLES.GUEST,
   )
   @UseGuards(QrTokenGuard) // Ensure GUEST/CUSTOMER have table context
-  @ApiOperation({ summary: 'Get menu item by ID' })
+  @ApiOperation({
+    summary: 'Get menu item by ID',
+    description:
+      'For guest/customer users, provide x-qr-token or x-table-session-token header to establish tenant context. Authenticated users can use Authorization Bearer token.',
+  })
+  @ApiHeader({
+    name: 'x-qr-token',
+    required: false,
+    description:
+      'QR token for guest/customer users to establish table context (v2.0)',
+  })
+  @ApiHeader({
+    name: 'x-table-session-token',
+    required: false,
+    description:
+      'Session token for guest/customer users (can be used instead of x-qr-token) (v2.0)',
+  })
+  @ApiHeader({
+    name: 'Authorization',
+    required: false,
+    description: 'Bearer {accessToken} for authenticated users (optional)',
+  })
   @ApiResponse({ status: 200, description: 'Menu item retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
   @ApiParam({ name: 'id', description: 'Menu item ID' })

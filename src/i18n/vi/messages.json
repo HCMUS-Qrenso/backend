@@ -144,5 +144,27 @@
     "unauthorized": "Chưa xác thực",
     "forbidden": "Bị cấm",
     "internalServerError": "Lỗi máy chủ nội bộ"
+  },
+  "payment": {
+    "created": "Đã tạo liên kết thanh toán thành công",
+    "notFound": "Không tìm thấy thanh toán",
+    "orderNotFound": "Không tìm thấy đơn hàng",
+    "orderNotCompleted": "Đơn hàng phải được hoàn thành trước khi tạo thanh toán",
+    "alreadyExists": "Đơn hàng đã có thanh toán đang chờ hoặc đã hoàn thành",
+    "paymentLocked": "Thanh toán đang được xử lý",
+    "cancelled": "Đã hủy thanh toán thành công",
+    "cannotCancelPaid": "Không thể hủy thanh toán đã thanh toán. Vui lòng sử dụng hoàn tiền.",
+    "alreadyCancelled": "Thanh toán đã được hủy",
+    "webhookProcessed": "Đã xử lý webhook thành công",
+    "webhookAlreadyProcessed": "Thanh toán đã được xử lý",
+    "statusChecked": "Đã kiểm tra trạng thái thanh toán thành công",
+    "statusSynced": "Đã đồng bộ trạng thái thanh toán với PayOS",
+    "createFailed": "Không thể tạo liên kết thanh toán",
+    "cancelFailed": "Không thể hủy thanh toán",
+    "webhookFailed": "Không thể xử lý webhook",
+    "statusCheckFailed": "Không thể kiểm tra trạng thái thanh toán",
+    "infoFailed": "Không thể lấy thông tin thanh toán",
+    "credentialsNotConfigured": "Thông tin xác thực PayOS chưa được cấu hình cho tenant này",
+    "invalidSignature": "Chữ ký webhook không hợp lệ"
   }
 }

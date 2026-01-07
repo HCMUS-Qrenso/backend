@@ -9,7 +9,7 @@ import { t } from '../../common/utils';
 import {
   CreateStaffDto,
   UpdateStaffDto,
-  UpdateStatusDto,
+  UpdateStaffStatusDto,
   QueryStaffDto,
 } from './dto';
 import { EmailService, TokenService } from '../auth/services';
@@ -276,7 +276,7 @@ export class StaffService {
   async updateStatus(
     tenantId: string,
     id: string,
-    updateStatusDto: UpdateStatusDto,
+    updateStatusDto: UpdateStaffStatusDto,
   ) {
     // Check if staff exists
     const existing = await this.prisma.user.findFirst({
@@ -377,6 +377,7 @@ export class StaffService {
       existing.email,
       resetToken,
       existing.fullName,
+      existing.role, // Use staff role (will default to FRONTEND_URL)
     );
 
     this.logger.log(
