@@ -25,12 +25,6 @@ export class UserService {
       },
     });
 
-    // Mark the avatar with a new Date to prevent caching issues
-    if (user && user.avatarUrl) {
-      const separator = user.avatarUrl.includes('?') ? '&' : '?';
-      user.avatarUrl = `${user.avatarUrl}${separator}t=${Date.now()}`;
-    }
-
     return user;
   }
 
@@ -54,6 +48,12 @@ export class UserService {
 
   async updateUserProfile(userId: string, updateData: UpdateProfileDto) {
     try {
+      // Mark the avatar with time-based query param to force refresh
+      if (updateData.avatarUrl) {
+        const separator = updateData.avatarUrl.includes('?') ? '&' : '?';
+        updateData.avatarUrl = `${updateData.avatarUrl}${separator}t=${Date.now()}`;
+      }
+
       const user = await this.prisma.user.update({
         where: { id: userId },
         data: {
@@ -69,12 +69,6 @@ export class UserService {
           updatedAt: true,
         },
       });
-
-      // Mark the avatar with a new Date to prevent caching issues
-      if (user && user.avatarUrl) {
-        const separator = user.avatarUrl.includes('?') ? '&' : '?';
-        user.avatarUrl = `${user.avatarUrl}${separator}t=${Date.now()}`;
-      }
 
       return {
         message: t(
