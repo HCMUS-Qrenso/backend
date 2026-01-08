@@ -4,11 +4,13 @@ import {
   IsString,
   IsBoolean,
   IsOptional,
+  IsIn,
   MinLength,
   MaxLength,
   IsStrongPassword,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { ACCOUNT_TYPES } from '../../../common/constants';
 
 export class LoginDto {
   @ApiProperty({
@@ -31,6 +33,18 @@ export class LoginDto {
   @MaxLength(255)
   @IsStrongPassword()
   password: string;
+
+  @ApiProperty({
+    description: 'Account type to login as',
+    enum: Object.values(ACCOUNT_TYPES),
+    example: ACCOUNT_TYPES.CUSTOMER,
+    default: ACCOUNT_TYPES.CUSTOMER,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  @IsIn(Object.values(ACCOUNT_TYPES))
+  accountType?: string = ACCOUNT_TYPES.CUSTOMER;
 
   @ApiProperty({
     description:

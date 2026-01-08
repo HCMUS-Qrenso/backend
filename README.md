@@ -68,12 +68,14 @@ npm run start:dev
 ### Key Features
 
 ✅ **Complete Authentication System**
-- Email/Password authentication
+- Email/Password authentication with dual account type support (customer/staff)
+- Same email can be used for both customer and staff accounts
 - JWT access tokens (15min expiry)
 - Refresh tokens with HTTP-only cookies
 - Email verification
-- Password reset flow
+- Password reset flow with account type validation
 - Google OAuth 2.0
+- Account type-specific login and password management
 
 ✅ **Tables Management API**
 - Multi-tenant table management with QR codes
@@ -127,6 +129,16 @@ npm run start:dev
 - Presigned URL generation for direct client-to-S3 uploads
 - Organized file storage with group/folder categorization
 - UUID-based unique file keys to prevent collisions
+
+✅ **Payment System**
+- Multi-payment method support (Cash and QR/PayOS)
+- PayOS integration for QR code payments
+- Complete invoice generation with tenant and order details
+- Payment status tracking and synchronization
+- Manual cash payment completion
+- Payment lifecycle management (pending → processing → paid/failed)
+- Webhook handling for real-time payment updates
+- Multi-tenant payment credential management
 
 ✅ **API Documentation**
 - Interactive Swagger UI
@@ -206,6 +218,12 @@ BREVO_FROM_NAME=Your App Name
 # QR Code & Ordering Configuration
 CUSTOMER_FRONTEND_URL=http://localhost:3002
 QR_API_URL=https://api.qrserver.com/v1/create-qr-code/
+
+# PayOS Payment Gateway (Optional - for QR payments)
+# Get credentials from https://payos.vn
+# Each tenant can configure their own PayOS credentials in the database
+PAYOS_RETURN_URL=http://localhost:3002/payment/success
+PAYOS_CANCEL_URL=http://localhost:3002/payment/cancel
 ```
 
 ### 3. Database Setup
@@ -219,11 +237,12 @@ npm run prisma:migrate
 
 # (Optional) Seed database with sample data
 # Creates:
-# - Super admin account
-# - Owner account (with NULL tenantId)
+# - Super admin account (staff account type)
+# - Owner account (with NULL tenantId, staff account type)
 # - Sample tenant (restaurant)
-# - Staff users (admin, waiter, kitchen_staff)
+# - Staff users (admin, waiter, kitchen_staff - all staff account type)
 # - Zones and tables with QR codes
+# Note: All seeded user accounts have accountType='staff'
 npm run prisma:seed
 
 # (Optional) Open Prisma Studio
@@ -266,17 +285,27 @@ The server will start with hot-reload enabled.
 
 ### Overview
 
-The authentication system provides complete user management with email verification, password reset, and OAuth integration.
+The authentication system provides complete user management with email verification, password reset, OAuth integration, and dual account type support (customer/staff). The same email can be used for both a customer account and a staff account.
+
+### Account Types
+
+**CUSTOMER** - Public users who make orders via QR code  
+**STAFF** - Restaurant employees (admin, waiter, kitchen_staff)
+
+- Same email can exist for both customer and staff accounts
+- Separate authentication flows for each account type
+- Signup endpoint only creates customer accounts
+- Staff accounts are created via Staff Management API
 
 ### Authentication Flow
 
 ```
 ┌─────────────┐
-│   Signup    │──> Email Verification ──> Email Verified
+│   Signup    │──> Email Verification ──> Email Verified (Customer Account Only)
 └─────────────┘
 
 ┌─────────────┐
-│    Login    │──> JWT Access Token (15min) + Refresh Token (7 days)
+│    Login    │──> [Specify Account Type] ──> JWT Access Token (15min) + Refresh Token (7 days)
 └─────────────┘
 
 ┌─────────────┐
@@ -290,16 +319,20 @@ The authentication system provides complete user management with email verificat
 
 ### Features
 
-#### 1. User Registration
+#### 1. User Registration (Customer Only)
 - **Endpoint:** `POST /auth/signup`
+- **Account Type:** CUSTOMER (staff accounts created via Staff Management API)
 - Password hashing with bcrypt (10 salt rounds)
 - Email verification token generation (24hr expiry)
 - Automatic verification email
 - User status: active (awaiting email verification)
+- Same email can be used for staff account separately
 
 #### 2. User Login
 - **Endpoint:** `POST /auth/login`
-- Email and password authentication
+- **Account Type Parameter:** Optional `accountType` field (defaults to 'customer')
+- Email, password, and account type authentication
+- Validates credentials against specific account type
 - Generates JWT access token (15min expiry)
 - Creates refresh token (7 days expiry)
 - Stores refresh token in HTTP-only cookie
@@ -323,9 +356,12 @@ The authentication system provides complete user management with email verificat
 #### 5. Password Reset
 - **Endpoint:** `POST /auth/forgot-password` (request reset)
 - **Endpoint:** `POST /auth/reset-password` (set new password)
+- **Account Type Parameter:** Optional `accountType` field (defaults to 'customer')
+- Must specify same account type when requesting and resetting password
 - Reset token generation (1hr expiry)
 - Email with reset link
-- Token validation and one-time use
+- Token validation against account type
+- One-time use tokens
 - Password hash update
 
 #### 6. Google OAuth 2.0
@@ -358,6 +394,7 @@ The authentication system provides complete user management with email verificat
     "sub": "user-id",
     "email": "user@example.com",
     "role": "customer",
+    "accountType": "customer",
     "tenantId": "tenant-id"
   }
   ```
@@ -597,13 +634,15 @@ All response messages have been localized in the following modules:
 
 ### Login Error Messages
 
-The login endpoint now provides specific error messages:
+The login endpoint provides specific error messages based on account type:
 
 | Error | English | Vietnamese |
 |-------|---------|------------|
-| Email not found | "Email address not found" | "Không tìm thấy địa chỉ email" |
-| Wrong password | "Incorrect password" | "Mật khẩu không chính xác" |
+| Invalid credentials/wrong account type | "Invalid credentials for this account type" | "Thông tin đăng nhập không hợp lệ cho loại tài khoản này" |
+| Email not verified | "Email address not verified" | "Địa chỉ email chưa được xác minh" |
 | Account inactive | "Account is inactive" | "Tài khoản đã bị vô hiệu hóa" |
+
+**Note:** The error message does not distinguish between "email not found" and "wrong password" to prevent account enumeration attacks. However, it does validate the account type to ensure users login to the correct account.
 
 ---
 
@@ -617,7 +656,7 @@ http://localhost:3000
 ### Authentication Endpoints
 
 #### 📝 POST /auth/signup
-Register a new user account.
+Register a new customer account. **Note:** This endpoint only creates customer accounts. Staff accounts must be created via the Staff Management API.
 
 **Request:**
 ```json
@@ -647,21 +686,30 @@ Register a new user account.
 ```
 
 **Errors:**
-- `409 Conflict` - Email already exists
+- `409 Conflict` - Customer account with this email already exists
 - `400 Bad Request` - Validation errors (weak password, invalid email, invalid phone)
+
+**Note:** The same email can be used for a staff account via the Staff Management API.
 
 ---
 
 #### 🔐 POST /auth/login
-Login with email and password.
+Login with email, password, and account type.
 
 **Request:**
 ```json
 {
   "email": "user@example.com",
-  "password": "SecurePass@123!"
+  "password": "SecurePass@123!",
+  "accountType": "customer"
 }
 ```
+
+**Fields:**
+- `email` (required): User email address
+- `password` (required): User password
+- `accountType` (optional): "customer" or "staff" (defaults to "customer")
+- `rememberMe` (optional): Boolean to enable extended session (defaults to true)
 
 **Response:** `200 OK`
 ```json
@@ -672,6 +720,7 @@ Login with email and password.
     "email": "user@example.com",
     "fullName": "John Doe",
     "role": "customer",
+    "accountType": "customer",
     "tenantId": null
   }
 }
@@ -679,10 +728,22 @@ Login with email and password.
 *Note: Refresh token is automatically set in HTTP-only cookie*
 
 **Errors:**
-- `401 Unauthorized` - Email address not found
+- `401 Unauthorized` - Invalid credentials for this account type
 - `401 Unauthorized` - Email address not verified (must verify email before login)
-- `401 Unauthorized` - Incorrect password
 - `401 Unauthorized` - Account inactive
+
+**Examples:**
+```bash
+# Login as customer (default)
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"SecurePass@123!"}'  
+
+# Login as staff
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@restaurant.com","password":"AdminPass@123!","accountType":"staff"}'
+```
 
 ---
 
@@ -712,14 +773,19 @@ Refresh access token using cookie.
 ---
 
 #### 📧 POST /auth/forgot-password
-Request password reset email.
+Request password reset email for a specific account type.
 
 **Request:**
 ```json
 {
-  "email": "user@example.com"
+  "email": "user@example.com",
+  "accountType": "customer"
 }
 ```
+
+**Fields:**
+- `email` (required): User email address
+- `accountType` (optional): "customer" or "staff" (defaults to "customer")
 
 **Response:** `200 OK`
 ```json
@@ -728,18 +794,26 @@ Request password reset email.
 }
 ```
 
+**Note:** Since the same email can be used for both customer and staff accounts, you must specify the correct `accountType` to reset the password for the intended account.
+
 ---
 
 #### 🔑 POST /auth/reset-password
-Reset password with token.
+Reset password with token. Account type must match the one used in forgot-password request.
 
 **Request:**
 ```json
 {
   "token": "abc123def456ghi789",
-  "newPassword": "NewSecurePass@123!"
+  "newPassword": "NewSecurePass@123!",
+  "accountType": "customer"
 }
 ```
+
+**Fields:**
+- `token` (required): Reset token from email
+- `newPassword` (required): New password meeting requirements
+- `accountType` (optional): "customer" or "staff" (defaults to "customer")
 
 **Password Requirements:**
 - Minimum 8 characters
@@ -754,6 +828,7 @@ Reset password with token.
 
 **Errors:**
 - `400 Bad Request` - Invalid or expired token
+- `400 Bad Request` - Invalid account type for this token (must match forgot-password request)
 - `400 Bad Request` - Weak password (doesn't meet requirements)
 
 ---
@@ -783,7 +858,7 @@ Verify email address.
 ---
 
 #### 📧 POST /auth/resend-email
-Resend verification or password reset email.
+Resend verification or password reset email for a specific account type.
 
 **Use Cases**: 
 - Resend email verification link if not received or expired
@@ -793,9 +868,15 @@ Resend verification or password reset email.
 ```json
 {
   "email": "user@example.com",
-  "type": "email_verification"
+  "type": "email_verification",
+  "accountType": "customer"
 }
 ```
+
+**Fields:**
+- `email` (required): User email address
+- `type` (required): "email_verification" or "password_reset"
+- `accountType` (optional): "customer" or "staff" (defaults to "customer")
 
 **Type Options:**
 - `email_verification` - Resend email verification link
@@ -1734,6 +1815,370 @@ Delete a zone (only if no tables are assigned). **[Protected - Owner/Admin only]
 **Errors:**
 - `404 Not Found` - Zone not found
 - `409 Conflict` - Zone has tables assigned and cannot be deleted
+
+---
+
+### Payment Endpoints
+
+#### 💳 POST /payment/create
+Create a payment for a completed order. Supports both cash and QR payment methods. **[Protected]**
+
+**Request Headers:**
+```
+Authorization: Bearer <access_token>
+X-Tenant-Id: <tenant_id>
+```
+
+**Request Body:**
+```json
+{
+  "orderId": "order-uuid",
+  "paymentMethod": "qr",
+  "description": "Payment for Order #ORD-001",
+  "returnUrl": "http://localhost:3002/payment/success",
+  "cancelUrl": "http://localhost:3002/payment/cancel"
+}
+```
+
+**Payment Methods:**
+- `cash` - Cash payment (no QR code generated)
+- `qr` - QR payment via PayOS gateway
+
+**Response:** `201 Created`
+
+**For Cash Payment:**
+```json
+{
+  "paymentId": "payment-uuid",
+  "paymentMethod": "cash",
+  "transactionId": "CASH-1234567890-123",
+  "amount": 500000,
+  "currency": "VND",
+  "status": "pending",
+  "createdAt": "2026-01-06T10:00:00Z",
+  "message": "Cash payment created. Please complete payment manually.",
+  "invoice": {
+    "tenant": {
+      "name": "Restaurant Name",
+      "address": "123 Street, City"
+    },
+    "order": {
+      "id": "order-uuid",
+      "orderNumber": "ORD-001",
+      "totalAmount": 500000,
+      "subtotal": 450000,
+      "finalAmount": 500000,
+      "createdAt": "2026-01-06T09:00:00Z",
+      "items": [
+        {
+          "id": "item-uuid",
+          "name": "Phở Bò",
+          "quantity": 2,
+          "unitPrice": 75000,
+          "subtotal": 150000,
+          "modifiersTotal": 0,
+          "specialInstructions": null,
+          "modifiers": []
+        }
+      ]
+    },
+    "table": {
+      "tableNumber": "A1",
+      "zoneName": "Main Area"
+    }
+  }
+}
+```
+
+**For QR Payment:**
+```json
+{
+  "paymentId": "payment-uuid",
+  "paymentMethod": "payos",
+  "transactionId": "1234567890",
+  "checkoutUrl": "https://pay.payos.vn/...",
+  "paymentLinkId": "payos-link-id",
+  "orderCode": 1234567890,
+  "amount": 500000,
+  "currency": "VND",
+  "status": "pending",
+  "qrCode": "https://api.qrserver.com/v1/create-qr-code/?data=...",
+  "qrCodeData": "00020101021238...",
+  "createdAt": "2026-01-06T10:00:00Z",
+  "invoice": {
+    "tenant": { ... },
+    "order": { ... },
+    "table": { ... }
+  }
+}
+```
+
+**Errors:**
+- `404 Not Found` - Order not found
+- `409 Conflict` - Order already has an active payment
+- `400 Bad Request` - Order is not completed
+- `400 Bad Request` - PayOS credentials not configured (for QR payments)
+
+---
+
+#### 🔍 GET /payment/status/:orderCode
+Check payment status by order code. **[Protected]**
+
+**Request Headers:**
+```
+Authorization: Bearer <access_token>
+X-Tenant-Id: <tenant_id>
+```
+
+**Response:** `200 OK`
+
+**For Cash Payment:**
+```json
+{
+  "status": "pending",
+  "paymentMethod": "cash",
+  "amount": 500000,
+  "currency": "VND",
+  "orderNumber": "ORD-001",
+  "paidAt": null,
+  "createdAt": "2026-01-06T10:00:00Z"
+}
+```
+
+**For QR Payment:**
+```json
+{
+  "status": "paid",
+  "paymentMethod": "payos",
+  "amount": 500000,
+  "currency": "VND",
+  "orderNumber": "ORD-001",
+  "payosStatus": "PAID",
+  "paidAt": "2026-01-06T10:05:00Z",
+  "createdAt": "2026-01-06T10:00:00Z",
+  "synced": true
+}
+```
+
+**Payment Statuses:**
+- `pending` - Payment initiated, waiting for completion
+- `processing` - Payment is being processed
+- `paid` - Payment completed successfully
+- `failed` - Payment failed
+- `cancelled` - Payment cancelled
+- `refunded` - Payment refunded
+
+**Errors:**
+- `404 Not Found` - Payment not found
+- `400 Bad Request` - Failed to check payment status
+
+---
+
+#### ✅ POST /payment/:id/complete
+Manually complete a cash payment. **[Protected - Staff/Admin only]**
+
+**Request Headers:**
+```
+Authorization: Bearer <access_token>
+X-Tenant-Id: <tenant_id>
+```
+
+**Response:** `200 OK`
+```json
+{
+  "id": "payment-uuid",
+  "orderId": "order-uuid",
+  "paymentMethod": "cash",
+  "amount": 500000,
+  "currency": "VND",
+  "status": "paid",
+  "paidAt": "2026-01-06T10:10:00Z",
+  "createdAt": "2026-01-06T10:00:00Z"
+}
+```
+
+**Errors:**
+- `404 Not Found` - Payment not found
+- `400 Bad Request` - Payment is already completed
+- `400 Bad Request` - Only cash payments can be manually completed
+- `400 Bad Request` - Cannot complete a cancelled payment
+
+---
+
+#### ❌ POST /payment/:id/cancel
+Cancel a pending payment. **[Protected]**
+
+**Request Headers:**
+```
+Authorization: Bearer <access_token>
+X-Tenant-Id: <tenant_id>
+```
+
+**Request Body (Optional):**
+```json
+{
+  "reason": "Customer requested cancellation"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "id": "payment-uuid",
+  "orderId": "order-uuid",
+  "paymentMethod": "payos",
+  "amount": 500000,
+  "status": "cancelled",
+  "createdAt": "2026-01-06T10:00:00Z"
+}
+```
+
+**Errors:**
+- `404 Not Found` - Payment not found
+- `400 Bad Request` - Cannot cancel a paid payment
+- `400 Bad Request` - Payment already cancelled
+
+---
+
+#### 📋 GET /payment
+Get all payments with filtering and pagination. **[Protected]**
+
+**Request Headers:**
+```
+Authorization: Bearer <access_token>
+X-Tenant-Id: <tenant_id>
+```
+
+**Query Parameters:**
+- `page` (number, default: 1) - Page number
+- `limit` (number, default: 10) - Items per page
+- `search` (string) - Search by transaction ID or order number
+- `status` (string) - Filter by payment status
+- `payment_method` (string) - Filter by payment method (cash/payos)
+- `order_id` (string) - Filter by order ID
+- `date_from` (date) - Filter from date
+- `date_to` (date) - Filter to date
+- `sort_by` (string, default: createdAt) - Sort field
+- `sort_order` (string, default: desc) - Sort direction (asc/desc)
+
+**Response:** `200 OK`
+```json
+{
+  "data": [
+    {
+      "id": "payment-uuid",
+      "orderId": "order-uuid",
+      "paymentMethod": "payos",
+      "amount": 500000,
+      "currency": "VND",
+      "status": "paid",
+      "transactionId": "1234567890",
+      "paidAt": "2026-01-06T10:05:00Z",
+      "createdAt": "2026-01-06T10:00:00Z",
+      "order": {
+        "orderNumber": "ORD-001",
+        "totalAmount": 500000,
+        "status": "completed",
+        "tableSession": {
+          "table": {
+            "tableNumber": "A1"
+          }
+        }
+      }
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 50,
+    "totalPages": 5
+  }
+}
+```
+
+---
+
+#### 🔎 GET /payment/:id
+Get payment details by ID. **[Protected]**
+
+**Request Headers:**
+```
+Authorization: Bearer <access_token>
+X-Tenant-Id: <tenant_id>
+```
+
+**Response:** `200 OK`
+```json
+{
+  "id": "payment-uuid",
+  "orderId": "order-uuid",
+  "paymentMethod": "payos",
+  "amount": 500000,
+  "currency": "VND",
+  "status": "paid",
+  "transactionId": "1234567890",
+  "paidAt": "2026-01-06T10:05:00Z",
+  "createdAt": "2026-01-06T10:00:00Z",
+  "gatewayResponse": { ... },
+  "order": {
+    "id": "order-uuid",
+    "orderNumber": "ORD-001",
+    "totalAmount": 500000,
+    "items": [ ... ],
+    "tableSession": { ... }
+  }
+}
+```
+
+**Errors:**
+- `404 Not Found` - Payment not found
+
+---
+
+#### 🔔 POST /payment/webhook
+Handle PayOS webhook for payment confirmation. **[Public - No auth required]**
+
+**Note:** This endpoint is called automatically by PayOS when payment status changes.
+
+**Request Body:**
+```json
+{
+  "code": "00",
+  "desc": "Success",
+  "success": true,
+  "data": {
+    "orderCode": 1234567890,
+    "amount": 500000,
+    "description": "Payment for Order #ORD-001",
+    "accountNumber": "123456",
+    "reference": "FT123456",
+    "transactionDateTime": "2026-01-06T10:05:00Z",
+    "currency": "VND"
+  },
+  "signature": "webhook-signature"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Webhook processed successfully",
+  "payment": {
+    "id": "payment-uuid",
+    "status": "paid",
+    "paidAt": "2026-01-06T10:05:00Z"
+  }
+}
+```
+
+**Payment Status Codes:**
+- `00` - Success (payment completed)
+- `01` - Failed
+- `02` - Cancelled
+
+**Errors:**
+- `404 Not Found` - Payment not found
+- `400 Bad Request` - Invalid webhook signature
 
 ---
 
@@ -3203,8 +3648,16 @@ export const COOKIE_CONFIG = {
 
 ✅ **Password Security**
 - Bcrypt hashing with 10 salt rounds
-- Minimum 6 characters required
+- Minimum 8 characters required with complexity requirements
 - Passwords never stored in plain text
+
+✅ **Account Type Security**
+- Dual account type support (customer/staff)
+- Same email can exist for both account types separately
+- Unique constraint on (email, accountType) combination
+- Account type validation on login, password reset, and email verification
+- Customer signup via public endpoint, staff accounts via protected API
+- Cross-account type token validation prevents security breaches
 
 ✅ **Token Security**
 - JWT with HS256 algorithm

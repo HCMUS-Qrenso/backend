@@ -26,7 +26,7 @@ export class PrismaService
     // Prisma 7: Create adapter with connection string and connection limit
     const adapter = new PrismaPg({
       connectionString: process.env.DATABASE_URL!,
-      max: 5, // Limit connections to prevent exhausting DB pool
+      max: 3, // Limit connections to prevent exhausting DB pool
     });
 
     // Pass adapter to PrismaClient

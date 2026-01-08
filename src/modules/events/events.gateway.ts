@@ -372,6 +372,39 @@ export class EventsGateway
     );
   }
 
+  /**
+   * Emit when payment status changes (e.g., QR payment confirmed)
+   */
+  emitPaymentUpdated(tenantId: string, orderId: string, payment: any) {
+    // Notify all staff in the tenant
+    this.server.to(`tenant:${tenantId}`).emit('payment:updated', {
+      type: 'payment:updated',
+      data: {
+        orderId,
+        paymentId: payment.id,
+        status: payment.status,
+        paymentMethod: payment.paymentMethod,
+        paidAt: payment.paidAt,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    // Notify customer watching this order
+    this.server.to(`order:${orderId}`).emit('payment:updated', {
+      type: 'payment:updated',
+      data: {
+        orderId,
+        status: payment.status,
+        paidAt: payment.paidAt,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    this.logger.log(
+      `Emitted payment:updated for order ${orderId} -> ${payment.status}`,
+    );
+  }
+
   // ============================================
   // Helper Methods
   // ============================================

@@ -13,6 +13,7 @@ import {
   QueryStaffDto,
 } from './dto';
 import { EmailService, TokenService } from '../auth/services';
+import { ACCOUNT_TYPES } from '../../common/constants';
 
 // Staff roles that this module manages
 const STAFF_ROLES: string[] = ['admin', 'waiter', 'kitchen_staff'];
@@ -67,6 +68,7 @@ export class StaffService {
     const where: any = {
       tenantId,
       role: { in: STAFF_ROLES },
+      accountType: ACCOUNT_TYPES.STAFF, // Only staff accounts
     };
 
     // Apply filters
@@ -129,6 +131,7 @@ export class StaffService {
     const baseWhere = {
       tenantId,
       role: { in: STAFF_ROLES },
+      accountType: ACCOUNT_TYPES.STAFF,
     };
 
     // Get all staff grouped by role and status in a single query
@@ -180,6 +183,7 @@ export class StaffService {
         id,
         tenantId,
         role: { in: STAFF_ROLES },
+        accountType: ACCOUNT_TYPES.STAFF,
       },
     });
 
@@ -194,9 +198,14 @@ export class StaffService {
    * Create/invite a new staff member
    */
   async create(tenantId: string, createStaffDto: CreateStaffDto) {
-    // Check for duplicate email (globally unique)
+    // Check for duplicate email for staff account type
     const existing = await this.prisma.user.findUnique({
-      where: { email: createStaffDto.email },
+      where: {
+        email_accountType: {
+          email: createStaffDto.email,
+          accountType: ACCOUNT_TYPES.STAFF,
+        },
+      },
     });
 
     if (existing) {
@@ -212,6 +221,7 @@ export class StaffService {
         fullName: createStaffDto.fullName,
         phone: createStaffDto.phone,
         role: createStaffDto.role,
+        accountType: ACCOUNT_TYPES.STAFF, // Set account type to staff
         tenantId,
         emailVerified: false,
         status: 'active',
@@ -248,6 +258,7 @@ export class StaffService {
         id,
         tenantId,
         role: { in: STAFF_ROLES },
+        accountType: ACCOUNT_TYPES.STAFF,
       },
     });
 
@@ -284,6 +295,7 @@ export class StaffService {
         id,
         tenantId,
         role: { in: STAFF_ROLES },
+        accountType: ACCOUNT_TYPES.STAFF,
       },
     });
 
@@ -318,6 +330,7 @@ export class StaffService {
         id,
         tenantId,
         role: { in: STAFF_ROLES },
+        accountType: ACCOUNT_TYPES.STAFF,
       },
     });
 
@@ -360,6 +373,7 @@ export class StaffService {
         id,
         tenantId,
         role: { in: STAFF_ROLES },
+        accountType: ACCOUNT_TYPES.STAFF,
       },
     });
 
@@ -402,6 +416,7 @@ export class StaffService {
         id,
         tenantId,
         role: { in: STAFF_ROLES },
+        accountType: ACCOUNT_TYPES.STAFF,
       },
     });
 

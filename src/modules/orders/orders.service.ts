@@ -186,10 +186,26 @@ export class OrdersService {
               quantity: true,
               status: true,
               subtotal: true,
+              unitPrice: true,
+              modifiersTotal: true,
+              specialInstructions: true,
+              modifiers: {
+                select: {
+                  id: true,
+                  modifierName: true,
+                  priceAdjustment: true,
+                },
+              },
             },
           },
           payments: {
-            select: { id: true, status: true, amount: true, paidAt: true },
+            select: {
+              id: true,
+              status: true,
+              paymentMethod: true,
+              amount: true,
+              paidAt: true,
+            },
             orderBy: { createdAt: 'desc' },
             take: 1,
           },
@@ -217,6 +233,14 @@ export class OrdersService {
         quantity: item.quantity,
         status: item.status,
         subtotal: Number(item.subtotal),
+        unitPrice: Number(item.unitPrice),
+        modifiersTotal: Number(item.modifiersTotal),
+        specialInstructions: item.specialInstructions,
+        modifiers: item.modifiers.map((mod) => ({
+          id: mod.id,
+          modifierName: mod.modifierName,
+          priceAdjustment: Number(mod.priceAdjustment),
+        })),
       })),
       itemCount: order._count.items,
       subtotal: Number(order.subtotal),
@@ -224,6 +248,13 @@ export class OrdersService {
       discountAmount: Number(order.discountAmount),
       totalAmount: Number(order.totalAmount),
       specialInstructions: order.specialInstructions,
+      payments: order.payments.map((payment) => ({
+        id: payment.id,
+        status: payment.status,
+        paymentMethod: payment.paymentMethod,
+        amount: Number(payment.amount),
+        paidAt: payment.paidAt,
+      })),
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
     }));
@@ -462,7 +493,13 @@ export class OrdersService {
             },
           },
           payments: {
-            select: { id: true, status: true, amount: true, paidAt: true },
+            select: {
+              id: true,
+              status: true,
+              paymentMethod: true,
+              amount: true,
+              paidAt: true,
+            },
             orderBy: { createdAt: 'desc' },
             take: 1,
           },
@@ -496,6 +533,13 @@ export class OrdersService {
       discountAmount: Number(order.discountAmount),
       totalAmount: Number(order.totalAmount),
       specialInstructions: order.specialInstructions,
+      payments: order.payments.map((payment) => ({
+        id: payment.id,
+        status: payment.status,
+        paymentMethod: payment.paymentMethod,
+        amount: Number(payment.amount),
+        paidAt: payment.paidAt,
+      })),
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
     }));
@@ -1605,6 +1649,13 @@ export class OrdersService {
       return PaymentStatus.UNPAID;
     }
 
+    // Check for paid payments
+    const hasPaid = payments.some((p) => p.status === 'paid');
+    if (hasPaid) {
+      return PaymentStatus.PAID;
+    }
+
+    // Check for completed payments (legacy support)
     const hasCompleted = payments.some((p) => p.status === 'completed');
     if (hasCompleted) {
       return PaymentStatus.PAID;
