@@ -17,6 +17,7 @@ import {
   ResetPasswordDto,
   ResendEmailType,
   SetupPasswordDto,
+  ChangePasswordDto,
 } from '../dto';
 import { EmailService } from './email.service';
 import { TokenService } from './token.service';
@@ -302,6 +303,55 @@ export class AuthService {
 
     return {
       message: t('auth.accountSetupSuccess', 'Account set up successfully'),
+    };
+  }
+
+  async changePassword(
+    userId: string,
+    changePasswordDto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    const { currentPassword, newPassword } = changePasswordDto;
+
+    // Find the user
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new BadRequestException(t('auth.userNotFound', 'User not found'));
+    }
+
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        t('auth.noPasswordSet', 'No password set for this account'),
+      );
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await HashUtil.compare(
+      currentPassword,
+      user.passwordHash,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException(
+        t('auth.incorrectCurrentPassword', 'Current password is incorrect'),
+      );
+    }
+
+    // Hash new password
+    const newPasswordHash = await HashUtil.hash(newPassword);
+
+    // Update password
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    this.logger.log(`Password changed for user: ${user.email}`);
+
+    return {
+      message: t('auth.passwordChanged', 'Password changed successfully'),
     };
   }
 

@@ -183,7 +183,7 @@ export class TenantController {
   @ApiOperation({
     summary: 'Get tenant settings',
     description:
-      'Returns all settings for the current tenant including general, tax, service charge, operating hours, order, notification, and receipt settings.',
+      'Returns all settings for the current tenant including general, tax, qr payment, service charge, operating hours, order, notification, and receipt settings.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -237,6 +237,11 @@ export class TenantController {
             footer: 'Please visit us again!',
             show_logo: true,
             invoice_prefix: 'QR-',
+          },
+          qr_payment: {
+            payos_api_key: 'sk_test_XXXXXXXXXXXXXXXXXXXX',
+            payos_checksum_key: 'ck_test_XXXXXXXXXXXXXXXXXXXX',
+            payos_client_id: 'client_1234567890',
           },
         },
       },

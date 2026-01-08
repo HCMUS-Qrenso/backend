@@ -15,6 +15,10 @@
     "logoutSuccess": "Đăng xuất thành công",
     "refreshTokenNotFound": "Không tìm thấy refresh token",
     "userNotFoundOrInactive": "Không tìm thấy người dùng hoặc tài khoản đã bị vô hiệu hóa",
+    "userNotFound": "Không tìm thấy người dùng",
+    "noPasswordSet": "Chưa thiết lập mật khẩu cho tài khoản này. Vui lòng thiết lập mật khẩu trước.",
+    "incorrectCurrentPassword": "Mật khẩu hiện tại không chính xác",
+    "passwordChanged": "Đổi mật khẩu thành công",
     "emailNotVerified": "Email chưa được xác thực. Vui lòng kiểm tra email để lấy liên kết xác thực hoặc yêu cầu gửi lại.",
     "emailAlreadyVerified": "Email đã được xác thực",
     "verificationEmailSent": "Email xác thực đã được gửi thành công. Vui lòng kiểm tra hộp thư của bạn.",
@@ -166,5 +170,12 @@
     "infoFailed": "Không thể lấy thông tin thanh toán",
     "credentialsNotConfigured": "Thông tin xác thực PayOS chưa được cấu hình cho tenant này",
     "invalidSignature": "Chữ ký webhook không hợp lệ"
+  },
+  "user": {
+    "profileUpdatedSuccess": "Cập nhật profile thành công",
+    "profileUpdateFailed": "Cập nhật profile thất bại"
+  },
+  "upload": {
+    "userIdRequiredForAvatar": "User ID là bắt buộc khi tải lên avatar"
   }
 }

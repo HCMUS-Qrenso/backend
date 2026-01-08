@@ -312,4 +312,36 @@ export class UpdateTenantSettingsDto {
   @IsString()
   @MaxLength(10)
   invoicePrefix?: string;
+
+  // ========== QR PAYMENT SETTINGS ==========
+
+  @ApiPropertyOptional({
+    description: 'PayOS API key for QR payments',
+    example: 'sk_test_XXXXXXXXXXXXXXXXXXXX',
+    maxLength: 100,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  qrPayosApiKey?: string;
+
+  @ApiPropertyOptional({
+    description: 'PayOS checksum key for QR payments',
+    example: 'ck_test_XXXXXXXXXXXXXXXXXXXX',
+    maxLength: 100,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  qrPayosChecksumKey?: string;
+
+  @ApiPropertyOptional({
+    description: 'PayOS client ID for QR payments',
+    example: 'client_1234567890',
+    maxLength: 50,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  qrPayosClientId?: string;
 }

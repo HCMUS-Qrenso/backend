@@ -29,6 +29,7 @@ import {
   VerifyEmailDto,
   ResendEmailDto,
   SetupPasswordDto,
+  ChangePasswordDto,
   AuthResponseDto,
   MessageResponseDto,
 } from './dto';
@@ -416,5 +417,36 @@ export class AuthController {
       role: user.role,
       tenantId: user.tenantId,
     };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Change user password',
+    description:
+      "Change the current user's password. Requires current password verification for security.",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Password changed successfully',
+    type: MessageResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid current password or validation error',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Not authenticated',
+    type: ErrorResponseDto,
+  })
+  async changePassword(
+    @CurrentUser('id') userId: string,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(userId, changePasswordDto);
   }
 }

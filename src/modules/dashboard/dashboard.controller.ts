@@ -20,7 +20,7 @@ import { RolesGuard } from '../../common/guards';
 import { Roles, TenantContext } from '../../common/decorators';
 import { ROLES } from '../../common/constants';
 
-@ApiTags('Dashboard')
+@ApiTags('dashboard')
 @ApiBearerAuth()
 @Controller('dashboard')
 @UseGuards(JwtAuthGuard, RolesGuard)
