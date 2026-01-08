@@ -1405,6 +1405,7 @@ export class TablesService {
             serviceChargeRate: true,
             serviceChargeMinParty: true,
             operatingHours: true,
+            sessionTimeoutMinutes: true,
           },
         },
         zone: { select: { name: true } },
@@ -1533,9 +1534,10 @@ export class TablesService {
     });
 
     // 4. Create table session with lifecycle fields
-    // Session expires in 15 minutes if no order is placed
+    // Session expires based on tenant's sessionTimeoutMinutes setting (default 120 minutes)
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes
+    const timeoutMinutes = table.tenant.sessionTimeoutMinutes || 120;
+    const expiresAt = new Date(now.getTime() + timeoutMinutes * 60 * 1000);
 
     const session = await this.prisma.tableSession.create({
       data: {
@@ -1672,7 +1674,7 @@ export class TablesService {
     const table = await this.prisma.table.findFirst({
       where: { id: tableId, tenantId, isActive: true },
       include: {
-        tenant: { select: { slug: true, name: true } },
+        tenant: { select: { slug: true, name: true, sessionTimeoutMinutes: true } },
         zone: { select: { name: true } },
       },
     });
@@ -1695,7 +1697,8 @@ export class TablesService {
     });
 
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes
+    const timeoutMinutes = table.tenant.sessionTimeoutMinutes || 120;
+    const expiresAt = new Date(now.getTime() + timeoutMinutes * 60 * 1000);
 
     const session = await this.prisma.tableSession.create({
       data: {
