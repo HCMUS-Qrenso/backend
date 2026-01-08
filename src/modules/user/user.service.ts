@@ -25,6 +25,12 @@ export class UserService {
       },
     });
 
+    // Mark the avatar with a new Date to prevent caching issues
+    if (user && user.avatarUrl) {
+      const separator = user.avatarUrl.includes('?') ? '&' : '?';
+      user.avatarUrl = `${user.avatarUrl}${separator}t=${Date.now()}`;
+    }
+
     return user;
   }
 
@@ -63,6 +69,12 @@ export class UserService {
           updatedAt: true,
         },
       });
+
+      // Mark the avatar with a new Date to prevent caching issues
+      if (user && user.avatarUrl) {
+        const separator = user.avatarUrl.includes('?') ? '&' : '?';
+        user.avatarUrl = `${user.avatarUrl}${separator}t=${Date.now()}`;
+      }
 
       return {
         message: t(

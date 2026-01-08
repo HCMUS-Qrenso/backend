@@ -28,7 +28,7 @@ export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
 
   @Post('presign')
-  @Roles(ROLES.OWNER, ROLES.ADMIN)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN, ROLES.CUSTOMER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Generate presigned URL for file upload',
