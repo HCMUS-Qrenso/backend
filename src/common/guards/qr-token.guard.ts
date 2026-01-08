@@ -66,6 +66,31 @@ export class QrTokenGuard implements CanActivate {
         tableSessionId?: string;
         customerId?: string;
         deviceId?: string; // For multi-device tracking
+        tenantSettings?: {
+          currency: string;
+          currency_symbol: string;
+          timezone: string;
+          phone: string | null;
+          contact_email: string | null;
+          tax: {
+            rate: number;
+            inclusive: boolean;
+            label: string;
+          };
+          service_charge: {
+            enabled: boolean;
+            rate: number;
+            min_party: number | null;
+          } | null;
+          operating_hours: any;
+          order: {
+            min_value: number | null;
+            estimated_prep_time: number;
+            allow_special_instructions: boolean;
+            session_timeout_minutes: number;
+            require_guest_count: boolean;
+          };
+        };
       };
     }>();
 
@@ -155,7 +180,31 @@ export class QrTokenGuard implements CanActivate {
           include: {
             table: {
               include: {
-                tenant: { select: { name: true, image: true } },
+                tenant: {
+                  select: {
+                    name: true,
+                    image: true,
+                    // Tenant settings for customer frontend
+                    currency: true,
+                    currencySymbol: true,
+                    timezone: true,
+                    phone: true,
+                    contactEmail: true,
+                    taxRate: true,
+                    taxInclusive: true,
+                    taxLabel: true,
+                    serviceChargeEnabled: true,
+                    serviceChargeRate: true,
+                    serviceChargeMinParty: true,
+                    operatingHours: true,
+                    // Order settings
+                    minOrderValue: true,
+                    estimatedPrepTime: true,
+                    allowSpecialInstructions: true,
+                    sessionTimeoutMinutes: true,
+                    requireGuestCount: true,
+                  },
+                },
                 zone: { select: { name: true } },
               },
             },
@@ -199,6 +248,37 @@ export class QrTokenGuard implements CanActivate {
             (user?.sub as string) ||
             undefined,
           deviceId: decoded.deviceId,
+          tenantSettings: {
+            currency: session.table.tenant.currency,
+            currency_symbol: session.table.tenant.currencySymbol,
+            timezone: session.table.tenant.timezone,
+            phone: session.table.tenant.phone,
+            contact_email: session.table.tenant.contactEmail,
+            tax: {
+              rate: Number(session.table.tenant.taxRate),
+              inclusive: session.table.tenant.taxInclusive,
+              label: session.table.tenant.taxLabel,
+            },
+            service_charge: session.table.tenant.serviceChargeEnabled
+              ? {
+                  enabled: session.table.tenant.serviceChargeEnabled,
+                  rate: Number(session.table.tenant.serviceChargeRate),
+                  min_party: session.table.tenant.serviceChargeMinParty,
+                }
+              : null,
+            operating_hours: session.table.tenant.operatingHours,
+            order: {
+              min_value: session.table.tenant.minOrderValue
+                ? Number(session.table.tenant.minOrderValue)
+                : null,
+              estimated_prep_time: session.table.tenant.estimatedPrepTime,
+              allow_special_instructions:
+                session.table.tenant.allowSpecialInstructions,
+              session_timeout_minutes:
+                session.table.tenant.sessionTimeoutMinutes,
+              require_guest_count: session.table.tenant.requireGuestCount,
+            },
+          },
         };
 
         return true;
@@ -215,7 +295,31 @@ export class QrTokenGuard implements CanActivate {
       const table = await this.prisma.table.findUnique({
         where: { id: decoded.tableId, tenantId: decoded.tenantId },
         include: {
-          tenant: { select: { name: true } },
+          tenant: {
+            select: {
+              name: true,
+              image: true,
+              // Tenant settings for customer frontend
+              currency: true,
+              currencySymbol: true,
+              timezone: true,
+              phone: true,
+              contactEmail: true,
+              taxRate: true,
+              taxInclusive: true,
+              taxLabel: true,
+              serviceChargeEnabled: true,
+              serviceChargeRate: true,
+              serviceChargeMinParty: true,
+              operatingHours: true,
+              // Order settings
+              minOrderValue: true,
+              estimatedPrepTime: true,
+              allowSpecialInstructions: true,
+              sessionTimeoutMinutes: true,
+              requireGuestCount: true,
+            },
+          },
           zone: { select: { name: true } },
         },
       });
@@ -261,11 +365,40 @@ export class QrTokenGuard implements CanActivate {
         tenantId: table.tenantId,
         tableCapacity: table.capacity,
         tenantName: table.tenant.name,
-        tenantImage: decoded.tenantImage || '',
+        tenantImage: table.tenant.image || '',
         zoneName: table.zone?.name || '',
         tableSessionId: activeSession?.id,
         customerId:
           (user?.sub as string) || activeSession?.customerId || undefined,
+        tenantSettings: {
+          currency: table.tenant.currency,
+          currency_symbol: table.tenant.currencySymbol,
+          timezone: table.tenant.timezone,
+          phone: table.tenant.phone,
+          contact_email: table.tenant.contactEmail,
+          tax: {
+            rate: Number(table.tenant.taxRate),
+            inclusive: table.tenant.taxInclusive,
+            label: table.tenant.taxLabel,
+          },
+          service_charge: table.tenant.serviceChargeEnabled
+            ? {
+                enabled: table.tenant.serviceChargeEnabled,
+                rate: Number(table.tenant.serviceChargeRate),
+                min_party: table.tenant.serviceChargeMinParty,
+              }
+            : null,
+          operating_hours: table.tenant.operatingHours,
+          order: {
+            min_value: table.tenant.minOrderValue
+              ? Number(table.tenant.minOrderValue)
+              : null,
+            estimated_prep_time: table.tenant.estimatedPrepTime,
+            allow_special_instructions: table.tenant.allowSpecialInstructions,
+            session_timeout_minutes: table.tenant.sessionTimeoutMinutes,
+            require_guest_count: table.tenant.requireGuestCount,
+          },
+        },
       };
 
       return true;

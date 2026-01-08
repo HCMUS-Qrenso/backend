@@ -7,7 +7,7 @@ import { PrismaService } from '../../prisma.service';
  *
  * Runs every 5 minutes to:
  * 1. Mark sessions as ABANDONED if:
- *    - Session has no orders AND expiresAt has passed (15 min timeout)
+ *    - Session has no orders AND expiresAt has passed (timeout from tenant settings)
  *    - Session has orders but idle for > 4 hours (no activity)
  * 2. Reset table status to AVAILABLE when session is abandoned
  * 3. Cleanup expired idempotency keys

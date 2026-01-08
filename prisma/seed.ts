@@ -37,7 +37,6 @@ async function main() {
   await prisma.dailySalesSummary.deleteMany();
   await prisma.menuItemAnalytics.deleteMany();
   await prisma.auditLog.deleteMany();
-  await prisma.setting.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.userOAuthProvider.deleteMany();
   await prisma.userVerificationToken.deleteMany();
@@ -87,19 +86,21 @@ async function main() {
       ownerId: owner.id,
       subscriptionTier: 'premium',
       status: 'active',
-      settings: {
-        currency: 'VND',
-        timezone: 'Asia/Ho_Chi_Minh',
-        tax_rate: 0.1,
-        operating_hours: {
-          monday: '09:00-22:00',
-          tuesday: '09:00-22:00',
-          wednesday: '09:00-22:00',
-          thursday: '09:00-22:00',
-          friday: '09:00-23:00',
-          saturday: '09:00-23:00',
-          sunday: '10:00-21:00',
-        },
+      // Settings columns
+      currency: 'VND',
+      currencySymbol: '₫',
+      timezone: 'Asia/Ho_Chi_Minh',
+      taxRate: 0.1,
+      taxInclusive: true,
+      taxLabel: 'VAT',
+      operatingHours: {
+        monday: '09:00-22:00',
+        tuesday: '09:00-22:00',
+        wednesday: '09:00-22:00',
+        thursday: '09:00-22:00',
+        friday: '09:00-23:00',
+        saturday: '09:00-23:00',
+        sunday: '10:00-21:00',
       },
     },
   });
@@ -116,19 +117,21 @@ async function main() {
       ownerId: owner.id,
       subscriptionTier: 'business',
       status: 'active',
-      settings: {
-        currency: 'VND',
-        timezone: 'Asia/Ho_Chi_Minh',
-        tax_rate: 0.08,
-        operating_hours: {
-          monday: '08:00-21:00',
-          tuesday: '08:00-21:00',
-          wednesday: '08:00-21:00',
-          thursday: '08:00-21:00',
-          friday: '08:00-22:00',
-          saturday: '08:00-22:00',
-          sunday: '08:00-21:00',
-        },
+      // Settings columns
+      currency: 'VND',
+      currencySymbol: '₫',
+      timezone: 'Asia/Ho_Chi_Minh',
+      taxRate: 0.08,
+      taxInclusive: true,
+      taxLabel: 'VAT',
+      operatingHours: {
+        monday: '08:00-21:00',
+        tuesday: '08:00-21:00',
+        wednesday: '08:00-21:00',
+        thursday: '08:00-21:00',
+        friday: '08:00-22:00',
+        saturday: '08:00-22:00',
+        sunday: '08:00-21:00',
       },
     },
   });
@@ -980,35 +983,8 @@ async function main() {
 
   console.log('✓ Created sample order with 3 items\n');
 
-  // 11. Create Settings
-  console.log('⚙️  Creating Settings...');
-  await Promise.all([
-    prisma.setting.create({
-      data: {
-        tenantId: tenant.id,
-        key: 'payment_methods',
-        value: ['zalopay', 'momo', 'vnpay', 'cash'],
-        description: 'Enabled payment methods',
-      },
-    }),
-    prisma.setting.create({
-      data: {
-        tenantId: tenant.id,
-        key: 'order_auto_acceptance',
-        value: false,
-        description: 'Automatically accept orders without waiter review',
-      },
-    }),
-    prisma.setting.create({
-      data: {
-        tenantId: tenant.id,
-        key: 'tax_rate',
-        value: 0.1,
-        description: 'Tax rate for orders',
-      },
-    }),
-  ]);
-  console.log('✓ Created 3 settings\n');
+  // Settings are now columns on the Tenant model, no need to create separate Setting records
+  console.log('✓ Settings stored as Tenant columns\n');
 
   // ============================================
   // SECOND TENANT DATA
@@ -1643,35 +1619,8 @@ async function main() {
 
   console.log('✓ Created sample order with 3 items for second tenant\n');
 
-  // Create Settings for Second Tenant
-  console.log('⚙️  Creating Settings for Second Tenant...');
-  await Promise.all([
-    prisma.setting.create({
-      data: {
-        tenantId: tenant2.id,
-        key: 'payment_methods',
-        value: ['momo', 'vnpay', 'cash', 'card'],
-        description: 'Enabled payment methods',
-      },
-    }),
-    prisma.setting.create({
-      data: {
-        tenantId: tenant2.id,
-        key: 'order_auto_acceptance',
-        value: true,
-        description: 'Automatically accept orders without waiter review',
-      },
-    }),
-    prisma.setting.create({
-      data: {
-        tenantId: tenant2.id,
-        key: 'tax_rate',
-        value: 0.08,
-        description: 'Tax rate for orders',
-      },
-    }),
-  ]);
-  console.log('✓ Created 3 settings for second tenant\n');
+  // Settings are now columns on the Tenant model, no need to create separate Setting records
+  console.log('✓ Settings stored as Tenant columns for second tenant\n');
 
   console.log('✅ Database seeding completed successfully!\n');
   console.log('📊 Summary:');
