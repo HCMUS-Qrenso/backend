@@ -68,6 +68,11 @@ model Tenant {
   receiptShowLogo Boolean @default(true) @map("receipt_show_logo")
   invoicePrefix   String  @default("QR-") @map("invoice_prefix") @db.VarChar(10)
 
+  // ========== PAYMENT GATEWAY SETTINGS (PayOS) ==========
+  payosClientId    String? @map("payos_client_id") @db.VarChar(255)
+  payosApiKey      String? @map("payos_api_key") @db.VarChar(255)
+  payosChecksumKey String? @map("payos_checksum_key") @db.VarChar(255)
+
   // ========== RELATIONS ==========
   owner             User                @relation("TenantOwner", fields: [ownerId], references: [id])
   users             User[]              @relation("TenantUsers")
@@ -95,12 +100,13 @@ model Tenant {
 
 model User {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email         String    @unique @db.VarChar(255)
+  email         String    @db.VarChar(255)
   passwordHash  String?   @map("password_hash") @db.VarChar(255)
   fullName      String    @map("full_name") @db.VarChar(255)
   phone         String?   @db.VarChar(20)
   avatarUrl     String?   @map("avatar_url") @db.VarChar(500)
   role          String    @db.VarChar(20)
+  accountType   String    @default("customer") @map("account_type") @db.VarChar(20) // 'staff' or 'customer'
   tenantId      String?   @map("tenant_id") @db.Uuid
   emailVerified Boolean   @default(false) @map("email_verified")
   status        String    @default("active") @db.VarChar(20)
