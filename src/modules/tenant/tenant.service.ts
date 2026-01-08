@@ -437,4 +437,3 @@ export class TenantService {
     return this.getSettings(tenantId);
   }
 }
-

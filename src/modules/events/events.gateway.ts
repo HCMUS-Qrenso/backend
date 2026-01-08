@@ -342,7 +342,11 @@ export class EventsGateway
    * Emit when order status auto-updates based on item statuses
    * Called when all items reach a certain status (e.g., all items ready -> order ready)
    */
-  emitOrderStatusAutoUpdated(tenantId: string, orderId: string, newStatus: string) {
+  emitOrderStatusAutoUpdated(
+    tenantId: string,
+    orderId: string,
+    newStatus: string,
+  ) {
     // Notify staff
     this.server.to(`tenant:${tenantId}`).emit('order:status', {
       type: 'order:status',

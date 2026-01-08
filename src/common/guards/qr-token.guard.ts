@@ -268,10 +268,14 @@ export class QrTokenGuard implements CanActivate {
               : null,
             operating_hours: session.table.tenant.operatingHours,
             order: {
-              min_value: session.table.tenant.minOrderValue ? Number(session.table.tenant.minOrderValue) : null,
+              min_value: session.table.tenant.minOrderValue
+                ? Number(session.table.tenant.minOrderValue)
+                : null,
               estimated_prep_time: session.table.tenant.estimatedPrepTime,
-              allow_special_instructions: session.table.tenant.allowSpecialInstructions,
-              session_timeout_minutes: session.table.tenant.sessionTimeoutMinutes,
+              allow_special_instructions:
+                session.table.tenant.allowSpecialInstructions,
+              session_timeout_minutes:
+                session.table.tenant.sessionTimeoutMinutes,
               require_guest_count: session.table.tenant.requireGuestCount,
             },
           },
@@ -386,7 +390,9 @@ export class QrTokenGuard implements CanActivate {
             : null,
           operating_hours: table.tenant.operatingHours,
           order: {
-            min_value: table.tenant.minOrderValue ? Number(table.tenant.minOrderValue) : null,
+            min_value: table.tenant.minOrderValue
+              ? Number(table.tenant.minOrderValue)
+              : null,
             estimated_prep_time: table.tenant.estimatedPrepTime,
             allow_special_instructions: table.tenant.allowSpecialInstructions,
             session_timeout_minutes: table.tenant.sessionTimeoutMinutes,

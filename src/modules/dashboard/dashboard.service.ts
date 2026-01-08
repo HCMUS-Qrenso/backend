@@ -17,8 +17,14 @@ export class DashboardService {
    */
   async getTodayStats(tenantId: string) {
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const startOfYesterday = new Date(
+      startOfToday.getTime() - 24 * 60 * 60 * 1000,
+    );
 
     // Orders today
     const ordersToday = await this.prisma.order.aggregate({
@@ -87,15 +93,25 @@ export class DashboardService {
     const revenueTodayValue = Number(ordersToday._sum.totalAmount || 0);
     const revenueYesterdayValue = Number(ordersYesterday._sum.totalAmount || 0);
 
-    const ordersChangePercent = ordersYesterdayCount > 0
-      ? Math.round(((ordersTodayCount - ordersYesterdayCount) / ordersYesterdayCount) * 100)
-      : 0;
-    const revenueChangePercent = revenueYesterdayValue > 0
-      ? Math.round(((revenueTodayValue - revenueYesterdayValue) / revenueYesterdayValue) * 100)
-      : 0;
-    const avgOrderValue = ordersTodayCount > 0
-      ? Math.round(revenueTodayValue / ordersTodayCount)
-      : 0;
+    const ordersChangePercent =
+      ordersYesterdayCount > 0
+        ? Math.round(
+            ((ordersTodayCount - ordersYesterdayCount) / ordersYesterdayCount) *
+              100,
+          )
+        : 0;
+    const revenueChangePercent =
+      revenueYesterdayValue > 0
+        ? Math.round(
+            ((revenueTodayValue - revenueYesterdayValue) /
+              revenueYesterdayValue) *
+              100,
+          )
+        : 0;
+    const avgOrderValue =
+      ordersTodayCount > 0
+        ? Math.round(revenueTodayValue / ordersTodayCount)
+        : 0;
 
     // Parse status breakdown
     const statusMap: Record<string, number> = {};
@@ -190,18 +206,20 @@ export class DashboardService {
       case 'month':
         startDate = new Date(now.getFullYear(), now.getMonth() - limit + 1, 1);
         groupBy = "DATE_TRUNC('month', created_at)";
-        dateFormat = "'Tháng ' || TO_CHAR(DATE_TRUNC('month', created_at), 'MM')";
+        dateFormat =
+          "'Tháng ' || TO_CHAR(DATE_TRUNC('month', created_at), 'MM')";
         break;
       default: // day
         startDate = new Date(now.getTime() - limit * 24 * 60 * 60 * 1000);
-        groupBy = "DATE(created_at)";
+        groupBy = 'DATE(created_at)';
         dateFormat = "TO_CHAR(DATE(created_at), 'DD/MM')";
     }
 
     // Raw SQL for better aggregation
     const data = await this.prisma.$queryRawUnsafe<
       Array<{ date: string; revenue: number; orders: number }>
-    >(`
+    >(
+      `
       SELECT 
         ${dateFormat} as date,
         COALESCE(SUM(total_amount), 0)::float as revenue,
@@ -213,21 +231,32 @@ export class DashboardService {
       GROUP BY ${groupBy}
       ORDER BY ${groupBy} ASC
       LIMIT $3
-    `, tenantId, startDate, limit);
+    `,
+      tenantId,
+      startDate,
+      limit,
+    );
 
     // Calculate summary
     const totalRevenue = data.reduce((sum, d) => sum + Number(d.revenue), 0);
     const totalOrders = data.reduce((sum, d) => sum + d.orders, 0);
-    const avgOrdersPerPeriod = data.length > 0 ? Math.round(totalOrders / data.length) : 0;
+    const avgOrdersPerPeriod =
+      data.length > 0 ? Math.round(totalOrders / data.length) : 0;
 
     // Calculate growth (compare first half vs second half)
     let growthPercentage = 0;
     if (data.length >= 2) {
       const midpoint = Math.floor(data.length / 2);
-      const firstHalf = data.slice(0, midpoint).reduce((sum, d) => sum + Number(d.revenue), 0);
-      const secondHalf = data.slice(midpoint).reduce((sum, d) => sum + Number(d.revenue), 0);
+      const firstHalf = data
+        .slice(0, midpoint)
+        .reduce((sum, d) => sum + Number(d.revenue), 0);
+      const secondHalf = data
+        .slice(midpoint)
+        .reduce((sum, d) => sum + Number(d.revenue), 0);
       if (firstHalf > 0) {
-        growthPercentage = Math.round(((secondHalf - firstHalf) / firstHalf) * 100);
+        growthPercentage = Math.round(
+          ((secondHalf - firstHalf) / firstHalf) * 100,
+        );
       }
     }
 
@@ -256,7 +285,11 @@ export class DashboardService {
     const { limit = 6, date } = query;
 
     const targetDate = date ? new Date(date) : new Date();
-    const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+    const startOfDay = new Date(
+      targetDate.getFullYear(),
+      targetDate.getMonth(),
+      targetDate.getDate(),
+    );
     const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
 
     // Aggregate order items grouped by menu item

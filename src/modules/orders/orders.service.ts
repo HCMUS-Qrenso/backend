@@ -1253,7 +1253,7 @@ export class OrdersService {
         order: {
           include: { table: true },
         },
-        menuItem: true,  // Include menuItem to get name for notifications
+        menuItem: true, // Include menuItem to get name for notifications
       },
     });
 
@@ -1324,8 +1324,8 @@ export class OrdersService {
     // Emit real-time event for item status change
     this.eventsGateway.emitItemStatusChanged(tenantId, orderId, itemId, {
       ...updatedItem,
-      menuItem: orderItem.menuItem,  // Pass menuItem for name
-      order: orderItem.order,         // Pass order for table info
+      menuItem: orderItem.menuItem, // Pass menuItem for name
+      order: orderItem.order, // Pass order for table info
     });
 
     return {

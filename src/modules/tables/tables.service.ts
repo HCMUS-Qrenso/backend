@@ -1503,11 +1503,13 @@ export class TablesService {
                 inclusive: table.tenant.taxInclusive,
                 label: table.tenant.taxLabel,
               },
-              service_charge: table.tenant.serviceChargeEnabled ? {
-                enabled: table.tenant.serviceChargeEnabled,
-                rate: Number(table.tenant.serviceChargeRate),
-                min_party: table.tenant.serviceChargeMinParty,
-              } : null,
+              service_charge: table.tenant.serviceChargeEnabled
+                ? {
+                    enabled: table.tenant.serviceChargeEnabled,
+                    rate: Number(table.tenant.serviceChargeRate),
+                    min_party: table.tenant.serviceChargeMinParty,
+                  }
+                : null,
               operating_hours: table.tenant.operatingHours,
             },
           },
@@ -1591,11 +1593,13 @@ export class TablesService {
               inclusive: table.tenant.taxInclusive,
               label: table.tenant.taxLabel,
             },
-            service_charge: table.tenant.serviceChargeEnabled ? {
-              enabled: table.tenant.serviceChargeEnabled,
-              rate: Number(table.tenant.serviceChargeRate),
-              min_party: table.tenant.serviceChargeMinParty,
-            } : null,
+            service_charge: table.tenant.serviceChargeEnabled
+              ? {
+                  enabled: table.tenant.serviceChargeEnabled,
+                  rate: Number(table.tenant.serviceChargeRate),
+                  min_party: table.tenant.serviceChargeMinParty,
+                }
+              : null,
             operating_hours: table.tenant.operatingHours,
           },
         },
@@ -1674,7 +1678,9 @@ export class TablesService {
     const table = await this.prisma.table.findFirst({
       where: { id: tableId, tenantId, isActive: true },
       include: {
-        tenant: { select: { slug: true, name: true, sessionTimeoutMinutes: true } },
+        tenant: {
+          select: { slug: true, name: true, sessionTimeoutMinutes: true },
+        },
         zone: { select: { name: true } },
       },
     });

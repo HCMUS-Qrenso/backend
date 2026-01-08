@@ -215,7 +215,10 @@ export class TenantController {
             min_party: null,
           },
           operating_hours: {
-            monday: { isOpen: true, slots: [{ open: '09:00', close: '22:00' }] },
+            monday: {
+              isOpen: true,
+              slots: [{ open: '09:00', close: '22:00' }],
+            },
           },
           order: {
             min_value: 50000,
@@ -273,4 +276,3 @@ export class TenantController {
     return this.tenantService.updateSettings(tenantId, dto);
   }
 }
-
