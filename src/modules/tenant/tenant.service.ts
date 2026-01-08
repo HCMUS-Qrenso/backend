@@ -280,6 +280,10 @@ export class TenantService {
         receiptFooter: true,
         receiptShowLogo: true,
         invoicePrefix: true,
+        // Payment settings
+        payosApiKey: true,
+        payosChecksumKey: true,
+        payosClientId: true,
       },
     });
 
@@ -341,6 +345,12 @@ export class TenantService {
           footer: tenant.receiptFooter,
           show_logo: tenant.receiptShowLogo,
           invoice_prefix: tenant.invoicePrefix,
+        },
+        // QR Payment
+        qr_payment: {
+          payos_api_key: tenant.payosApiKey,
+          payos_checksum_key: tenant.payosChecksumKey,
+          payos_client_id: tenant.payosClientId,
         },
       },
     };
@@ -424,6 +434,14 @@ export class TenantService {
       updateData.receiptShowLogo = dto.receiptShowLogo;
     if (dto.invoicePrefix !== undefined)
       updateData.invoicePrefix = dto.invoicePrefix;
+
+    // QR Payment settings
+    if (dto.qrPayosApiKey !== undefined)
+      updateData.qrPayosApiKey = dto.qrPayosApiKey;
+    if (dto.qrPayosChecksumKey !== undefined)
+      updateData.qrPayosChecksumKey = dto.qrPayosChecksumKey;
+    if (dto.qrPayosClientId !== undefined)
+      updateData.qrPayosClientId = dto.qrPayosClientId;
 
     // Update tenant
     await this.prisma.tenant.update({

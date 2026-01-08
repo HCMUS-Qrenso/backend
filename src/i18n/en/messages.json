@@ -166,5 +166,12 @@
     "infoFailed": "Failed to get payment information",
     "credentialsNotConfigured": "PayOS credentials not configured for this tenant",
     "invalidSignature": "Invalid webhook signature"
+  },
+  "user": {
+    "profileUpdatedSuccess": "Profile updated successfully",
+    "profileUpdateFailed": "Failed to update profile"
+  },
+  "upload": {
+    "userIdRequiredForAvatar": "User ID is required for avatar uploads"
   }
 }

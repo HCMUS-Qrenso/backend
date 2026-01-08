@@ -17,6 +17,7 @@ import { PresignUploadDto, PresignUploadResponseDto } from './dto';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { JwtAuthGuard } from '../auth/guards';
 import { Roles } from 'src/common/decorators';
+import { CurrentUser } from 'src/common/decorators';
 import { ROLES } from 'src/common/constants/auth.constants';
 
 @ApiTags('uploads')
@@ -49,7 +50,8 @@ export class UploadController {
   })
   async getPresignedUrl(
     @Body() dto: PresignUploadDto,
+    @CurrentUser() user: any,
   ): Promise<PresignUploadResponseDto> {
-    return this.uploadService.generatePresignedUrl(dto);
+    return this.uploadService.generatePresignedUrl(dto, user.id);
   }
 }

@@ -166,5 +166,12 @@
     "infoFailed": "Không thể lấy thông tin thanh toán",
     "credentialsNotConfigured": "Thông tin xác thực PayOS chưa được cấu hình cho tenant này",
     "invalidSignature": "Chữ ký webhook không hợp lệ"
+  },
+  "user": {
+    "profileUpdatedSuccess": "Cập nhật profile thành công",
+    "profileUpdateFailed": "Cập nhật profile thất bại"
+  },
+  "upload": {
+    "userIdRequiredForAvatar": "User ID là bắt buộc khi tải lên avatar"
   }
 }

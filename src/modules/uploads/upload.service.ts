@@ -4,6 +4,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 import { PresignUploadDto, PresignUploadResponseDto } from './dto';
+import { t } from '../../common/utils';
 
 @Injectable()
 export class UploadService {
@@ -27,11 +28,22 @@ export class UploadService {
 
   async generatePresignedUrl(
     dto: PresignUploadDto,
+    userId?: string,
   ): Promise<PresignUploadResponseDto> {
     try {
+      // Validate that userId is provided for avatar uploads
+      if (dto.group === 'avatars' && !userId) {
+        throw new Error(
+          t(
+            'upload.userIdRequiredForAvatar',
+            'User ID is required for avatar uploads',
+          ),
+        );
+      }
+
       // Generate a unique key for the file
       const fileExtension = dto.fileName.split('.').pop();
-      const uniqueId = uuidv4();
+      const uniqueId = dto.group === 'avatars' ? userId : uuidv4();
       const key = `${dto.group || 'uploads'}/${uniqueId}.${fileExtension}`;
 
       // Create the PutObject command
