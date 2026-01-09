@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { QueryTenantsDto, UpdateTenantSettingsDto } from './dto';
 import { t } from '../../common/utils';
@@ -458,5 +458,204 @@ export class TenantService {
 
     // Return updated settings
     return this.getSettings(tenantId);
+  }
+
+  // ============================================
+  // Onboarding Methods
+  // ============================================
+
+  /**
+   * Get onboarding status and draft
+   */
+  async getOnboarding(tenantId: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        image: true,
+        onboardingCompleted: true,
+        onboardingDraft: true,
+        // Current settings for prefill
+        currency: true,
+        currencySymbol: true,
+        timezone: true,
+        dateFormat: true,
+        language: true,
+        taxRate: true,
+        taxInclusive: true,
+        taxLabel: true,
+        serviceChargeEnabled: true,
+        serviceChargeRate: true,
+        serviceChargeTaxable: true,
+        serviceChargeMinParty: true,
+        operatingHours: true,
+        minOrderValue: true,
+        estimatedPrepTime: true,
+        allowSpecialInstructions: true,
+        sessionTimeoutMinutes: true,
+        requireGuestCount: true,
+      },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant ${tenantId} not found`);
+    }
+
+    return {
+      success: true,
+      data: {
+        completed: tenant.onboardingCompleted,
+        draft: tenant.onboardingDraft || null,
+        current_settings: {
+          restaurant: {
+            name: tenant.name,
+            address: tenant.address,
+            image: tenant.image,
+          },
+          locale: {
+            currency: tenant.currency,
+            currency_symbol: tenant.currencySymbol,
+            timezone: tenant.timezone,
+            date_format: tenant.dateFormat,
+            language: tenant.language,
+          },
+          tax_charge: {
+            tax_rate: Number(tenant.taxRate),
+            tax_inclusive: tenant.taxInclusive,
+            tax_label: tenant.taxLabel,
+            service_charge_enabled: tenant.serviceChargeEnabled,
+            service_charge_rate: Number(tenant.serviceChargeRate),
+            service_charge_taxable: tenant.serviceChargeTaxable,
+            service_charge_min_party: tenant.serviceChargeMinParty,
+          },
+          hours: {
+            operating_hours: tenant.operatingHours,
+          },
+          order_rules: {
+            min_value: tenant.minOrderValue ? Number(tenant.minOrderValue) : null,
+            estimated_prep_time: tenant.estimatedPrepTime,
+            allow_special_instructions: tenant.allowSpecialInstructions,
+            session_timeout_minutes: tenant.sessionTimeoutMinutes,
+            require_guest_count: tenant.requireGuestCount,
+          },
+        },
+      },
+    };
+  }
+
+  /**
+   * Save onboarding draft (partial updates)
+   */
+  async saveOnboardingDraft(tenantId: string, draft: any) {
+    // Get existing draft
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { onboardingDraft: true },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant ${tenantId} not found`);
+    }
+
+    // Merge with existing draft
+    const existingDraft = (tenant.onboardingDraft as object) || {};
+    const mergedDraft = { ...existingDraft, ...draft };
+
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { onboardingDraft: mergedDraft },
+    });
+
+    this.logger.log(`Onboarding draft saved for tenant ${tenantId}`);
+
+    return {
+      success: true,
+      data: { draft: mergedDraft },
+    };
+  }
+
+  /**
+   * Complete onboarding - apply draft to actual settings
+   */
+  async completeOnboarding(tenantId: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { onboardingDraft: true, onboardingCompleted: true },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant ${tenantId} not found`);
+    }
+
+    const draft = tenant.onboardingDraft as any;
+    if (!draft) {
+      throw new BadRequestException('No onboarding draft found. Please complete onboarding steps first.');
+    }
+
+    // Validate required fields
+    if (!draft.restaurant?.name) {
+      throw new BadRequestException('Restaurant name is required');
+    }
+
+    // Build update data from draft
+    const updateData: Record<string, any> = {};
+
+    // Restaurant
+    if (draft.restaurant) {
+      if (draft.restaurant.name) updateData.name = draft.restaurant.name;
+      if (draft.restaurant.address !== undefined) updateData.address = draft.restaurant.address;
+      if (draft.restaurant.image !== undefined) updateData.image = draft.restaurant.image;
+    }
+
+    // Locale
+    if (draft.locale) {
+      if (draft.locale.currency) updateData.currency = draft.locale.currency;
+      if (draft.locale.currency_symbol) updateData.currencySymbol = draft.locale.currency_symbol;
+      if (draft.locale.timezone) updateData.timezone = draft.locale.timezone;
+      if (draft.locale.date_format) updateData.dateFormat = draft.locale.date_format;
+      if (draft.locale.language) updateData.language = draft.locale.language;
+    }
+
+    // Tax & Charges
+    if (draft.tax_charge) {
+      if (draft.tax_charge.tax_rate !== undefined) updateData.taxRate = draft.tax_charge.tax_rate;
+      if (draft.tax_charge.tax_inclusive !== undefined) updateData.taxInclusive = draft.tax_charge.tax_inclusive;
+      if (draft.tax_charge.tax_label) updateData.taxLabel = draft.tax_charge.tax_label;
+      if (draft.tax_charge.service_charge_enabled !== undefined) updateData.serviceChargeEnabled = draft.tax_charge.service_charge_enabled;
+      if (draft.tax_charge.service_charge_rate !== undefined) updateData.serviceChargeRate = draft.tax_charge.service_charge_rate;
+      if (draft.tax_charge.service_charge_taxable !== undefined) updateData.serviceChargeTaxable = draft.tax_charge.service_charge_taxable;
+      if (draft.tax_charge.service_charge_min_party !== undefined) updateData.serviceChargeMinParty = draft.tax_charge.service_charge_min_party;
+    }
+
+    // Operating Hours
+    if (draft.hours?.operating_hours) {
+      updateData.operatingHours = draft.hours.operating_hours;
+    }
+
+    // Order Rules
+    if (draft.order_rules) {
+      if (draft.order_rules.min_value !== undefined) updateData.minOrderValue = draft.order_rules.min_value;
+      if (draft.order_rules.estimated_prep_time !== undefined) updateData.estimatedPrepTime = draft.order_rules.estimated_prep_time;
+      if (draft.order_rules.allow_special_instructions !== undefined) updateData.allowSpecialInstructions = draft.order_rules.allow_special_instructions;
+      if (draft.order_rules.session_timeout_minutes !== undefined) updateData.sessionTimeoutMinutes = draft.order_rules.session_timeout_minutes;
+      if (draft.order_rules.require_guest_count !== undefined) updateData.requireGuestCount = draft.order_rules.require_guest_count;
+    }
+
+    // Mark as completed
+    updateData.onboardingCompleted = true;
+
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: updateData,
+    });
+
+    this.logger.log(`Onboarding completed for tenant ${tenantId}`);
+
+    return {
+      success: true,
+      message: 'Onboarding completed successfully',
+    };
   }
 }

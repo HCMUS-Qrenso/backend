@@ -73,6 +73,10 @@ model Tenant {
   payosApiKey      String? @map("payos_api_key") @db.VarChar(255)
   payosChecksumKey String? @map("payos_checksum_key") @db.VarChar(255)
 
+  // ========== ONBOARDING SETTINGS ==========
+  onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
+  onboardingDraft     Json?    @map("onboarding_draft") @db.JsonB
+
   // ========== RELATIONS ==========
   owner             User                @relation("TenantOwner", fields: [ownerId], references: [id])
   users             User[]              @relation("TenantUsers")
