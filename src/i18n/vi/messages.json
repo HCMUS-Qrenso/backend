@@ -177,5 +177,14 @@
   },
   "upload": {
     "userIdRequiredForAvatar": "User ID là bắt buộc khi tải lên avatar"
+  },
+  "reviews": {
+    "orderNotFoundOrNotCompleted": "Không tìm thấy đơn hàng hoặc đơn hàng chưa hoàn thành, hoặc không thuộc về bạn",
+    "itemNotInOrder": "Món này không có trong đơn hàng đã chỉ định",
+    "alreadyReviewedItem": "Bạn đã đánh giá món này cho đơn hàng này",
+    "alreadyReviewedOrder": "Bạn đã đánh giá đơn hàng này",
+    "menuItemNotFound": "Không tìm thấy món ăn",
+    "reviewCreatedSuccess": "Tạo đánh giá thành công",
+    "orderReviewCreatedSuccess": "Tạo đánh giá đơn hàng thành công"
   }
 }

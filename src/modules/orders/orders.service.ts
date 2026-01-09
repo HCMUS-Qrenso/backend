@@ -1255,7 +1255,7 @@ export class OrdersService {
       if (status === OrderStatus.SERVED) {
         await tx.orderItem.updateMany({
           where: { orderId, status: 'ready' },
-          data: { status: 'served' },
+          data: { status: 'served', servedAt: new Date() },
         });
       }
 
@@ -1271,6 +1271,27 @@ export class OrdersService {
 
     // Emit real-time event to notify all connected clients
     this.eventsGateway.emitOrderUpdated(tenantId, updatedOrder.id, result.data);
+
+    // If order status changed to served, emit item:status events for all served items
+    // This ensures customer frontend gets notified of item status changes
+    if (status === OrderStatus.SERVED) {
+      const servedItems = await this.prisma.orderItem.findMany({
+        where: { orderId, status: 'served' },
+        include: {
+          menuItem: { select: { id: true, name: true } },
+          order: { include: { table: true } },
+        },
+      });
+
+      for (const item of servedItems) {
+        this.eventsGateway.emitItemStatusChanged(
+          tenantId,
+          orderId,
+          item.id,
+          item,
+        );
+      }
+    }
 
     return result;
   }

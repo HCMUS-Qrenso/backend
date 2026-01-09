@@ -563,24 +563,27 @@ model Payment {
 
 model Review {
   id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  menuItemId         String   @map("menu_item_id") @db.Uuid
+  menuItemId         String?  @map("menu_item_id") @db.Uuid
   customerId         String   @map("customer_id") @db.Uuid
-  orderId            String?  @map("order_id") @db.Uuid
+  orderId            String   @map("order_id") @db.Uuid
   rating             Int
   comment            String?  @db.Text
   isVerifiedPurchase Boolean  @default(false) @map("is_verified_purchase")
   status             String   @default("approved") @db.VarChar(20)
+  reviewType         String   @default("item") @map("review_type") @db.VarChar(20) // 'item' or 'order'
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  customer User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  order    Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  menuItem MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  customer User      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([customerId, orderId, menuItemId])
   @@index([menuItemId])
   @@index([customerId])
   @@index([orderId])
+  @@index([reviewType])
+  @@index([orderId, reviewType])
   @@map("reviews")
 }
 

@@ -867,6 +867,9 @@ export class PaymentService {
         `Cash payment ${paymentId} manually completed for order ${payment.order.orderNumber}`,
       );
 
+      // Emit socket event for payment status update
+      this.eventsGateway.emitPaymentUpdated(tenantId, payment.orderId, result);
+
       return result;
     } catch (error) {
       this.logger.error('Failed to complete payment', error);

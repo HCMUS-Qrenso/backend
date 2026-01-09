@@ -177,5 +177,14 @@
   },
   "upload": {
     "userIdRequiredForAvatar": "User ID is required for avatar uploads"
+  },
+  "reviews": {
+    "orderNotFoundOrNotCompleted": "Order not found or not completed, or does not belong to you",
+    "itemNotInOrder": "This item was not ordered in the specified order",
+    "alreadyReviewedItem": "You have already reviewed this item for this order",
+    "alreadyReviewedOrder": "You have already reviewed this order",
+    "menuItemNotFound": "Menu item not found",
+    "reviewCreatedSuccess": "Review created successfully",
+    "orderReviewCreatedSuccess": "Order review created successfully"
   }
 }
