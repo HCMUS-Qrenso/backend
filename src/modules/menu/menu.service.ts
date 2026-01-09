@@ -116,6 +116,11 @@ export class MenuService {
             },
           },
         },
+        reviews: {
+          select: {
+            rating: true,
+          },
+        },
         _count: {
           select: {
             reviews: true,
@@ -126,38 +131,48 @@ export class MenuService {
     });
 
     // Format response
-    const formattedMenuItems = menuItems.map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      base_price: item.basePrice,
-      preparation_time: item.preparationTime,
-      status: item.status,
-      is_chef_recommendation: item.isChefRecommendation,
-      allergen_info: item.allergenInfo,
-      nutritional_info: item.nutritionalInfo,
-      popularity_score: item.popularityScore,
-      category: item.category
-        ? {
-            id: item.category.id,
-            name: item.category.name,
-          }
-        : null,
-      images: item.images.map((img) => ({
-        id: img.id,
-        image_url: img.imageUrl,
-        display_order: img.displayOrder,
-        is_primary: img.isPrimary,
-      })),
-      modifier_groups: item.modifierGroups.map((mg) => ({
-        id: mg.modifierGroup.id,
-        is_required: mg.modifierGroup.isRequired,
-      })),
-      review_count: item._count.reviews,
-      order_count: item._count.orderItems,
-      created_at: item.createdAt,
-      updated_at: item.updatedAt,
-    }));
+    const formattedMenuItems = menuItems.map((item) => {
+      // Calculate average rating
+      const averageRating =
+        item.reviews.length > 0
+          ? item.reviews.reduce((sum, review) => sum + review.rating, 0) /
+            item.reviews.length
+          : 0;
+
+      return {
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        base_price: item.basePrice,
+        preparation_time: item.preparationTime,
+        status: item.status,
+        is_chef_recommendation: item.isChefRecommendation,
+        allergen_info: item.allergenInfo,
+        nutritional_info: item.nutritionalInfo,
+        popularity_score: item.popularityScore,
+        category: item.category
+          ? {
+              id: item.category.id,
+              name: item.category.name,
+            }
+          : null,
+        images: item.images.map((img) => ({
+          id: img.id,
+          image_url: img.imageUrl,
+          display_order: img.displayOrder,
+          is_primary: img.isPrimary,
+        })),
+        modifier_groups: item.modifierGroups.map((mg) => ({
+          id: mg.modifierGroup.id,
+          is_required: mg.modifierGroup.isRequired,
+        })),
+        average_rating: averageRating,
+        review_count: item._count.reviews,
+        order_count: item._count.orderItems,
+        created_at: item.createdAt,
+        updated_at: item.updatedAt,
+      };
+    });
 
     return {
       success: true,
@@ -232,6 +247,11 @@ export class MenuService {
             },
           },
         },
+        reviews: {
+          select: {
+            rating: true,
+          },
+        },
         _count: {
           select: {
             reviews: true,
@@ -246,6 +266,13 @@ export class MenuService {
         t('menu.menuItemNotFound', 'Menu item not found'),
       );
     }
+
+    // Calculate average rating
+    const averageRating =
+      menuItem.reviews.length > 0
+        ? menuItem.reviews.reduce((sum, review) => sum + review.rating, 0) /
+          menuItem.reviews.length
+        : 0;
 
     return {
       success: true,
@@ -293,6 +320,7 @@ export class MenuService {
           name: p.relatedItem.name,
           base_price: p.relatedItem.basePrice,
         })),
+        average_rating: averageRating,
         review_count: menuItem._count.reviews,
         order_count: menuItem._count.orderItems,
         created_at: menuItem.createdAt,

@@ -27,6 +27,7 @@ import { EventsModule } from './modules/events/events.module';
 import { KdsModule } from './modules/kds/kds.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     KdsModule,
     PaymentModule,
     DashboardModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [

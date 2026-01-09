@@ -78,6 +78,7 @@ async function bootstrap() {
       .addTag('kds', 'Kitchen Display System endpoints')
       .addTag('payments', 'Payment processing endpoints')
       .addTag('dashboard', 'Dashboard and analytics endpoints')
+      .addTag('reviews', 'Customer reviews and ratings endpoints')
       .addBearerAuth(
         {
           type: 'http',
