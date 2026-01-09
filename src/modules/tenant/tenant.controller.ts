@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
   Body,
   Query,
   UseGuards,
@@ -14,7 +15,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TenantService } from './tenant.service';
-import { QueryTenantsDto, UpdateTenantSettingsDto } from './dto';
+import { QueryTenantsDto, UpdateTenantSettingsDto, UpdateOnboardingDraftDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
 import { Roles, CurrentUser, TenantContext } from '../../common/decorators';
 import { RolesGuard, TenantOwnershipGuard } from '../../common/guards';
@@ -280,4 +281,61 @@ export class TenantController {
   ) {
     return this.tenantService.updateSettings(tenantId, dto);
   }
+
+  // ============================================
+  // Onboarding Endpoints
+  // ============================================
+
+  @Get('onboarding')
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
+  @ApiOperation({
+    summary: 'Get onboarding status and draft',
+    description:
+      'Returns onboarding completion status, saved draft, and current settings for prefill.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns onboarding data',
+  })
+  async getOnboarding(@TenantContext() tenantId: string) {
+    return this.tenantService.getOnboarding(tenantId);
+  }
+
+  @Patch('onboarding')
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
+  @ApiOperation({
+    summary: 'Save onboarding draft',
+    description:
+      'Save partial onboarding progress. Supports incremental saves per step.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Draft saved successfully',
+  })
+  async saveOnboardingDraft(
+    @TenantContext() tenantId: string,
+    @Body() dto: UpdateOnboardingDraftDto,
+  ) {
+    return this.tenantService.saveOnboardingDraft(tenantId, dto);
+  }
+
+  @Post('onboarding/complete')
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
+  @ApiOperation({
+    summary: 'Complete onboarding',
+    description:
+      'Apply onboarding draft to actual settings and mark onboarding as completed.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Onboarding completed successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Missing required fields or no draft found',
+  })
+  async completeOnboarding(@TenantContext() tenantId: string) {
+    return this.tenantService.completeOnboarding(tenantId);
+  }
 }
+

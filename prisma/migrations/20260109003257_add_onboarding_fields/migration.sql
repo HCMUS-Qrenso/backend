@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "tenants" ADD COLUMN     "onboarding_completed" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "onboarding_draft" JSONB;
