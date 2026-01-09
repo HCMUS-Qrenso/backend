@@ -42,13 +42,19 @@ export class ReviewsService {
 
     if (!order) {
       throw new NotFoundException(
-        t('reviews.orderNotFoundOrNotCompleted', 'Order not found or not completed, or does not belong to you'),
+        t(
+          'reviews.orderNotFoundOrNotCompleted',
+          'Order not found or not completed, or does not belong to you',
+        ),
       );
     }
 
     if (order.items.length === 0) {
       throw new BadRequestException(
-        t('reviews.itemNotInOrder', 'This item was not ordered in the specified order'),
+        t(
+          'reviews.itemNotInOrder',
+          'This item was not ordered in the specified order',
+        ),
       );
     }
 
@@ -65,7 +71,10 @@ export class ReviewsService {
 
     if (existingReview) {
       throw new BadRequestException(
-        t('reviews.alreadyReviewedItem', 'You have already reviewed this item for this order'),
+        t(
+          'reviews.alreadyReviewedItem',
+          'You have already reviewed this item for this order',
+        ),
       );
     }
 
@@ -124,7 +133,10 @@ export class ReviewsService {
 
     if (!order) {
       throw new NotFoundException(
-        t('reviews.orderNotFoundOrNotCompleted', 'Order not found or not completed, or does not belong to you'),
+        t(
+          'reviews.orderNotFoundOrNotCompleted',
+          'Order not found or not completed, or does not belong to you',
+        ),
       );
     }
 
@@ -140,7 +152,10 @@ export class ReviewsService {
 
     if (existingReview) {
       throw new BadRequestException(
-        t('reviews.alreadyReviewedOrder', 'You have already reviewed this order'),
+        t(
+          'reviews.alreadyReviewedOrder',
+          'You have already reviewed this order',
+        ),
       );
     }
 
