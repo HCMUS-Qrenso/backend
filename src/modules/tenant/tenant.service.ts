@@ -275,6 +275,7 @@ export class TenantService {
         notifySoundEnabled: true,
         notifyEmailEnabled: true,
         notifyEmail: true,
+        notifySound: true,
         // Receipt settings
         receiptHeader: true,
         receiptFooter: true,
@@ -338,6 +339,7 @@ export class TenantService {
           sound_enabled: tenant.notifySoundEnabled,
           email_enabled: tenant.notifyEmailEnabled,
           email: tenant.notifyEmail,
+          sound: tenant.notifySound,
         },
         // Receipt
         receipt: {
@@ -424,6 +426,7 @@ export class TenantService {
     if (dto.notifyEmailEnabled !== undefined)
       updateData.notifyEmailEnabled = dto.notifyEmailEnabled;
     if (dto.notifyEmail !== undefined) updateData.notifyEmail = dto.notifyEmail;
+    if (dto.notifySound !== undefined) updateData.notifySound = dto.notifySound;
 
     // Receipt settings
     if (dto.receiptHeader !== undefined)
@@ -437,12 +440,11 @@ export class TenantService {
 
     // QR Payment settings
     if (dto.qrPayosApiKey !== undefined)
-      updateData.qrPayosApiKey = dto.qrPayosApiKey;
+      updateData.payosApiKey = dto.qrPayosApiKey;
     if (dto.qrPayosChecksumKey !== undefined)
-      updateData.qrPayosChecksumKey = dto.qrPayosChecksumKey;
+      updateData.payosChecksumKey = dto.qrPayosChecksumKey;
     if (dto.qrPayosClientId !== undefined)
-      updateData.qrPayosClientId = dto.qrPayosClientId;
-
+      updateData.payosClientId = dto.qrPayosClientId;
     // Update tenant
     await this.prisma.tenant.update({
       where: { id: tenantId },

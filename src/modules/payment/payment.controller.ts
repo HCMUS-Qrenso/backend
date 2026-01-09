@@ -19,9 +19,14 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { PaymentService } from './payment.service';
-import { CreatePaymentDto, QueryPaymentsDto, WebhookDataDto } from './dto';
+import {
+  CreatePaymentDto,
+  QueryPaymentsDto,
+  WebhookDataDto,
+  RequestBillDto,
+} from './dto';
 import { JwtAuthGuard } from '../auth/guards';
-import { RolesGuard } from '../../common/guards';
+import { RolesGuard, QrTokenGuard } from '../../common/guards';
 import { Roles, Public, TenantContext } from '../../common/decorators';
 import { ROLES } from 'src/common/constants';
 
@@ -59,6 +64,28 @@ export class PaymentController {
     @Body() createPaymentDto: CreatePaymentDto,
   ) {
     return this.paymentService.createPaymentLink(tenantId, createPaymentDto);
+  }
+
+  @Post('request-bill')
+  @UseGuards(JwtAuthGuard, QrTokenGuard)
+  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @ApiOperation({
+    summary: 'Request bill for an order',
+    description: 'Customer requests bill, sends notification to waiter',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Bill request sent successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Order not found',
+  })
+  async requestBill(
+    @TenantContext() tenantId: string,
+    @Body() requestBillDto: RequestBillDto,
+  ) {
+    return this.paymentService.requestBill(tenantId, requestBillDto);
   }
 
   @Post('webhook')

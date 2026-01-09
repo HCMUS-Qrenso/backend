@@ -16,7 +16,12 @@ import {
   PaymentMethodType,
   OrderStatus,
 } from '../../common/constants';
-import { CreatePaymentDto, QueryPaymentsDto, WebhookDataDto } from './dto';
+import {
+  CreatePaymentDto,
+  QueryPaymentsDto,
+  WebhookDataDto,
+  RequestBillDto,
+} from './dto';
 import { Prisma } from '@prisma/client';
 import { EventsGateway } from '../events/events.gateway';
 
@@ -875,6 +880,102 @@ export class PaymentService {
       this.logger.error('Failed to complete payment', error);
       throw new BadRequestException(
         t('payment.completeFailed', 'Failed to complete payment', {
+          args: { error: (error as Error).message },
+        }),
+      );
+    }
+  }
+
+  /**
+   * Customer requests bill - sends notification to waiter
+   */
+  async requestBill(tenantId: string, requestBillDto: RequestBillDto) {
+    const { orderId, notes } = requestBillDto;
+
+    try {
+      // Validate order exists and belongs to tenant
+      const order = await this.prisma.order.findFirst({
+        where: {
+          id: orderId,
+          tenantId,
+        },
+        include: {
+          tableSession: {
+            include: {
+              table: {
+                select: {
+                  tableNumber: true,
+                  zone: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!order) {
+        throw new NotFoundException(
+          t('order.orderNotFound', 'Order not found'),
+        );
+      }
+
+      // Check if order is in served state
+      if (order.status !== OrderStatus.SERVED) {
+        throw new BadRequestException(
+          t(
+            'payment.invalidOrderStatusForBill',
+            'Order must have been served to request bill',
+          ),
+        );
+      }
+
+      // Update order to mark payment requested
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          paymentRequestedAt: new Date(),
+          paymentMethod: notes?.includes('QR') ? 'qr' : 'cash',
+        },
+      });
+
+      // Emit socket event to notify waiter
+      this.eventsGateway.emitBillRequested(tenantId, orderId, {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        tableNumber: order.tableSession?.table?.tableNumber,
+        zoneName: order.tableSession?.table?.zone?.name,
+        totalAmount: order.totalAmount,
+        notes,
+        timestamp: new Date().toISOString(),
+      });
+
+      this.logger.log(
+        `Bill requested for order ${order.orderNumber} at table ${order.tableSession?.table?.tableNumber}`,
+      );
+
+      return {
+        success: true,
+        message: t(
+          'payment.billRequestSent',
+          'Bill request sent to waiter successfully',
+        ),
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+      };
+    } catch (error) {
+      this.logger.error('Failed to request bill', error);
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      throw new BadRequestException(
+        t('payment.billRequestFailed', 'Failed to request bill', {
           args: { error: (error as Error).message },
         }),
       );
