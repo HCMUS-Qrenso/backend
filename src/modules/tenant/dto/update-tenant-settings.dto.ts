@@ -17,6 +17,38 @@ import { Type, Transform } from 'class-transformer';
  * All fields are optional - partial updates are supported
  */
 export class UpdateTenantSettingsDto {
+  // ========== RESTAURANT INFORMATION ==========
+
+  @ApiPropertyOptional({
+    description: 'Restaurant name',
+    example: "Joe's Vietnamese Diner",
+    maxLength: 255,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  name?: string;
+
+  @ApiPropertyOptional({
+    description: 'Restaurant address',
+    example: '227 Nguyen Van Cu, District 5, Ho Chi Minh City',
+    maxLength: 255,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  address?: string;
+
+  @ApiPropertyOptional({
+    description: 'Restaurant image URL',
+    example: 'https://images.unsplash.com/photo-example',
+    maxLength: 500,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  image?: string;
+
   // ========== GENERAL SETTINGS ==========
 
   @ApiPropertyOptional({

@@ -375,6 +375,11 @@ export class TenantService {
     // Build update data - only include fields that are provided
     const updateData: Record<string, unknown> = {};
 
+    // Restaurant information
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.address !== undefined) updateData.address = dto.address;
+    if (dto.image !== undefined) updateData.image = dto.image;
+
     // General settings
     if (dto.currency !== undefined) updateData.currency = dto.currency;
     if (dto.currencySymbol !== undefined)
