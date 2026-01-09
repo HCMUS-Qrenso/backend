@@ -254,6 +254,19 @@ export class UpdateTenantSettingsDto {
   notifySoundEnabled?: boolean;
 
   @ApiPropertyOptional({
+    description: 'Notification sound ID',
+    example: 2,
+    minimum: 1,
+    maximum: 5,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(1)
+  @Max(5)
+  notifySound?: number;
+
+  @ApiPropertyOptional({
     description: 'Enable email notifications',
     example: false,
   })

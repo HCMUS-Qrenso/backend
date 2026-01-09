@@ -405,6 +405,37 @@ export class EventsGateway
     );
   }
 
+  /**
+   * Emit when customer requests bill
+   * Notifies: Waiters and all staff
+   */
+  emitBillRequested(tenantId: string, orderId: string, data: any) {
+    const eventData = {
+      type: 'bill:requested',
+      data: {
+        orderId: data.orderId,
+        orderNumber: data.orderNumber,
+        tableNumber: data.tableNumber,
+        zoneName: data.zoneName,
+        totalAmount: data.totalAmount,
+        notes: data.notes,
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    // Notify all staff in tenant
+    this.server.to(`tenant:${tenantId}`).emit('bill:requested', eventData);
+
+    // Notify waiters specifically (important notification)
+    this.server
+      .to(`tenant:${tenantId}:waiters`)
+      .emit('bill:requested', eventData);
+
+    this.logger.log(
+      `Emitted bill:requested for order ${data.orderNumber} at table ${data.tableNumber}`,
+    );
+  }
+
   // ============================================
   // Helper Methods
   // ============================================
