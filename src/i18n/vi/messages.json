@@ -176,7 +176,8 @@
     "profileUpdateFailed": "Cập nhật profile thất bại"
   },
   "upload": {
-    "userIdRequiredForAvatar": "User ID là bắt buộc khi tải lên avatar"
+    "userIdRequiredForAvatar": "User ID là bắt buộc khi tải lên avatar",
+    "tenantIdRequiredForTenantImage": "Tenant ID là bắt buộc khi tải lên hình ảnh tenant"
   },
   "reviews": {
     "orderNotFoundOrNotCompleted": "Không tìm thấy đơn hàng hoặc đơn hàng chưa hoàn thành, hoặc không thuộc về bạn",

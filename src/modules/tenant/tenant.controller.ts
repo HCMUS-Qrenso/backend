@@ -15,7 +15,11 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TenantService } from './tenant.service';
-import { QueryTenantsDto, UpdateTenantSettingsDto, UpdateOnboardingDraftDto } from './dto';
+import {
+  QueryTenantsDto,
+  UpdateTenantSettingsDto,
+  UpdateOnboardingDraftDto,
+} from './dto';
 import { JwtAuthGuard } from '../auth/guards';
 import { Roles, CurrentUser, TenantContext } from '../../common/decorators';
 import { RolesGuard, TenantOwnershipGuard } from '../../common/guards';
@@ -338,4 +342,3 @@ export class TenantController {
     return this.tenantService.completeOnboarding(tenantId);
   }
 }
-

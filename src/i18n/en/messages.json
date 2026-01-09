@@ -176,7 +176,8 @@
     "profileUpdateFailed": "Failed to update profile"
   },
   "upload": {
-    "userIdRequiredForAvatar": "User ID is required for avatar uploads"
+    "userIdRequiredForAvatar": "User ID is required for avatar uploads",
+    "tenantIdRequiredForTenantImage": "Tenant ID is required for tenant image uploads"
   },
   "reviews": {
     "orderNotFoundOrNotCompleted": "Order not found or not completed, or does not belong to you",

@@ -29,6 +29,7 @@ export class UploadService {
   async generatePresignedUrl(
     dto: PresignUploadDto,
     userId?: string,
+    tenantId?: string,
   ): Promise<PresignUploadResponseDto> {
     try {
       // Validate that userId is provided for avatar uploads
@@ -41,9 +42,28 @@ export class UploadService {
         );
       }
 
+      // Validate that tenantId is provided for tenant-images uploads
+      if (dto.group === 'tenant-images' && !tenantId) {
+        throw new Error(
+          t(
+            'upload.tenantIdRequiredForTenantImage',
+            'Tenant ID is required for tenant image uploads',
+          ),
+        );
+      }
+
       // Generate a unique key for the file
       const fileExtension = dto.fileName.split('.').pop();
-      const uniqueId = dto.group === 'avatars' ? userId : uuidv4();
+      let uniqueId: string;
+
+      if (dto.group === 'avatars') {
+        uniqueId = userId!;
+      } else if (dto.group === 'tenant-images') {
+        uniqueId = tenantId!;
+      } else {
+        uniqueId = uuidv4();
+      }
+
       const key = `${dto.group || 'uploads'}/${uniqueId}.${fileExtension}`;
 
       // Create the PutObject command

@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { QueryTenantsDto, UpdateTenantSettingsDto } from './dto';
 import { t } from '../../common/utils';
@@ -536,7 +541,9 @@ export class TenantService {
             operating_hours: tenant.operatingHours,
           },
           order_rules: {
-            min_value: tenant.minOrderValue ? Number(tenant.minOrderValue) : null,
+            min_value: tenant.minOrderValue
+              ? Number(tenant.minOrderValue)
+              : null,
             estimated_prep_time: tenant.estimatedPrepTime,
             allow_special_instructions: tenant.allowSpecialInstructions,
             session_timeout_minutes: tenant.sessionTimeoutMinutes,
@@ -593,7 +600,9 @@ export class TenantService {
 
     const draft = tenant.onboardingDraft as any;
     if (!draft) {
-      throw new BadRequestException('No onboarding draft found. Please complete onboarding steps first.');
+      throw new BadRequestException(
+        'No onboarding draft found. Please complete onboarding steps first.',
+      );
     }
 
     // Validate required fields
@@ -607,28 +616,42 @@ export class TenantService {
     // Restaurant
     if (draft.restaurant) {
       if (draft.restaurant.name) updateData.name = draft.restaurant.name;
-      if (draft.restaurant.address !== undefined) updateData.address = draft.restaurant.address;
-      if (draft.restaurant.image !== undefined) updateData.image = draft.restaurant.image;
+      if (draft.restaurant.address !== undefined)
+        updateData.address = draft.restaurant.address;
+      if (draft.restaurant.image !== undefined)
+        updateData.image = draft.restaurant.image;
     }
 
     // Locale
     if (draft.locale) {
       if (draft.locale.currency) updateData.currency = draft.locale.currency;
-      if (draft.locale.currency_symbol) updateData.currencySymbol = draft.locale.currency_symbol;
+      if (draft.locale.currency_symbol)
+        updateData.currencySymbol = draft.locale.currency_symbol;
       if (draft.locale.timezone) updateData.timezone = draft.locale.timezone;
-      if (draft.locale.date_format) updateData.dateFormat = draft.locale.date_format;
+      if (draft.locale.date_format)
+        updateData.dateFormat = draft.locale.date_format;
       if (draft.locale.language) updateData.language = draft.locale.language;
     }
 
     // Tax & Charges
     if (draft.tax_charge) {
-      if (draft.tax_charge.tax_rate !== undefined) updateData.taxRate = draft.tax_charge.tax_rate;
-      if (draft.tax_charge.tax_inclusive !== undefined) updateData.taxInclusive = draft.tax_charge.tax_inclusive;
-      if (draft.tax_charge.tax_label) updateData.taxLabel = draft.tax_charge.tax_label;
-      if (draft.tax_charge.service_charge_enabled !== undefined) updateData.serviceChargeEnabled = draft.tax_charge.service_charge_enabled;
-      if (draft.tax_charge.service_charge_rate !== undefined) updateData.serviceChargeRate = draft.tax_charge.service_charge_rate;
-      if (draft.tax_charge.service_charge_taxable !== undefined) updateData.serviceChargeTaxable = draft.tax_charge.service_charge_taxable;
-      if (draft.tax_charge.service_charge_min_party !== undefined) updateData.serviceChargeMinParty = draft.tax_charge.service_charge_min_party;
+      if (draft.tax_charge.tax_rate !== undefined)
+        updateData.taxRate = draft.tax_charge.tax_rate;
+      if (draft.tax_charge.tax_inclusive !== undefined)
+        updateData.taxInclusive = draft.tax_charge.tax_inclusive;
+      if (draft.tax_charge.tax_label)
+        updateData.taxLabel = draft.tax_charge.tax_label;
+      if (draft.tax_charge.service_charge_enabled !== undefined)
+        updateData.serviceChargeEnabled =
+          draft.tax_charge.service_charge_enabled;
+      if (draft.tax_charge.service_charge_rate !== undefined)
+        updateData.serviceChargeRate = draft.tax_charge.service_charge_rate;
+      if (draft.tax_charge.service_charge_taxable !== undefined)
+        updateData.serviceChargeTaxable =
+          draft.tax_charge.service_charge_taxable;
+      if (draft.tax_charge.service_charge_min_party !== undefined)
+        updateData.serviceChargeMinParty =
+          draft.tax_charge.service_charge_min_party;
     }
 
     // Operating Hours
@@ -638,11 +661,18 @@ export class TenantService {
 
     // Order Rules
     if (draft.order_rules) {
-      if (draft.order_rules.min_value !== undefined) updateData.minOrderValue = draft.order_rules.min_value;
-      if (draft.order_rules.estimated_prep_time !== undefined) updateData.estimatedPrepTime = draft.order_rules.estimated_prep_time;
-      if (draft.order_rules.allow_special_instructions !== undefined) updateData.allowSpecialInstructions = draft.order_rules.allow_special_instructions;
-      if (draft.order_rules.session_timeout_minutes !== undefined) updateData.sessionTimeoutMinutes = draft.order_rules.session_timeout_minutes;
-      if (draft.order_rules.require_guest_count !== undefined) updateData.requireGuestCount = draft.order_rules.require_guest_count;
+      if (draft.order_rules.min_value !== undefined)
+        updateData.minOrderValue = draft.order_rules.min_value;
+      if (draft.order_rules.estimated_prep_time !== undefined)
+        updateData.estimatedPrepTime = draft.order_rules.estimated_prep_time;
+      if (draft.order_rules.allow_special_instructions !== undefined)
+        updateData.allowSpecialInstructions =
+          draft.order_rules.allow_special_instructions;
+      if (draft.order_rules.session_timeout_minutes !== undefined)
+        updateData.sessionTimeoutMinutes =
+          draft.order_rules.session_timeout_minutes;
+      if (draft.order_rules.require_guest_count !== undefined)
+        updateData.requireGuestCount = draft.order_rules.require_guest_count;
     }
 
     // Mark as completed

@@ -1,5 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsNumber, IsBoolean, ValidateNested, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsBoolean,
+  ValidateNested,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 /**
@@ -19,7 +27,9 @@ class RestaurantDraftDto {
   @IsString()
   address?: string;
 
-  @ApiPropertyOptional({ example: 'https://storage.example.com/restaurant.jpg' })
+  @ApiPropertyOptional({
+    example: 'https://storage.example.com/restaurant.jpg',
+  })
   @IsOptional()
   @IsString()
   image?: string;

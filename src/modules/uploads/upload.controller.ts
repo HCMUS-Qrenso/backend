@@ -52,6 +52,6 @@ export class UploadController {
     @Body() dto: PresignUploadDto,
     @CurrentUser() user: any,
   ): Promise<PresignUploadResponseDto> {
-    return this.uploadService.generatePresignedUrl(dto, user.id);
+    return this.uploadService.generatePresignedUrl(dto, user.id, user.tenantId);
   }
 }
