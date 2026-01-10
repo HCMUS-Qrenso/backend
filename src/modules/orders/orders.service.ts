@@ -705,7 +705,7 @@ export class OrdersService {
     const { items, special_instructions, device_id } = createOrderDto;
     const effectiveDeviceId = deviceId || device_id;
 
-    // 1. Validate table session
+    // 1. Validate table session and get tenant settings
     const session = await this.prisma.tableSession.findFirst({
       where: {
         id: tableSessionId,
@@ -713,7 +713,16 @@ export class OrdersService {
         table: { tenantId },
       },
       include: {
-        table: true,
+        table: {
+          include: {
+            tenant: {
+              select: {
+                taxRate: true,
+                taxInclusive: true,
+              },
+            },
+          },
+        },
         orders: {
           where: {
             status: {
@@ -868,8 +877,8 @@ export class OrdersService {
       });
     }
 
-    // Calculate tax (10% VAT for Vietnam)
-    const taxRate = 0.1;
+    // Calculate tax using tenant's taxRate (stored as percentage, e.g., 10 = 10%)
+    const taxRate = Number(session.table.tenant.taxRate || 10) / 100;
     const taxAmount = subtotal * taxRate;
     const totalAmount = subtotal + taxAmount;
 
@@ -1106,7 +1115,13 @@ export class OrdersService {
 
     // Calculate new totals
     const newSubtotal = Number(order.subtotal) + additionalSubtotal;
-    const taxRate = 0.1;
+
+    // Get tenant taxRate for recalculation
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { taxRate: true },
+    });
+    const taxRate = Number(tenant?.taxRate || 10) / 100;
     const newTaxAmount = newSubtotal * taxRate;
     const newTotalAmount =
       newSubtotal + newTaxAmount - Number(order.discountAmount);
