@@ -333,6 +333,15 @@ export class OrdersService {
             user: { select: { id: true, fullName: true } },
           },
         },
+        voucherRedemptions: {
+          where: { revokedAt: null },
+          include: {
+            voucher: {
+              select: { code: true, name: true },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
 
@@ -388,6 +397,13 @@ export class OrdersService {
         completedAt: order.completedAt,
         statusHistory: order.statusHistory,
         payments: order.payments,
+        // All applied vouchers for staff to manage
+        appliedVouchers: order.voucherRedemptions.map(r => ({
+          redemptionId: r.id,
+          voucherCode: r.voucher.code,
+          voucherName: r.voucher.name,
+          discountAmount: Number(r.discountAmount),
+        })),
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
       },
