@@ -28,6 +28,7 @@ import { KdsModule } from './modules/kds/kds.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
+import { VouchersModule } from './modules/vouchers/vouchers.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
     PaymentModule,
     DashboardModule,
     ReviewsModule,
+    VouchersModule,
   ],
   controllers: [AppController],
   providers: [

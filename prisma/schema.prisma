@@ -12,6 +12,35 @@ datasource db {
 }
 
 // ============================================
+// VOUCHER ENUMS
+// ============================================
+
+enum VoucherStatus {
+  draft
+  active
+  paused
+  archived
+}
+
+enum VoucherKind {
+  automatic   // Auto-apply for eligible orders (holiday, grand opening)
+  staff_only  // Staff applies manually (student, goodwill)
+  code        // Customer enters code
+}
+
+enum DiscountType {
+  percent
+  fixed_amount
+}
+
+enum ApplySource {
+  auto           // System auto-applied
+  waiter         // Staff applied
+  customer_code  // Customer entered code
+  admin          // Admin applied
+}
+
+// ============================================
 // TENANT & ORGANIZATION TABLES
 // ============================================
 
@@ -92,6 +121,7 @@ model Tenant {
   menuItemAnalytics MenuItemAnalytics[]
   notifications     Notification[]
   auditLogs         AuditLog[]
+  vouchers          Voucher[]
 
   @@index([slug])
   @@index([ownerId])
@@ -435,6 +465,8 @@ model Order {
   paymentRequestedAt  DateTime? @map("payment_requested_at") @db.Timestamp(6)
   // Customer's preferred payment method: cash | qr
   paymentMethod       String?   @map("payment_method") @db.VarChar(20)
+  // Currency snapshot from tenant at order creation time
+  currency            String    @default("VND") @db.VarChar(10)
   subtotal            Decimal   @default(0) @db.Decimal(10, 2)
   taxAmount           Decimal   @default(0) @map("tax_amount") @db.Decimal(10, 2)
   discountAmount      Decimal   @default(0) @map("discount_amount") @db.Decimal(10, 2)
@@ -451,10 +483,11 @@ model Order {
   tableSession  TableSession         @relation(fields: [tableSessionId], references: [id])
   customer      User?                @relation("OrderCustomer", fields: [customerId], references: [id], onDelete: SetNull)
   waiter        User?                @relation("OrderWaiter", fields: [waiterId], references: [id], onDelete: SetNull)
-  items         OrderItem[]
-  statusHistory OrderStatusHistory[]
-  payments      Payment[]
-  reviews       Review[]
+  items              OrderItem[]
+  statusHistory      OrderStatusHistory[]
+  payments           Payment[]
+  reviews            Review[]
+  voucherRedemptions VoucherRedemption[]
 
   @@index([orderNumber])
   @@index([tenantId])
@@ -732,4 +765,111 @@ model AnalyticsEvent {
   @@index([tenantId, eventType, createdAt])
   @@index([tableSessionId])
   @@map("analytics_events")
+}
+
+// ============================================
+// VOUCHER & PROMOTION TABLES
+// ============================================
+
+model Voucher {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String        @map("tenant_id") @db.Uuid
+  code        String        @db.VarChar(50) // Unique code per tenant: "KHAITRUONG2026", "SINHVIEN"
+  name        String        @db.VarChar(255) // Display name
+  description String?       @db.Text
+
+  // === VOUCHER TYPE ===
+  status      VoucherStatus @default(draft)
+  kind        VoucherKind   // automatic | staff_only | code
+
+  // === DISCOUNT SETTINGS ===
+  discountType      DiscountType
+  percentOff        Decimal?  @map("percent_off") @db.Decimal(5, 2)   // e.g., 10.00 = 10%
+  amountOff         Decimal?  @map("amount_off") @db.Decimal(10, 2)   // Fixed amount
+  maxDiscountAmount Decimal?  @map("max_discount_amount") @db.Decimal(10, 2) // Cap for % discounts
+
+  // === ELIGIBILITY ===
+  startsAt    DateTime? @map("starts_at") @db.Timestamp(6)
+  endsAt      DateTime? @map("ends_at") @db.Timestamp(6)
+  minSubtotal Decimal?  @map("min_subtotal") @db.Decimal(10, 2) // Minimum order value
+  minParty    Int?      @map("min_party") // Minimum guest count
+
+  // === USAGE LIMITS ===
+  maxRedemptionsTotal       Int? @map("max_redemptions_total")       // Total usage limit
+  maxRedemptionsPerCustomer Int? @map("max_redemptions_per_customer") // Per-customer limit
+
+  // === BEHAVIOR ===
+  autoApply Boolean @default(false) @map("auto_apply") // Auto-apply for eligible orders
+  isPublic  Boolean @default(false) @map("is_public")  // Show in customer frontend
+  stackable Boolean @default(false) @map("stackable")  // Can combine with others (future)
+  priority  Int     @default(0) @map("priority")       // Higher = applied first
+
+  // === AUDIT ===
+  createdById String?  @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  // === RELATIONS ===
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  codes       VoucherCode[]
+  redemptions VoucherRedemption[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, kind, status])
+  @@index([tenantId, autoApply, isPublic, status])
+  @@index([startsAt, endsAt])
+  @@map("vouchers")
+}
+
+model VoucherCode {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  voucherId String   @map("voucher_id") @db.Uuid
+  code      String   @db.VarChar(50) // The actual code string (for influencer/marketing codes)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  voucher Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([voucherId])
+  @@index([tenantId, code, isActive])
+  @@map("voucher_codes")
+}
+
+model VoucherRedemption {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String      @map("tenant_id") @db.Uuid
+  orderId       String      @map("order_id") @db.Uuid
+  voucherId     String      @map("voucher_id") @db.Uuid
+  voucherCodeId String?     @map("voucher_code_id") @db.Uuid // If used a specific code
+
+  // === APPLICATION INFO ===
+  source         ApplySource @default(auto)               // How it was applied
+  appliedById    String?     @map("applied_by_id") @db.Uuid // Staff who applied (for staff_only)
+  discountAmount Decimal     @map("discount_amount") @db.Decimal(10, 2) // Actual discount given
+  snapshot       Json?       @db.JsonB                    // Voucher rules at time of redemption
+
+  // === NOTES (for staff-applied) ===
+  notes String? @db.Text // e.g., "Thẻ sinh viên ĐH Bách Khoa"
+
+  // === REVOCATION ===
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamp(6)
+  revokedById  String?   @map("revoked_by_id") @db.Uuid
+  revokeReason String?   @map("revoke_reason") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // === RELATIONS ===
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  voucher Voucher @relation(fields: [voucherId], references: [id])
+
+  @@unique([orderId, voucherId]) // Prevent duplicate application
+  @@index([tenantId])
+  @@index([voucherId])
+  @@index([orderId])
+  @@index([tenantId, voucherId, createdAt])
+  @@map("voucher_redemptions")
 }

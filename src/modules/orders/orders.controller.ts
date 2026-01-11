@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -49,12 +50,18 @@ import {
   SessionActivityInterceptor,
   IdempotencyInterceptor,
 } from '../../common/interceptors';
+import { VouchersService } from '../vouchers/vouchers.service';
+import { ApplyVoucherDto, ApplyVoucherCodeDto, RevokeVoucherDto } from '../vouchers/dto';
+import { ApplySource } from '@prisma/client';
 
 @ApiTags('orders')
 @Controller('orders')
 @ApiBearerAuth('JWT-auth')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly vouchersService: VouchersService,
+  ) {}
 
   // ============================================
   // Admin/Staff Endpoints (JWT Auth)
@@ -465,6 +472,103 @@ export class OrdersController {
       itemId,
       updateStatusDto,
       user?.id,
+    );
+  }
+
+  // ============================================
+  // Voucher Endpoints (Staff)
+  // ============================================
+
+  @Post(':id/vouchers/apply')
+  @UseGuards(JwtAuthGuard, TenantOwnershipGuard, RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Apply a voucher to an order (staff)' })
+  @ApiParam({ name: 'id', description: 'Order ID (UUID)' })
+  @ApiResponse({ status: 200, description: 'Voucher applied successfully' })
+  @ApiResponse({ status: 400, description: 'Voucher not eligible' })
+  @ApiResponse({ status: 409, description: 'Order already has a voucher' })
+  async applyVoucher(
+    @TenantContext() tenantId: string,
+    @Param('id') orderId: string,
+    @Body() dto: ApplyVoucherDto,
+    @CurrentUser() user: any,
+  ) {
+    // Get order to extract context
+    const orderResult = await this.ordersService.findOne(tenantId, orderId);
+    const order = orderResult.data;
+
+    return this.vouchersService.applyVoucher(
+      {
+        orderId,
+        tenantId,
+        subtotal: order.subtotal,
+        customerId: order.customer?.id,
+        tableSessionId: order.tableSession?.id,
+      },
+      dto,
+      ApplySource.waiter,
+      user.id,
+    );
+  }
+
+  @Post(':id/vouchers/apply-code')
+  @UseGuards(JwtAuthGuard, QrTokenGuard)
+  @UseInterceptors(SessionActivityInterceptor)
+  @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Apply a voucher by code (customer)' })
+  @ApiParam({ name: 'id', description: 'Order ID (UUID)' })
+  @ApiHeader({
+    name: 'x-table-session-token',
+    required: true,
+    description: 'Session token',
+  })
+  @ApiResponse({ status: 200, description: 'Voucher applied successfully' })
+  @ApiResponse({ status: 404, description: 'Invalid voucher code' })
+  async applyVoucherCode(
+    @Param('id') orderId: string,
+    @Body() dto: ApplyVoucherCodeDto,
+    @Req() request: any,
+  ) {
+    const { qrContext } = request;
+
+    // Get order to extract context
+    const orderResult = await this.ordersService.findOne(qrContext.tenantId, orderId);
+    const order = orderResult.data;
+
+    return this.vouchersService.applyVoucherByCode(
+      {
+        orderId,
+        tenantId: qrContext.tenantId,
+        subtotal: order.subtotal,
+        customerId: qrContext.customerId,
+        tableSessionId: qrContext.tableSessionId,
+      },
+      dto,
+    );
+  }
+
+  @Delete(':id/vouchers/:redemptionId')
+  @UseGuards(JwtAuthGuard, TenantOwnershipGuard, RolesGuard)
+  @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER)
+  @ApiOperation({ summary: 'Revoke a voucher from an order (staff)' })
+  @ApiParam({ name: 'id', description: 'Order ID (UUID)' })
+  @ApiParam({ name: 'redemptionId', description: 'Voucher Redemption ID (UUID)' })
+  @ApiResponse({ status: 200, description: 'Voucher revoked successfully' })
+  async revokeVoucher(
+    @TenantContext() tenantId: string,
+    @Param('id') orderId: string,
+    @Param('redemptionId') redemptionId: string,
+    @Body() dto: RevokeVoucherDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.vouchersService.revokeVoucher(
+      tenantId,
+      orderId,
+      redemptionId,
+      dto,
+      user.id,
     );
   }
 }
