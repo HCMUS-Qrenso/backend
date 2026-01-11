@@ -407,6 +407,10 @@ export class VouchersService {
 
   /**
    * Apply a voucher to an order (with race condition protection)
+   * Rules:
+   * - Customer (auto/code source) can only apply 1 voucher per order
+   * - Staff can add additional vouchers on top of customer vouchers
+   * - Discount is calculated sequentially (on remaining subtotal after previous discounts)
    */
   async applyVoucher(
     context: OrderContext,
@@ -436,16 +440,33 @@ export class VouchersService {
         throw new BadRequestException('Voucher is not eligible for this order');
       }
 
-      // Check if order already has a voucher (MVP: only 1 voucher per order)
-      const existingRedemption = await tx.voucherRedemption.findFirst({
+      // Check if this voucher is already applied to this order
+      const existingSameVoucher = await tx.voucherRedemption.findFirst({
         where: {
           orderId: context.orderId,
+          voucherId: voucher.id,
           revokedAt: null,
         },
       });
 
-      if (existingRedemption) {
-        throw new ConflictException('Order already has a voucher applied. Remove it first to apply a different one.');
+      if (existingSameVoucher) {
+        throw new ConflictException('This voucher is already applied to this order');
+      }
+
+      // Customer (auto/customer_code) can only apply 1 voucher
+      // Staff can add additional vouchers
+      if (source === ApplySource.auto || source === ApplySource.customer_code) {
+        const customerVouchers = await tx.voucherRedemption.findFirst({
+          where: {
+            orderId: context.orderId,
+            source: { in: [ApplySource.auto, ApplySource.customer_code] },
+            revokedAt: null,
+          },
+        });
+
+        if (customerVouchers) {
+          throw new ConflictException('Order already has a customer voucher applied. Only staff can add additional vouchers.');
+        }
       }
 
       // Race condition check for usage limits
@@ -458,51 +479,93 @@ export class VouchersService {
         }
       }
 
-      // Calculate discount
-      const discountAmount = this.calculateDiscount(voucher, context.subtotal);
-
-      // Create redemption record
-      const redemption = await tx.voucherRedemption.create({
-        data: {
-          tenantId: context.tenantId,
-          orderId: context.orderId,
-          voucherId: voucher.id,
-          source,
-          appliedById,
-          discountAmount,
-          notes: dto.notes,
-          snapshot: {
-            code: voucher.code,
-            name: voucher.name,
-            discountType: voucher.discountType,
-            percentOff: voucher.percentOff ? Number(voucher.percentOff) : null,
-            amountOff: voucher.amountOff ? Number(voucher.amountOff) : null,
-            maxDiscountAmount: voucher.maxDiscountAmount ? Number(voucher.maxDiscountAmount) : null,
-          },
-        },
-        include: {
-          voucher: { select: { code: true, name: true } },
-        },
-      });
-
-      // Update order totals
+      // Get current order totals and existing discounts for sequential calculation
       const order = await tx.order.findUnique({
         where: { id: context.orderId },
         select: { subtotal: true, taxAmount: true, discountAmount: true, totalAmount: true },
       });
 
-      if (order) {
-        const newDiscountAmount = Number(order.discountAmount) + discountAmount;
-        const newTotalAmount = Number(order.subtotal) + Number(order.taxAmount) - newDiscountAmount;
+      if (!order) {
+        throw new NotFoundException('Order not found');
+      }
 
-        await tx.order.update({
-          where: { id: context.orderId },
+      // Sequential discount: calculate on remaining subtotal after existing discounts
+      const currentSubtotalAfterDiscounts = Number(order.subtotal) - Number(order.discountAmount);
+      const discountAmount = this.calculateDiscount(voucher, currentSubtotalAfterDiscounts);
+
+      // Check if there's a revoked redemption for the same voucher (for re-applying)
+      const revokedRedemption = await tx.voucherRedemption.findFirst({
+        where: {
+          orderId: context.orderId,
+          voucherId: voucher.id,
+          revokedAt: { not: null }, // Was revoked
+        },
+      });
+
+      let redemption;
+      
+      if (revokedRedemption) {
+        // Reactivate the revoked redemption
+        redemption = await tx.voucherRedemption.update({
+          where: { id: revokedRedemption.id },
           data: {
-            discountAmount: newDiscountAmount,
-            totalAmount: Math.max(0, newTotalAmount),
+            source,
+            appliedById,
+            discountAmount,
+            notes: dto.notes,
+            revokedAt: null, // Clear revoke
+            revokedById: null,
+            revokeReason: null,
+            snapshot: {
+              code: voucher.code,
+              name: voucher.name,
+              discountType: voucher.discountType,
+              percentOff: voucher.percentOff ? Number(voucher.percentOff) : null,
+              amountOff: voucher.amountOff ? Number(voucher.amountOff) : null,
+              maxDiscountAmount: voucher.maxDiscountAmount ? Number(voucher.maxDiscountAmount) : null,
+            },
+          },
+          include: {
+            voucher: { select: { code: true, name: true } },
+          },
+        });
+      } else {
+        // Create new redemption record
+        redemption = await tx.voucherRedemption.create({
+          data: {
+            tenantId: context.tenantId,
+            orderId: context.orderId,
+            voucherId: voucher.id,
+            source,
+            appliedById,
+            discountAmount,
+            notes: dto.notes,
+            snapshot: {
+              code: voucher.code,
+              name: voucher.name,
+              discountType: voucher.discountType,
+              percentOff: voucher.percentOff ? Number(voucher.percentOff) : null,
+              amountOff: voucher.amountOff ? Number(voucher.amountOff) : null,
+              maxDiscountAmount: voucher.maxDiscountAmount ? Number(voucher.maxDiscountAmount) : null,
+            },
+          },
+          include: {
+            voucher: { select: { code: true, name: true } },
           },
         });
       }
+
+      // Update order totals
+      const newDiscountAmount = Number(order.discountAmount) + discountAmount;
+      const newTotalAmount = Number(order.subtotal) + Number(order.taxAmount) - newDiscountAmount;
+
+      await tx.order.update({
+        where: { id: context.orderId },
+        data: {
+          discountAmount: newDiscountAmount,
+          totalAmount: Math.max(0, newTotalAmount),
+        },
+      });
 
       this.logger.log(`Voucher ${voucher.code} applied to order ${context.orderId} by ${source}`);
 
