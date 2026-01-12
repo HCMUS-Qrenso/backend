@@ -187,5 +187,18 @@
     "menuItemNotFound": "未找到菜单项",
     "reviewCreatedSuccess": "评价创建成功",
     "orderReviewCreatedSuccess": "订单评价创建成功"
+  },
+  "vouchers": {
+    "voucherArchived": "优惠券已归档",
+    "voucherRevokedSuccessfully": "优惠券撤销成功",
+    "voucherNotFound": "未找到优惠券",
+    "voucherNotEligible": "优惠券不符合此订单的条件",
+    "voucherAlreadyApplied": "此优惠券已应用于此订单",
+    "orderNotFound": "未找到订单",
+    "voucherUsageLimitReached": "优惠券已达到使用限制",
+    "invalidVoucherCode": "无效的优惠券代码",
+    "voucherCannotBeAppliedByCode": "此优惠券无法通过代码应用",
+    "voucherRedemptionNotFound": "未找到优惠券兑换或已撤销",
+    "customerHasVoucherApplied": "订单已有客户优惠券应用。只有员工可以添加额外的优惠券。"
   }
 }

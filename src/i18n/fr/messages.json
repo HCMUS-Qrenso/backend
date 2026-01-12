@@ -187,5 +187,18 @@
     "menuItemNotFound": "Article du menu introuvable",
     "reviewCreatedSuccess": "Avis créé avec succès",
     "orderReviewCreatedSuccess": "Avis de commande créé avec succès"
+  },
+  "vouchers": {
+    "voucherArchived": "Bon d'achat archivé",
+    "voucherRevokedSuccessfully": "Bon d'achat révoqué avec succès",
+    "voucherNotFound": "Bon d'achat introuvable",
+    "voucherNotEligible": "Le bon d'achat n'est pas éligible pour cette commande",
+    "voucherAlreadyApplied": "Ce bon d'achat est déjà appliqué à cette commande",
+    "orderNotFound": "Commande introuvable",
+    "voucherUsageLimitReached": "Le bon d'achat a atteint sa limite d'utilisation",
+    "invalidVoucherCode": "Code de bon d'achat invalide",
+    "voucherCannotBeAppliedByCode": "Ce bon d'achat ne peut pas être appliqué par code",
+    "voucherRedemptionNotFound": "Échange de bon d'achat introuvable ou déjà révoqué",
+    "customerHasVoucherApplied": "La commande a déjà un bon d'achat client appliqué. Seuls les employés peuvent ajouter des bons d'achat supplémentaires."
   }
 }

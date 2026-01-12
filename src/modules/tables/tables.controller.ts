@@ -285,8 +285,8 @@ export class TablesController {
   }
 
   @Post('session/refresh')
-  @UseGuards(QrTokenGuard)
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @UseGuards(QrTokenGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Refresh session token',

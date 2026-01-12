@@ -394,6 +394,12 @@ export class PaymentService {
     try {
       // Update payment and order in a transaction
       const result = await this.prisma.$transaction(async (tx) => {
+        // Generate invoice number if payment is successful
+        let invoiceNum: string | undefined;
+        if (paymentStatus === PaymentStatus.PAID) {
+          invoiceNum = await this.generateInvoiceNum(payment.tenantId, tx);
+        }
+
         // Update payment
         const updatedPayment = await tx.payment.update({
           where: { id: payment.id },
@@ -401,6 +407,7 @@ export class PaymentService {
             status: paymentStatus,
             gatewayResponse: webhookData as unknown as Prisma.InputJsonValue,
             paidAt: paymentStatus === PaymentStatus.PAID ? new Date() : null,
+            invoiceNum,
           },
         });
 
@@ -464,6 +471,25 @@ export class PaymentService {
       this.logger.error('Failed to verify webhook signature', error);
       return false;
     }
+  }
+
+  /**
+   * Generate invoice number for successful payment
+   * Format: PREFIX-TIMESTAMP-RANDOM (e.g., "QR-1736692252123-456")
+   */
+  private async generateInvoiceNum(tenantId: string, tx: any): Promise<string> {
+    // Get tenant invoice prefix
+    const tenant = await tx.tenant.findUnique({
+      where: { id: tenantId },
+      select: { invoicePrefix: true },
+    });
+
+    const prefix = tenant?.invoicePrefix || 'INV';
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000);
+
+    // Format: PREFIX-TIMESTAMP-RANDOM (e.g., "QR-1736692252123-456")
+    return `${prefix}${timestamp}-${random}`;
   }
 
   /**
@@ -848,12 +874,16 @@ export class PaymentService {
     try {
       // Update payment and order in a transaction
       const result = await this.prisma.$transaction(async (tx) => {
+        // Generate invoice number
+        const invoiceNum = await this.generateInvoiceNum(tenantId, tx);
+
         // Update payment
         const updatedPayment = await tx.payment.update({
           where: { id: payment.id },
           data: {
             status: PaymentStatus.PAID,
             paidAt: new Date(),
+            invoiceNum,
           },
         });
 

@@ -187,5 +187,18 @@
     "menuItemNotFound": "Menu item not found",
     "reviewCreatedSuccess": "Review created successfully",
     "orderReviewCreatedSuccess": "Order review created successfully"
+  },
+  "vouchers": {
+    "voucherArchived": "Voucher archived",
+    "voucherRevokedSuccessfully": "Voucher revoked successfully",
+    "voucherNotFound": "Voucher not found",
+    "voucherNotEligible": "Voucher is not eligible for this order",
+    "voucherAlreadyApplied": "This voucher is already applied to this order",
+    "orderNotFound": "Order not found",
+    "voucherUsageLimitReached": "Voucher has reached its usage limit",
+    "invalidVoucherCode": "Invalid voucher code",
+    "voucherCannotBeAppliedByCode": "This voucher cannot be applied by code",
+    "voucherRedemptionNotFound": "Voucher redemption not found or already revoked",
+    "customerHasVoucherApplied": "Order already has a customer voucher applied. Only staff can add additional vouchers."
   }
 }

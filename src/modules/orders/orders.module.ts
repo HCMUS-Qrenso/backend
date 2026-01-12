@@ -8,10 +8,14 @@ import { TablesModule } from '../tables/tables.module';
 import { VouchersModule } from '../vouchers/vouchers.module';
 
 @Module({
-  imports: [AuthModule, EventsModule, forwardRef(() => TablesModule), VouchersModule],
+  imports: [
+    AuthModule,
+    EventsModule,
+    forwardRef(() => TablesModule),
+    VouchersModule,
+  ],
   controllers: [OrdersController],
   providers: [OrdersService, PrismaService],
   exports: [OrdersService],
 })
 export class OrdersModule {}
-

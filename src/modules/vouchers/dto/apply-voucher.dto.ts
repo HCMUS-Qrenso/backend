@@ -7,14 +7,19 @@ export class ApplyVoucherDto {
   @IsString()
   voucherId: string;
 
-  @ApiPropertyOptional({ description: 'Notes (e.g., "Thẻ sinh viên ĐH Bách Khoa")' })
+  @ApiPropertyOptional({
+    description: 'Notes (e.g., "Thẻ sinh viên ĐH Bách Khoa")',
+  })
   @IsOptional()
   @IsString()
   notes?: string;
 }
 
 export class ApplyVoucherCodeDto {
-  @ApiProperty({ description: 'Voucher or promo code', example: 'KHAITRUONG2026' })
+  @ApiProperty({
+    description: 'Voucher or promo code',
+    example: 'KHAITRUONG2026',
+  })
   @IsString()
   code: string;
 }

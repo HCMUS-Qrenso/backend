@@ -284,7 +284,6 @@ export class TenantService {
         // Receipt settings
         receiptHeader: true,
         receiptFooter: true,
-        receiptShowLogo: true,
         invoicePrefix: true,
         // Payment settings
         payosApiKey: true,
@@ -350,7 +349,6 @@ export class TenantService {
         receipt: {
           header: tenant.receiptHeader,
           footer: tenant.receiptFooter,
-          show_logo: tenant.receiptShowLogo,
           invoice_prefix: tenant.invoicePrefix,
         },
         // QR Payment
@@ -443,8 +441,6 @@ export class TenantService {
       updateData.receiptHeader = dto.receiptHeader;
     if (dto.receiptFooter !== undefined)
       updateData.receiptFooter = dto.receiptFooter;
-    if (dto.receiptShowLogo !== undefined)
-      updateData.receiptShowLogo = dto.receiptShowLogo;
     if (dto.invoicePrefix !== undefined)
       updateData.invoicePrefix = dto.invoicePrefix;
 

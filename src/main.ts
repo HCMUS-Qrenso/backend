@@ -79,6 +79,7 @@ async function bootstrap() {
       .addTag('payments', 'Payment processing endpoints')
       .addTag('dashboard', 'Dashboard and analytics endpoints')
       .addTag('reviews', 'Customer reviews and ratings endpoints')
+      .addTag('vouchers', 'Voucher and discount management endpoints')
       .addBearerAuth(
         {
           type: 'http',

@@ -16,14 +16,14 @@ import {
   TopItemsResponseDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
-import { RolesGuard } from '../../common/guards';
+import { RolesGuard, TenantOwnershipGuard } from '../../common/guards';
 import { Roles, TenantContext } from '../../common/decorators';
 import { ROLES } from '../../common/constants';
 
 @ApiTags('dashboard')
 @ApiBearerAuth()
 @Controller('dashboard')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantOwnershipGuard)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 

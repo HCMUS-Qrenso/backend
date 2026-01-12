@@ -340,15 +340,6 @@ export class UpdateTenantSettingsDto {
   receiptFooter?: string;
 
   @ApiPropertyOptional({
-    description: 'Show logo on receipt',
-    example: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  @Transform(({ value }) => value === 'true' || value === true)
-  receiptShowLogo?: boolean;
-
-  @ApiPropertyOptional({
     description: 'Invoice number prefix',
     example: 'QR-',
     maxLength: 10,

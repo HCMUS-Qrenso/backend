@@ -93,10 +93,9 @@ model Tenant {
   notifyEmail        String? @map("notify_email") @db.VarChar(255)
 
   // ========== RECEIPT SETTINGS ==========
-  receiptHeader   String? @map("receipt_header") @db.VarChar(500)
-  receiptFooter   String? @map("receipt_footer") @db.VarChar(500)
-  receiptShowLogo Boolean @default(true) @map("receipt_show_logo")
-  invoicePrefix   String  @default("QR-") @map("invoice_prefix") @db.VarChar(10)
+  receiptHeader String? @map("receipt_header") @db.VarChar(500)
+  receiptFooter String? @map("receipt_footer") @db.VarChar(500)
+  invoicePrefix String  @default("QR-") @map("invoice_prefix") @db.VarChar(10)
 
   // ========== PAYMENT GATEWAY SETTINGS (PayOS) ==========
   payosClientId    String? @map("payos_client_id") @db.VarChar(255)
@@ -579,6 +578,7 @@ model Payment {
   currency        String    @default("VND") @db.VarChar(3)
   status          String    @default("pending") @db.VarChar(20)
   transactionId   String?   @unique @map("transaction_id") @db.VarChar(255)
+  invoiceNum      String?   @unique @map("invoice_num") @db.VarChar(50)
   gatewayResponse Json?     @map("gateway_response") @db.JsonB
   paidAt          DateTime? @map("paid_at") @db.Timestamp(6)
   refundedAt      DateTime? @map("refunded_at") @db.Timestamp(6)
@@ -593,6 +593,7 @@ model Payment {
   @@index([orderId])
   @@index([tenantId])
   @@index([transactionId])
+  @@index([invoiceNum])
   @@index([tenantId, status])
   @@index([tenantId, paymentMethod])
   @@index([tenantId, paidAt])

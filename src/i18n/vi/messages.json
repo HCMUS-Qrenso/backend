@@ -187,5 +187,18 @@
     "menuItemNotFound": "Không tìm thấy món ăn",
     "reviewCreatedSuccess": "Tạo đánh giá thành công",
     "orderReviewCreatedSuccess": "Tạo đánh giá đơn hàng thành công"
+  },
+  "vouchers": {
+    "voucherArchived": "Voucher đã được lưu trữ",
+    "voucherRevokedSuccessfully": "Voucher đã được thu hồi thành công",
+    "voucherNotFound": "Không tìm thấy voucher",
+    "voucherNotEligible": "Voucher không đủ điều kiện cho đơn hàng này",
+    "voucherAlreadyApplied": "Voucher này đã được áp dụng cho đơn hàng này",
+    "orderNotFound": "Không tìm thấy đơn hàng",
+    "voucherUsageLimitReached": "Voucher đã đạt giới hạn sử dụng",
+    "invalidVoucherCode": "Mã voucher không hợp lệ",
+    "voucherCannotBeAppliedByCode": "Voucher này không thể áp dụng bằng mã",
+    "voucherRedemptionNotFound": "Không tìm thấy việc đổi voucher hoặc đã bị thu hồi",
+    "customerHasVoucherApplied": "Đơn hàng đã có voucher khách hàng được áp dụng. Chỉ nhân viên mới có thể thêm voucher bổ sung."
   }
 }

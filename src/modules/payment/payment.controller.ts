@@ -26,14 +26,18 @@ import {
   RequestBillDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
-import { RolesGuard, QrTokenGuard } from '../../common/guards';
+import {
+  RolesGuard,
+  QrTokenGuard,
+  TenantOwnershipGuard,
+} from '../../common/guards';
 import { Roles, Public, TenantContext } from '../../common/decorators';
 import { ROLES } from 'src/common/constants';
 
 @ApiTags('payments')
 @Controller('payments')
 @ApiBearerAuth('JWT-auth')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantOwnershipGuard)
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
@@ -67,8 +71,8 @@ export class PaymentController {
   }
 
   @Post('request-bill')
-  @UseGuards(JwtAuthGuard, QrTokenGuard)
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @UseGuards(QrTokenGuard)
   @ApiOperation({
     summary: 'Request bill for an order',
     description: 'Customer requests bill, sends notification to waiter',

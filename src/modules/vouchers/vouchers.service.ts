@@ -22,6 +22,7 @@ import {
   ApplyVoucherCodeDto,
   RevokeVoucherDto,
 } from './dto';
+import { t } from '../../common/utils';
 
 interface OrderContext {
   orderId: string;
@@ -150,7 +151,9 @@ export class VouchersService {
     });
 
     if (!voucher) {
-      throw new NotFoundException('Voucher not found');
+      throw new NotFoundException(
+        t('vouchers.voucherNotFound', 'Voucher not found'),
+      );
     }
 
     return {
@@ -165,11 +168,17 @@ export class VouchersService {
     });
 
     if (!existing) {
-      throw new NotFoundException('Voucher not found');
+      throw new NotFoundException(
+        t('vouchers.voucherNotFound', 'Voucher not found'),
+      );
     }
 
     // Validate discount values if changing
-    if (dto.discountType || dto.percentOff !== undefined || dto.amountOff !== undefined) {
+    if (
+      dto.discountType ||
+      dto.percentOff !== undefined ||
+      dto.amountOff !== undefined
+    ) {
       this.validateDiscountValues({
         discountType: dto.discountType || existing.discountType,
         percentOff: dto.percentOff ?? Number(existing.percentOff),
@@ -188,13 +197,23 @@ export class VouchersService {
         ...(dto.discountType && { discountType: dto.discountType }),
         ...(dto.percentOff !== undefined && { percentOff: dto.percentOff }),
         ...(dto.amountOff !== undefined && { amountOff: dto.amountOff }),
-        ...(dto.maxDiscountAmount !== undefined && { maxDiscountAmount: dto.maxDiscountAmount }),
+        ...(dto.maxDiscountAmount !== undefined && {
+          maxDiscountAmount: dto.maxDiscountAmount,
+        }),
         ...(dto.minSubtotal !== undefined && { minSubtotal: dto.minSubtotal }),
         ...(dto.minParty !== undefined && { minParty: dto.minParty }),
-        ...(dto.startsAt !== undefined && { startsAt: dto.startsAt ? new Date(dto.startsAt) : null }),
-        ...(dto.endsAt !== undefined && { endsAt: dto.endsAt ? new Date(dto.endsAt) : null }),
-        ...(dto.maxRedemptionsTotal !== undefined && { maxRedemptionsTotal: dto.maxRedemptionsTotal }),
-        ...(dto.maxRedemptionsPerCustomer !== undefined && { maxRedemptionsPerCustomer: dto.maxRedemptionsPerCustomer }),
+        ...(dto.startsAt !== undefined && {
+          startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+        }),
+        ...(dto.endsAt !== undefined && {
+          endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
+        }),
+        ...(dto.maxRedemptionsTotal !== undefined && {
+          maxRedemptionsTotal: dto.maxRedemptionsTotal,
+        }),
+        ...(dto.maxRedemptionsPerCustomer !== undefined && {
+          maxRedemptionsPerCustomer: dto.maxRedemptionsPerCustomer,
+        }),
         ...(dto.autoApply !== undefined && { autoApply: dto.autoApply }),
         ...(dto.isPublic !== undefined && { isPublic: dto.isPublic }),
         ...(dto.priority !== undefined && { priority: dto.priority }),
@@ -218,7 +237,9 @@ export class VouchersService {
     });
 
     if (!existing) {
-      throw new NotFoundException('Voucher not found');
+      throw new NotFoundException(
+        t('vouchers.voucherNotFound', 'Voucher not found'),
+      );
     }
 
     await this.prisma.voucher.update({
@@ -228,7 +249,10 @@ export class VouchersService {
 
     this.logger.log(`Voucher ${existing.code} archived`);
 
-    return { success: true, message: 'Voucher archived' };
+    return {
+      success: true,
+      message: t('vouchers.voucherArchived', 'Voucher archived'),
+    };
   }
 
   // ============================================
@@ -246,33 +270,29 @@ export class VouchersService {
       where: {
         tenantId: context.tenantId,
         status: VoucherStatus.active,
-        OR: [
-          { startsAt: null },
-          { startsAt: { lte: now } },
-        ],
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
         AND: [
           {
-            OR: [
-              { endsAt: null },
-              { endsAt: { gte: now } },
-            ],
+            OR: [{ endsAt: null }, { endsAt: { gte: now } }],
           },
         ],
       },
       include: {
         _count: { select: { redemptions: true } },
       },
-      orderBy: [
-        { priority: 'desc' },
-        { createdAt: 'desc' },
-      ],
+      orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
     });
 
     // Filter by eligibility
     const applicableVouchers: Voucher[] = [];
 
     for (const voucher of vouchers) {
-      if (await this.isVoucherEligible(voucher as VoucherWithRedemptionCount, context)) {
+      if (
+        await this.isVoucherEligible(
+          voucher as VoucherWithRedemptionCount,
+          context,
+        )
+      ) {
         applicableVouchers.push(voucher);
       }
     }
@@ -308,13 +328,19 @@ export class VouchersService {
     }
 
     // Check minimum party size
-    if (voucher.minParty && context.guestCount && context.guestCount < voucher.minParty) {
+    if (
+      voucher.minParty &&
+      context.guestCount &&
+      context.guestCount < voucher.minParty
+    ) {
       return false;
     }
 
     // Check total redemption limit
     if (voucher.maxRedemptionsTotal) {
-      const redemptionCount = voucher._count?.redemptions ?? await this.getRedemptionCount(voucher.id);
+      const redemptionCount =
+        voucher._count?.redemptions ??
+        (await this.getRedemptionCount(voucher.id));
       if (redemptionCount >= voucher.maxRedemptionsTotal) {
         return false;
       }
@@ -335,7 +361,11 @@ export class VouchersService {
     }
 
     // Check per-session limit (for guests without customerId)
-    if (voucher.maxRedemptionsPerCustomer && !context.customerId && context.tableSessionId) {
+    if (
+      voucher.maxRedemptionsPerCustomer &&
+      !context.customerId &&
+      context.tableSessionId
+    ) {
       const sessionRedemptions = await this.prisma.voucherRedemption.count({
         where: {
           voucherId: voucher.id,
@@ -371,12 +401,15 @@ export class VouchersService {
 
     if (voucher.discountType === DiscountType.percent && voucher.percentOff) {
       discount = subtotal * (Number(voucher.percentOff) / 100);
-      
+
       // Apply max cap
       if (voucher.maxDiscountAmount) {
         discount = Math.min(discount, Number(voucher.maxDiscountAmount));
       }
-    } else if (voucher.discountType === DiscountType.fixed_amount && voucher.amountOff) {
+    } else if (
+      voucher.discountType === DiscountType.fixed_amount &&
+      voucher.amountOff
+    ) {
       discount = Number(voucher.amountOff);
     }
 
@@ -395,7 +428,10 @@ export class VouchersService {
       if (a.priority !== b.priority) {
         return b.priority - a.priority;
       }
-      return this.calculateDiscount(b, subtotal) - this.calculateDiscount(a, subtotal);
+      return (
+        this.calculateDiscount(b, subtotal) -
+        this.calculateDiscount(a, subtotal)
+      );
     });
 
     return sorted[0];
@@ -436,8 +472,18 @@ export class VouchersService {
       }
 
       // Check eligibility
-      if (!(await this.isVoucherEligible(voucher as VoucherWithRedemptionCount, context))) {
-        throw new BadRequestException('Voucher is not eligible for this order');
+      if (
+        !(await this.isVoucherEligible(
+          voucher as VoucherWithRedemptionCount,
+          context,
+        ))
+      ) {
+        throw new BadRequestException(
+          t(
+            'vouchers.voucherNotEligible',
+            'Voucher is not eligible for this order',
+          ),
+        );
       }
 
       // Check if this voucher is already applied to this order
@@ -450,7 +496,12 @@ export class VouchersService {
       });
 
       if (existingSameVoucher) {
-        throw new ConflictException('This voucher is already applied to this order');
+        throw new ConflictException(
+          t(
+            'vouchers.voucherAlreadyApplied',
+            'This voucher is already applied to this order',
+          ),
+        );
       }
 
       // Customer (auto/customer_code) can only apply 1 voucher
@@ -465,7 +516,12 @@ export class VouchersService {
         });
 
         if (customerVouchers) {
-          throw new ConflictException('Order already has a customer voucher applied. Only staff can add additional vouchers.');
+          throw new ConflictException(
+            t(
+              'vouchers.customerHasVoucherApplied',
+              'Order already has a customer voucher applied. Only staff can add additional vouchers.',
+            ),
+          );
         }
       }
 
@@ -475,23 +531,39 @@ export class VouchersService {
           where: { voucherId: voucher.id, revokedAt: null },
         });
         if (currentCount >= voucher.maxRedemptionsTotal) {
-          throw new BadRequestException('Voucher has reached its usage limit');
+          throw new BadRequestException(
+            t(
+              'vouchers.voucherUsageLimitReached',
+              'Voucher has reached its usage limit',
+            ),
+          );
         }
       }
 
       // Get current order totals and existing discounts for sequential calculation
       const order = await tx.order.findUnique({
         where: { id: context.orderId },
-        select: { subtotal: true, taxAmount: true, discountAmount: true, totalAmount: true },
+        select: {
+          subtotal: true,
+          taxAmount: true,
+          discountAmount: true,
+          totalAmount: true,
+        },
       });
 
       if (!order) {
-        throw new NotFoundException('Order not found');
+        throw new NotFoundException(
+          t('vouchers.orderNotFound', 'Order not found'),
+        );
       }
 
       // Sequential discount: calculate on remaining subtotal after existing discounts
-      const currentSubtotalAfterDiscounts = Number(order.subtotal) - Number(order.discountAmount);
-      const discountAmount = this.calculateDiscount(voucher, currentSubtotalAfterDiscounts);
+      const currentSubtotalAfterDiscounts =
+        Number(order.subtotal) - Number(order.discountAmount);
+      const discountAmount = this.calculateDiscount(
+        voucher,
+        currentSubtotalAfterDiscounts,
+      );
 
       // Check if there's a revoked redemption for the same voucher (for re-applying)
       const revokedRedemption = await tx.voucherRedemption.findFirst({
@@ -503,7 +575,7 @@ export class VouchersService {
       });
 
       let redemption;
-      
+
       if (revokedRedemption) {
         // Reactivate the revoked redemption
         redemption = await tx.voucherRedemption.update({
@@ -520,9 +592,13 @@ export class VouchersService {
               code: voucher.code,
               name: voucher.name,
               discountType: voucher.discountType,
-              percentOff: voucher.percentOff ? Number(voucher.percentOff) : null,
+              percentOff: voucher.percentOff
+                ? Number(voucher.percentOff)
+                : null,
               amountOff: voucher.amountOff ? Number(voucher.amountOff) : null,
-              maxDiscountAmount: voucher.maxDiscountAmount ? Number(voucher.maxDiscountAmount) : null,
+              maxDiscountAmount: voucher.maxDiscountAmount
+                ? Number(voucher.maxDiscountAmount)
+                : null,
             },
           },
           include: {
@@ -544,9 +620,13 @@ export class VouchersService {
               code: voucher.code,
               name: voucher.name,
               discountType: voucher.discountType,
-              percentOff: voucher.percentOff ? Number(voucher.percentOff) : null,
+              percentOff: voucher.percentOff
+                ? Number(voucher.percentOff)
+                : null,
               amountOff: voucher.amountOff ? Number(voucher.amountOff) : null,
-              maxDiscountAmount: voucher.maxDiscountAmount ? Number(voucher.maxDiscountAmount) : null,
+              maxDiscountAmount: voucher.maxDiscountAmount
+                ? Number(voucher.maxDiscountAmount)
+                : null,
             },
           },
           include: {
@@ -557,7 +637,8 @@ export class VouchersService {
 
       // Update order totals
       const newDiscountAmount = Number(order.discountAmount) + discountAmount;
-      const newTotalAmount = Number(order.subtotal) + Number(order.taxAmount) - newDiscountAmount;
+      const newTotalAmount =
+        Number(order.subtotal) + Number(order.taxAmount) - newDiscountAmount;
 
       await tx.order.update({
         where: { id: context.orderId },
@@ -567,7 +648,9 @@ export class VouchersService {
         },
       });
 
-      this.logger.log(`Voucher ${voucher.code} applied to order ${context.orderId} by ${source}`);
+      this.logger.log(
+        `Voucher ${voucher.code} applied to order ${context.orderId} by ${source}`,
+      );
 
       return {
         success: true,
@@ -584,10 +667,7 @@ export class VouchersService {
   /**
    * Apply a voucher by code (for customer-entered codes)
    */
-  async applyVoucherByCode(
-    context: OrderContext,
-    dto: ApplyVoucherCodeDto,
-  ) {
+  async applyVoucherByCode(context: OrderContext, dto: ApplyVoucherCodeDto) {
     const code = dto.code.toUpperCase();
 
     // First check VoucherCode table
@@ -614,22 +694,28 @@ export class VouchersService {
       });
 
       if (!voucher) {
-        throw new NotFoundException('Invalid voucher code');
+        throw new NotFoundException(
+          t('vouchers.invalidVoucherCode', 'Invalid voucher code'),
+        );
       }
 
       // Only code-type vouchers can be entered by customers
-      if (voucher.kind !== VoucherKind.code && voucher.kind !== VoucherKind.automatic) {
-        throw new BadRequestException('This voucher cannot be applied by code');
+      if (
+        voucher.kind !== VoucherKind.code &&
+        voucher.kind !== VoucherKind.automatic
+      ) {
+        throw new BadRequestException(
+          t(
+            'vouchers.voucherCannotBeAppliedByCode',
+            'This voucher cannot be applied by code',
+          ),
+        );
       }
 
       voucherId = voucher.id;
     }
 
-    return this.applyVoucher(
-      context,
-      { voucherId },
-      ApplySource.customer_code,
-    );
+    return this.applyVoucher(context, { voucherId }, ApplySource.customer_code);
   }
 
   /**
@@ -653,7 +739,12 @@ export class VouchersService {
       });
 
       if (!redemption) {
-        throw new NotFoundException('Voucher redemption not found or already revoked');
+        throw new NotFoundException(
+          t(
+            'vouchers.voucherRedemptionNotFound',
+            'Voucher redemption not found or already revoked',
+          ),
+        );
       }
 
       // Update redemption
@@ -673,8 +764,12 @@ export class VouchersService {
       });
 
       if (order) {
-        const newDiscountAmount = Math.max(0, Number(order.discountAmount) - Number(redemption.discountAmount));
-        const newTotalAmount = Number(order.subtotal) + Number(order.taxAmount) - newDiscountAmount;
+        const newDiscountAmount = Math.max(
+          0,
+          Number(order.discountAmount) - Number(redemption.discountAmount),
+        );
+        const newTotalAmount =
+          Number(order.subtotal) + Number(order.taxAmount) - newDiscountAmount;
 
         await tx.order.update({
           where: { id: orderId },
@@ -685,11 +780,16 @@ export class VouchersService {
         });
       }
 
-      this.logger.log(`Voucher redemption ${redemptionId} revoked from order ${orderId}`);
+      this.logger.log(
+        `Voucher redemption ${redemptionId} revoked from order ${orderId}`,
+      );
 
       return {
         success: true,
-        message: 'Voucher revoked successfully',
+        message: t(
+          'vouchers.voucherRevokedSuccessfully',
+          'Voucher revoked successfully',
+        ),
       };
     });
   }
@@ -703,16 +803,19 @@ export class VouchersService {
    */
   async autoApplyBestVoucher(context: OrderContext): Promise<void> {
     const applicableVouchers = await this.findApplicableVouchers(context);
-    
+
     // Filter to only auto-apply vouchers
     const autoApplyVouchers = applicableVouchers.filter((v) => v.autoApply);
-    
+
     if (autoApplyVouchers.length === 0) {
       return;
     }
 
-    const bestVoucher = this.getBestVoucher(autoApplyVouchers, context.subtotal);
-    
+    const bestVoucher = this.getBestVoucher(
+      autoApplyVouchers,
+      context.subtotal,
+    );
+
     if (bestVoucher) {
       try {
         await this.applyVoucher(
@@ -722,7 +825,9 @@ export class VouchersService {
         );
       } catch (error) {
         // Log but don't fail the order
-        this.logger.warn(`Failed to auto-apply voucher ${bestVoucher.code}: ${error.message}`);
+        this.logger.warn(
+          `Failed to auto-apply voucher ${bestVoucher.code}: ${error.message}`,
+        );
       }
     }
   }
@@ -744,16 +849,10 @@ export class VouchersService {
         tenantId,
         status: VoucherStatus.active,
         isPublic: true,
-        OR: [
-          { startsAt: null },
-          { startsAt: { lte: now } },
-        ],
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
         AND: [
           {
-            OR: [
-              { endsAt: null },
-              { endsAt: { gte: now } },
-            ],
+            OR: [{ endsAt: null }, { endsAt: { gte: now } }],
           },
         ],
       },
@@ -784,7 +883,7 @@ export class VouchersService {
         },
         select: { voucherId: true },
       });
-      usedVoucherIds = usedRedemptions.map(r => r.voucherId);
+      usedVoucherIds = usedRedemptions.map((r) => r.voucherId);
     }
 
     return {
@@ -793,7 +892,9 @@ export class VouchersService {
         ...v,
         percentOff: v.percentOff ? Number(v.percentOff) : null,
         amountOff: v.amountOff ? Number(v.amountOff) : null,
-        maxDiscountAmount: v.maxDiscountAmount ? Number(v.maxDiscountAmount) : null,
+        maxDiscountAmount: v.maxDiscountAmount
+          ? Number(v.maxDiscountAmount)
+          : null,
         minSubtotal: v.minSubtotal ? Number(v.minSubtotal) : null,
         isUsedInSession: usedVoucherIds.includes(v.id),
       })),
@@ -811,16 +912,10 @@ export class VouchersService {
         tenantId,
         status: VoucherStatus.active,
         kind: VoucherKind.staff_only,
-        OR: [
-          { startsAt: null },
-          { startsAt: { lte: now } },
-        ],
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
         AND: [
           {
-            OR: [
-              { endsAt: null },
-              { endsAt: { gte: now } },
-            ],
+            OR: [{ endsAt: null }, { endsAt: { gte: now } }],
           },
         ],
       },
@@ -840,7 +935,12 @@ export class VouchersService {
   // REDEMPTION HISTORY
   // ============================================
 
-  async getRedemptions(tenantId: string, voucherId: string, page = 1, limit = 20) {
+  async getRedemptions(
+    tenantId: string,
+    voucherId: string,
+    page = 1,
+    limit = 20,
+  ) {
     const skip = (page - 1) * limit;
 
     const [redemptions, total] = await Promise.all([
@@ -923,7 +1023,9 @@ export class VouchersService {
       discountType: voucher.discountType,
       percentOff: voucher.percentOff ? Number(voucher.percentOff) : null,
       amountOff: voucher.amountOff ? Number(voucher.amountOff) : null,
-      maxDiscountAmount: voucher.maxDiscountAmount ? Number(voucher.maxDiscountAmount) : null,
+      maxDiscountAmount: voucher.maxDiscountAmount
+        ? Number(voucher.maxDiscountAmount)
+        : null,
       minSubtotal: voucher.minSubtotal ? Number(voucher.minSubtotal) : null,
       minParty: voucher.minParty,
       startsAt: voucher.startsAt,

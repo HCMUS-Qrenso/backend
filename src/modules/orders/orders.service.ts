@@ -127,13 +127,13 @@ export class OrdersService {
     if (payment_status) {
       if (payment_status === PaymentStatus.PAID) {
         paymentStatusFilter = {
-          payments: { some: { status: 'completed' } },
+          payments: { some: { status: 'paid' } },
         };
       } else if (payment_status === PaymentStatus.UNPAID) {
         paymentStatusFilter = {
           OR: [
             { payments: { none: {} } },
-            { payments: { every: { status: { not: 'completed' } } } },
+            { payments: { every: { status: { not: 'paid' } } } },
           ],
         };
       }
@@ -205,6 +205,7 @@ export class OrdersService {
               paymentMethod: true,
               amount: true,
               paidAt: true,
+              invoiceNum: true,
             },
             orderBy: { createdAt: 'desc' },
             take: 1,
@@ -256,6 +257,7 @@ export class OrdersService {
         paymentMethod: payment.paymentMethod,
         amount: Number(payment.amount),
         paidAt: payment.paidAt,
+        invoiceNum: payment.invoiceNum,
       })),
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
@@ -398,7 +400,7 @@ export class OrdersService {
         statusHistory: order.statusHistory,
         payments: order.payments,
         // All applied vouchers for staff to manage
-        appliedVouchers: order.voucherRedemptions.map(r => ({
+        appliedVouchers: order.voucherRedemptions.map((r) => ({
           redemptionId: r.id,
           voucherCode: r.voucher.code,
           voucherName: r.voucher.name,

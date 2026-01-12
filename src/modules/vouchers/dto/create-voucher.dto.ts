@@ -16,7 +16,10 @@ import { Transform } from 'class-transformer';
 import { VoucherStatus, VoucherKind, DiscountType } from '@prisma/client';
 
 export class CreateVoucherDto {
-  @ApiProperty({ description: 'Unique voucher code', example: 'KHAITRUONG2026' })
+  @ApiProperty({
+    description: 'Unique voucher code',
+    example: 'KHAITRUONG2026',
+  })
   @IsString()
   @MaxLength(50)
   code: string;
@@ -94,23 +97,36 @@ export class CreateVoucherDto {
   @Min(1)
   maxRedemptionsPerCustomer?: number;
 
-  @ApiPropertyOptional({ description: 'Auto-apply for eligible orders', default: false })
+  @ApiPropertyOptional({
+    description: 'Auto-apply for eligible orders',
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   autoApply?: boolean;
 
-  @ApiPropertyOptional({ description: 'Show in customer frontend', default: false })
+  @ApiPropertyOptional({
+    description: 'Show in customer frontend',
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   isPublic?: boolean;
 
-  @ApiPropertyOptional({ description: 'Priority (higher = applied first)', default: 0 })
+  @ApiPropertyOptional({
+    description: 'Priority (higher = applied first)',
+    default: 0,
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
   priority?: number;
 
-  @ApiPropertyOptional({ enum: VoucherStatus, description: 'Initial status', default: 'draft' })
+  @ApiPropertyOptional({
+    enum: VoucherStatus,
+    description: 'Initial status',
+    default: 'draft',
+  })
   @IsOptional()
   @IsEnum(VoucherStatus)
   status?: VoucherStatus;

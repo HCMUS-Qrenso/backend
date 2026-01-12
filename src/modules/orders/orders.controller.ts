@@ -51,7 +51,11 @@ import {
   IdempotencyInterceptor,
 } from '../../common/interceptors';
 import { VouchersService } from '../vouchers/vouchers.service';
-import { ApplyVoucherDto, ApplyVoucherCodeDto, RevokeVoucherDto } from '../vouchers/dto';
+import {
+  ApplyVoucherDto,
+  ApplyVoucherCodeDto,
+  RevokeVoucherDto,
+} from '../vouchers/dto';
 import { ApplySource } from '@prisma/client';
 
 @ApiTags('orders')
@@ -534,7 +538,10 @@ export class OrdersController {
     const { qrContext } = request;
 
     // Get order to extract context
-    const orderResult = await this.ordersService.findOne(qrContext.tenantId, orderId);
+    const orderResult = await this.ordersService.findOne(
+      qrContext.tenantId,
+      orderId,
+    );
     const order = orderResult.data;
 
     return this.vouchersService.applyVoucherByCode(
@@ -554,7 +561,10 @@ export class OrdersController {
   @Roles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAITER)
   @ApiOperation({ summary: 'Revoke a voucher from an order (staff)' })
   @ApiParam({ name: 'id', description: 'Order ID (UUID)' })
-  @ApiParam({ name: 'redemptionId', description: 'Voucher Redemption ID (UUID)' })
+  @ApiParam({
+    name: 'redemptionId',
+    description: 'Voucher Redemption ID (UUID)',
+  })
   @ApiResponse({ status: 200, description: 'Voucher revoked successfully' })
   async revokeVoucher(
     @TenantContext() tenantId: string,
