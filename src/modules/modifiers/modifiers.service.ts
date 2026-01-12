@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
-import { t } from '../../common/utils';
+import { t, executeFuzzySearch } from '../../common/utils';
 import {
   CreateModifierGroupDto,
   UpdateModifierGroupDto,
@@ -45,12 +45,38 @@ export class ModifiersService {
     // Build where clause
     const where: {
       tenantId: string;
-      name?: { contains: string; mode: 'insensitive' };
+      id?: { in: string[] };
     } = { tenantId };
 
-    // Search filter
+    // Search filter using fuzzy search with pg_trgm
     if (search) {
-      where.name = { contains: search, mode: 'insensitive' };
+      const matchingIds = await executeFuzzySearch(this.prisma, {
+        table: 'modifier_groups',
+        searchFields: ['name_unaccent'],
+        searchTerm: search,
+        tenantIdField: 'tenant_id',
+        tenantId: tenantId,
+        similarityThreshold: 0.2,
+      });
+
+      if (matchingIds.length === 0) {
+        return {
+          success: true,
+          data: {
+            modifier_groups: [],
+            pagination: {
+              page,
+              limit,
+              total: 0,
+              total_pages: 0,
+              has_next: false,
+              has_prev: page > 1,
+            },
+          },
+        };
+      }
+
+      where.id = { in: matchingIds };
     }
 
     // Map API field names to Prisma field names

@@ -7,7 +7,7 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
-import { t } from '../../common/utils';
+import { t, executeFuzzySearch } from '../../common/utils';
 import {
   CreateMenuItemDto,
   UpdateMenuItemDto,
@@ -50,8 +50,44 @@ export class MenuService {
       tenantId,
     };
 
+    // Search filter using fuzzy search with pg_trgm
     if (search) {
-      where.name = { contains: search, mode: 'insensitive' };
+      const matchingIds = await executeFuzzySearch(this.prisma, {
+        table: 'menu_items',
+        searchFields: ['name_unaccent', 'description_unaccent'],
+        searchTerm: search,
+        tenantIdField: 'tenant_id',
+        tenantId: tenantId,
+        similarityThreshold: 0.2,
+      });
+
+      if (matchingIds.length === 0) {
+        // Return empty result if no matches
+        return {
+          success: true,
+          data: {
+            menu_items: [],
+            pagination: {
+              page,
+              limit,
+              total: 0,
+              total_pages: 0,
+              has_next: false,
+              has_prev: page > 1,
+            },
+            filters: {
+              search: search || null,
+              category_id: category_id || null,
+              status: status || null,
+              is_chef_recommendation: is_chef_recommendation || null,
+              sort_by,
+              sort_order,
+            },
+          },
+        };
+      }
+
+      where.id = { in: matchingIds };
     }
 
     if (category_id) {

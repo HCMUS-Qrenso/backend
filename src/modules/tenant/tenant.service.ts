@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { QueryTenantsDto, UpdateTenantSettingsDto } from './dto';
-import { t } from '../../common/utils';
+import { t, executeFuzzySearch } from '../../common/utils';
 
 @Injectable()
 export class TenantService {
@@ -32,10 +32,7 @@ export class TenantService {
     // Build where clause
     interface WhereClause {
       ownerId: string;
-      OR?: Array<{
-        name?: { contains: string; mode: 'insensitive' };
-        slug?: { contains: string; mode: 'insensitive' };
-      }>;
+      id?: { in: string[] };
       status?: string;
       subscriptionTier?: string;
     }
@@ -44,11 +41,33 @@ export class TenantService {
       ownerId,
     };
 
+    // Search filter using fuzzy search with pg_trgm
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { slug: { contains: search, mode: 'insensitive' } },
-      ];
+      const matchingIds = await executeFuzzySearch(this.prisma, {
+        table: 'tenants',
+        searchFields: ['name_unaccent', 'slug_unaccent'],
+        searchTerm: search,
+        tenantIdField: 'owner_id',
+        tenantId: ownerId,
+        similarityThreshold: 0.2,
+      });
+
+      if (matchingIds.length === 0) {
+        return {
+          success: true,
+          data: {
+            tenants: [],
+            pagination: {
+              page,
+              limit,
+              total: 0,
+              total_pages: 0,
+            },
+          },
+        };
+      }
+
+      where.id = { in: matchingIds };
     }
 
     if (status) {

@@ -22,7 +22,7 @@ import {
   ApplyVoucherCodeDto,
   RevokeVoucherDto,
 } from './dto';
-import { t } from '../../common/utils';
+import { t, executeFuzzySearch } from '../../common/utils';
 
 interface OrderContext {
   orderId: string;
@@ -101,17 +101,38 @@ export class VouchersService {
 
     const where: Prisma.VoucherWhereInput = {
       tenantId,
-      ...(search && {
-        OR: [
-          { code: { contains: search, mode: 'insensitive' } },
-          { name: { contains: search, mode: 'insensitive' } },
-        ],
-      }),
       ...(status && { status }),
       ...(kind && { kind }),
       ...(autoApply !== undefined && { autoApply }),
       ...(isPublic !== undefined && { isPublic }),
     };
+
+    // Search filter using fuzzy search with pg_trgm
+    if (search) {
+      const matchingIds = await executeFuzzySearch(this.prisma, {
+        table: 'vouchers',
+        searchFields: ['code_unaccent', 'name_unaccent'],
+        searchTerm: search,
+        tenantIdField: 'tenant_id',
+        tenantId: tenantId,
+        similarityThreshold: 0.2,
+      });
+
+      if (matchingIds.length === 0) {
+        return {
+          success: true,
+          data: [],
+          meta: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 0,
+          },
+        };
+      }
+
+      where.id = { in: matchingIds };
+    }
 
     const orderBy: Prisma.VoucherOrderByWithRelationInput = {
       [sortBy]: sortOrder,

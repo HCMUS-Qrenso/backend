@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { ROLES } from '../../common/constants';
-import { t } from '../../common/utils';
+import { t, executeFuzzySearch } from '../../common/utils';
 import {
   CreateTableDto,
   UpdateTableDto,
@@ -58,8 +58,30 @@ export class TablesService {
       tenantId,
     };
 
+    // Search filter using fuzzy search with pg_trgm
     if (search) {
-      where.tableNumber = { contains: search, mode: 'insensitive' };
+      const matchingIds = await executeFuzzySearch(this.prisma, {
+        table: 'tables',
+        searchFields: ['table_number_unaccent'],
+        searchTerm: search,
+        tenantIdField: 'tenant_id',
+        tenantId: tenantId,
+        similarityThreshold: 0.2,
+      });
+
+      if (matchingIds.length === 0) {
+        return {
+          data: [],
+          meta: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+          },
+        };
+      }
+
+      where.id = { in: matchingIds };
     }
 
     if (zone_id) {

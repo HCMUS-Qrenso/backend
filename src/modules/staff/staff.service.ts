@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
-import { t } from '../../common/utils';
+import { t, executeFuzzySearch } from '../../common/utils';
 import {
   CreateStaffDto,
   UpdateStaffDto,
@@ -84,12 +84,32 @@ export class StaffService {
       where.emailVerified = emailVerified;
     }
 
+    // Search filter using fuzzy search with pg_trgm
     if (search) {
-      where.OR = [
-        { fullName: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
-      ];
+      const matchingIds = await executeFuzzySearch(this.prisma, {
+        table: 'users',
+        searchFields: ['full_name_unaccent', 'email_unaccent'],
+        searchTerm: search,
+        tenantIdField: 'tenant_id',
+        tenantId: tenantId,
+        similarityThreshold: 0.2,
+        // Add additional condition to only search staff accounts
+        additionalWhere: `role IN ('admin', 'waiter', 'kitchen_staff') AND account_type = 'staff'`,
+      });
+
+      if (matchingIds.length === 0) {
+        return {
+          items: [],
+          meta: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+          },
+        };
+      }
+
+      where.id = { in: matchingIds };
     }
 
     // Validate and set orderBy
