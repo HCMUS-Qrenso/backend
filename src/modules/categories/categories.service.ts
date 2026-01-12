@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
-import { t } from '../../common/utils';
+import { t, executeFuzzySearch } from '../../common/utils';
 import {
   CreateCategoryDto,
   UpdateCategoryDto,
@@ -78,19 +78,46 @@ export class CategoriesService {
     // Build where clause
     const where: {
       tenantId: string;
-      OR?: Array<{
-        name?: { contains: string; mode: 'insensitive' };
-        description?: { contains: string; mode: 'insensitive' };
-      }>;
+      id?: { in: string[] };
       isActive?: boolean;
     } = { tenantId };
 
-    // Search filter
+    // Search filter using fuzzy search with pg_trgm
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ];
+      const matchingIds = await executeFuzzySearch(this.prisma, {
+        table: 'categories',
+        searchFields: ['name_unaccent', 'description_unaccent'],
+        searchTerm: search,
+        tenantIdField: 'tenant_id',
+        tenantId: tenantId,
+        similarityThreshold: 0.2, // Lower threshold for more fuzzy matching
+      });
+
+      // If no matches found, return empty result
+      if (matchingIds.length === 0) {
+        return {
+          success: true,
+          data: {
+            categories: [],
+            pagination: {
+              page,
+              limit,
+              total: 0,
+              total_pages: 0,
+              has_next: false,
+              has_prev: page > 1,
+            },
+            filters: {
+              search: search || null,
+              status,
+              sort_by,
+              sort_order,
+            },
+          },
+        };
+      }
+
+      where.id = { in: matchingIds };
     }
 
     // Status filter
