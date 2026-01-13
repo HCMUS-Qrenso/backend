@@ -170,8 +170,8 @@ export class TablesController {
   }
 
   @Get('qr/verify-token')
-  @UseGuards(JwtAuthGuard, QrTokenGuard)
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @UseGuards(QrTokenGuard)
   @ApiOperation({
     summary: 'Verify QR token and get table context',
     description:
@@ -226,8 +226,8 @@ export class TablesController {
   // ============================================
 
   @Post('session/start')
-  @UseGuards(JwtAuthGuard, QrTokenGuard)
   @Roles(ROLES.CUSTOMER, ROLES.GUEST)
+  @UseGuards(QrTokenGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Start or join a table session',

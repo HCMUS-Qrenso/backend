@@ -34,19 +34,21 @@ export class EmailService {
 
   /**
    * Get frontend URL based on user role
-   * Customer operations → APP_ORDER_URL (customer frontend)
+   * Customer operations → CUSTOMER_FRONTEND_URL (customer frontend)
    * Admin/Staff operations → FRONTEND_URL (admin frontend)
    */
   private getFrontendUrl(userRole?: string): string {
     const isCustomer = userRole === 'customer';
 
     if (isCustomer) {
-      const customerUrl = this.configService.get<string>('APP_ORDER_URL');
+      const customerUrl = this.configService.get<string>(
+        'CUSTOMER_FRONTEND_URL',
+      );
       if (customerUrl) {
         return customerUrl;
       }
       this.logger.warn(
-        'APP_ORDER_URL not configured, falling back to FRONTEND_URL for customer',
+        'CUSTOMER_FRONTEND_URL not configured, falling back to FRONTEND_URL for customer',
       );
     }
 
