@@ -1481,11 +1481,17 @@ export class TablesService {
         ? existingSession.deviceIds
         : [...existingSession.deviceIds, deviceId];
 
+      // Extend session expiration when joining (reset the timeout)
+      const now = new Date();
+      const timeoutMinutes = table.tenant.sessionTimeoutMinutes || 120;
+      const newExpiresAt = new Date(now.getTime() + timeoutMinutes * 60 * 1000);
+
       await this.prisma.tableSession.update({
         where: { id: existingSession.id },
         data: {
           deviceIds: updatedDeviceIds,
-          lastActivityAt: new Date(),
+          lastActivityAt: now,
+          expiresAt: newExpiresAt, // Extend session expiration
           // Update session token to the new one (all devices will use latest)
           sessionToken: newSessionToken,
           // Update customerId if provided and session doesn't have one yet
@@ -1657,6 +1663,15 @@ export class TablesService {
         tableId,
         status: 'active',
       },
+      include: {
+        table: {
+          include: {
+            tenant: {
+              select: { sessionTimeoutMinutes: true },
+            },
+          },
+        },
+      },
     });
 
     if (existingSession) {
@@ -1679,11 +1694,18 @@ export class TablesService {
         ? existingSession.deviceIds
         : [...existingSession.deviceIds, deviceId];
 
+      // Extend session expiration when joining (reset the timeout)
+      const now = new Date();
+      const timeoutMinutes =
+        existingSession.table.tenant.sessionTimeoutMinutes || 120;
+      const newExpiresAt = new Date(now.getTime() + timeoutMinutes * 60 * 1000);
+
       await this.prisma.tableSession.update({
         where: { id: existingSession.id },
         data: {
           deviceIds: updatedDeviceIds,
-          lastActivityAt: new Date(),
+          lastActivityAt: now,
+          expiresAt: newExpiresAt, // Extend session expiration
           sessionToken: newSessionToken,
           customerId: existingSession.customerId || options.customerId || null,
         },
@@ -1869,7 +1891,9 @@ export class TablesService {
       include: {
         table: {
           include: {
-            tenant: { select: { slug: true, name: true } },
+            tenant: {
+              select: { slug: true, name: true, sessionTimeoutMinutes: true },
+            },
             zone: { select: { name: true } },
           },
         },
@@ -1896,12 +1920,18 @@ export class TablesService {
       expiresIn: '4h',
     });
 
-    // Update session with new token
+    // Extend session expiration when refreshing token
+    const now = new Date();
+    const timeoutMinutes = session.table.tenant.sessionTimeoutMinutes || 120;
+    const newExpiresAt = new Date(now.getTime() + timeoutMinutes * 60 * 1000);
+
+    // Update session with new token and extended expiration
     await this.prisma.tableSession.update({
       where: { id: sessionId },
       data: {
         sessionToken: newSessionToken,
-        lastActivityAt: new Date(),
+        lastActivityAt: now,
+        expiresAt: newExpiresAt, // Extend session expiration
       },
     });
 
