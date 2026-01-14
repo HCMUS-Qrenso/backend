@@ -2019,4 +2019,51 @@ export class TablesService {
       message: t('tables.sessionEnded', 'Session ended successfully'),
     };
   }
+
+  /**
+   * End session after all payments are complete
+   * Called automatically by PaymentService when last order is paid
+   * Does NOT check for unpaid orders (caller already verified)
+   */
+  async endSessionAfterPayment(sessionId: string, tenantId: string) {
+    const session = await this.prisma.tableSession.findFirst({
+      where: { id: sessionId, status: 'active' },
+      include: {
+        table: { select: { tenantId: true, tableNumber: true } },
+      },
+    });
+
+    if (!session) {
+      this.logger.warn(`Session ${sessionId} not found or already ended`);
+      return;
+    }
+
+    // Verify tenant ownership
+    if (session.table.tenantId !== tenantId) {
+      this.logger.warn(`Access denied for session ${sessionId}`);
+      return;
+    }
+
+    // End session and reset table
+    await this.prisma.$transaction([
+      this.prisma.tableSession.update({
+        where: { id: sessionId },
+        data: {
+          status: 'completed',
+          endedAt: new Date(),
+          durationMinutes: Math.floor(
+            (Date.now() - session.startedAt.getTime()) / 60000,
+          ),
+        },
+      }),
+      this.prisma.table.update({
+        where: { id: session.tableId },
+        data: { status: 'available' },
+      }),
+    ]);
+
+    this.logger.log(
+      `Session ${sessionId} for table ${session.table.tableNumber} auto-ended after payment`,
+    );
+  }
 }
