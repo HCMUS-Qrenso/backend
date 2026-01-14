@@ -4,6 +4,8 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PayOS } from '@payos/node';
@@ -24,6 +26,7 @@ import {
 } from './dto';
 import { Prisma } from '@prisma/client';
 import { EventsGateway } from '../events/events.gateway';
+import { TablesService } from '../tables/tables.service';
 
 @Injectable()
 export class PaymentService {
@@ -35,6 +38,8 @@ export class PaymentService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly eventsGateway: EventsGateway,
+    @Inject(forwardRef(() => TablesService))
+    private readonly tablesService: TablesService,
   ) {}
 
   /**
@@ -429,7 +434,7 @@ export class PaymentService {
       // Emit socket event for payment status update
       const order = await this.prisma.order.findUnique({
         where: { id: payment.orderId },
-        select: { tenantId: true },
+        select: { tenantId: true, tableSessionId: true },
       });
       if (order) {
         this.eventsGateway.emitPaymentUpdated(
@@ -437,6 +442,11 @@ export class PaymentService {
           payment.orderId,
           result,
         );
+
+        // Auto-end session if payment was successful
+        if (paymentStatus === PaymentStatus.PAID) {
+          await this.tryAutoEndSession(order.tableSessionId, payment.tenantId);
+        }
       }
 
       return {
@@ -905,6 +915,9 @@ export class PaymentService {
       // Emit socket event for payment status update
       this.eventsGateway.emitPaymentUpdated(tenantId, payment.orderId, result);
 
+      // Auto-end session if all orders in session are paid
+      await this.tryAutoEndSession(payment.order.tableSessionId, tenantId);
+
       return result;
     } catch (error) {
       this.logger.error('Failed to complete payment', error);
@@ -1008,6 +1021,43 @@ export class PaymentService {
         t('payment.billRequestFailed', 'Failed to request bill', {
           args: { error: (error as Error).message },
         }),
+      );
+    }
+  }
+
+  /**
+   * Try to auto-end session if all orders are paid
+   * This is called after a successful payment
+   */
+  private async tryAutoEndSession(tableSessionId: string, tenantId: string) {
+    try {
+      // Check if all orders in this session are completed and paid
+      const unpaidOrders = await this.prisma.order.count({
+        where: {
+          tableSessionId,
+          OR: [
+            {
+              status: {
+                notIn: ['completed', 'cancelled', 'rejected', 'abandoned'],
+              },
+            },
+            { paymentStatus: { not: 'paid' } },
+          ],
+        },
+      });
+
+      if (unpaidOrders === 0) {
+        // All orders paid, end session
+        await this.tablesService.endSessionAfterPayment(
+          tableSessionId,
+          tenantId,
+        );
+        this.logger.log(`Session ${tableSessionId} auto-ended after payment`);
+      }
+    } catch (error) {
+      // Log error but don't fail the payment
+      this.logger.warn(
+        `Failed to auto-end session ${tableSessionId}: ${(error as Error).message}`,
       );
     }
   }
