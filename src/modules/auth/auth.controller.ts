@@ -74,7 +74,6 @@ export class AuthController {
     const config = this.getCookieConfig(accountType);
     res.clearCookie(config.name, {
       path: config.options.path,
-      domain: config.options.domain,
     });
   }
 
