@@ -32,11 +32,12 @@ import {
   ChangePasswordDto,
   AuthResponseDto,
   MessageResponseDto,
+  RefreshTokenDto,
 } from './dto';
 import { GoogleAuthGuard, JwtAuthGuard } from './guards';
 import { Public, CurrentUser } from '../../common/decorators';
 import { t } from '../../common/utils';
-import { COOKIE_CONFIG } from '../../common/constants';
+import { COOKIE_CONFIG, ROLES } from '../../common/constants';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 
 @ApiTags('auth')
@@ -46,25 +47,43 @@ export class AuthController {
 
   constructor(private readonly authService: AuthService) {}
 
+  private getCookieConfig(accountType: string) {
+    return accountType === 'staff'
+      ? COOKIE_CONFIG.REFRESH_TOKEN.STAFF
+      : COOKIE_CONFIG.REFRESH_TOKEN.CUSTOMER;
+  }
+
   private setRefreshTokenCookie(
     res: Response,
     token: string,
+    accountType: string,
     rememberMe: boolean = true,
   ): void {
+    const config = this.getCookieConfig(accountType);
     const cookieOptions = {
-      ...COOKIE_CONFIG.REFRESH_TOKEN.options,
-      // Nếu rememberMe=true: persistent cookie (7 days)
-      // Nếu rememberMe=false: session cookie (expires when browser closes)
+      ...config.options,
+      // If rememberMe=true: persistent cookie (7 days)
+      // If rememberMe=false: session cookie (expires when browser closes)
       ...(rememberMe ? {} : { maxAge: undefined, expires: undefined }),
     };
 
-    res.cookie(COOKIE_CONFIG.REFRESH_TOKEN.name, token, cookieOptions);
+    res.cookie(config.name, token, cookieOptions);
   }
 
-  private clearRefreshTokenCookie(res: Response): void {
-    res.clearCookie(COOKIE_CONFIG.REFRESH_TOKEN.name, {
-      path: COOKIE_CONFIG.REFRESH_TOKEN.options.path,
+  private clearRefreshTokenCookie(res: Response, accountType: string): void {
+    const config = this.getCookieConfig(accountType);
+    res.clearCookie(config.name, {
+      path: config.options.path,
+      domain: config.options.domain,
     });
+  }
+
+  private getRefreshTokenFromCookies(
+    req: Request,
+    accountType: string,
+  ): string | undefined {
+    const config = this.getCookieConfig(accountType);
+    return req.cookies[config.name];
   }
 
   @Public()
@@ -153,9 +172,10 @@ export class AuthController {
 
     // Use rememberMe from loginDto (defaults to true)
     const rememberMe = loginDto.rememberMe ?? true;
-    this.setRefreshTokenCookie(res, refreshToken, rememberMe);
+    const accountType = loginDto.accountType ?? 'customer';
+    this.setRefreshTokenCookie(res, refreshToken, accountType, rememberMe);
     this.logger.log(
-      `User logged in: ${loginDto.email} (rememberMe: ${rememberMe})`,
+      `User logged in: ${loginDto.email} (accountType: ${accountType}, rememberMe: ${rememberMe})`,
     );
 
     return authResponse;
@@ -166,6 +186,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Refresh access token using refresh token from cookie',
+    description:
+      'Refresh access token using the refresh token stored in httpOnly cookie. The account_type should match the account type used during login to retrieve the correct cookie.',
   })
   @ApiCookieAuth('refreshToken')
   @ApiResponse({
@@ -180,13 +202,15 @@ export class AuthController {
     type: ErrorResponseDto,
   })
   async refreshToken(
+    @Body() refreshTokenDto: RefreshTokenDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshToken = req.cookies[COOKIE_CONFIG.REFRESH_TOKEN.name];
+    const accountType = refreshTokenDto.accountType ?? 'customer';
+    const refreshToken = this.getRefreshTokenFromCookies(req, accountType);
 
     if (!refreshToken) {
-      this.clearRefreshTokenCookie(res);
+      this.clearRefreshTokenCookie(res, accountType);
       throw new UnauthorizedException(
         t('auth.refreshTokenNotFound', 'Refresh token not found'),
       );
@@ -200,11 +224,11 @@ export class AuthController {
         authResponse.user.id,
       );
 
-      this.setRefreshTokenCookie(res, newRefreshToken);
+      this.setRefreshTokenCookie(res, newRefreshToken, accountType);
 
       return authResponse;
     } catch (error) {
-      this.clearRefreshTokenCookie(res);
+      this.clearRefreshTokenCookie(res, accountType);
       this.logger.warn('Failed refresh token attempt');
       throw error;
     }
@@ -343,7 +367,8 @@ export class AuthController {
       authResponse.user.id,
     );
 
-    this.setRefreshTokenCookie(res, refreshToken);
+    // Google OAuth is for customers only
+    this.setRefreshTokenCookie(res, refreshToken, 'customer');
 
     const customerFrontendUrl =
       process.env.CUSTOMER_FRONTEND_URL || 'http://localhost:3002';
@@ -370,17 +395,20 @@ export class AuthController {
   })
   async logout(
     @CurrentUser('id') userId: string,
+    @CurrentUser('role') userRole: string,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshToken = req.cookies[COOKIE_CONFIG.REFRESH_TOKEN.name];
+    // Determine account type from user role
+    const accountType = userRole === ROLES.CUSTOMER ? 'customer' : 'staff';
+    const refreshToken = this.getRefreshTokenFromCookies(req, accountType);
 
     if (refreshToken) {
       await this.authService.logout(userId, refreshToken);
     }
 
-    this.clearRefreshTokenCookie(res);
-    this.logger.log(`User logged out: ${userId}`);
+    this.clearRefreshTokenCookie(res, accountType);
+    this.logger.log(`User logged out: ${userId} (${accountType})`);
 
     return {
       message: t('auth.logoutSuccess', 'Logged out successfully'),

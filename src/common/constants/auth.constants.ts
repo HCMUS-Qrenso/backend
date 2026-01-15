@@ -1,12 +1,26 @@
 export const COOKIE_CONFIG = {
   REFRESH_TOKEN: {
-    name: 'refreshToken',
-    options: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
-      path: '/',
+    STAFF: {
+      name: 'staffRefreshToken',
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+        path: '/',
+        domain: new URL(process.env.FRONTEND_URL!).hostname,
+      },
+    },
+    CUSTOMER: {
+      name: 'customerRefreshToken',
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+        path: '/',
+        domain: new URL(process.env.CUSTOMER_FRONTEND_URL!).hostname,
+      },
     },
   },
 } as const;

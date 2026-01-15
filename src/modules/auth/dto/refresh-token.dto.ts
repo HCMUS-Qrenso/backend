@@ -1,12 +1,17 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsString, IsOptional, IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { ACCOUNT_TYPES } from '../../../common/constants';
 
 export class RefreshTokenDto {
   @ApiProperty({
-    description: 'Refresh token from cookie or request body',
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    description: 'Account type for the refresh token',
+    enum: Object.values(ACCOUNT_TYPES),
+    example: ACCOUNT_TYPES.CUSTOMER,
+    default: ACCOUNT_TYPES.CUSTOMER,
+    required: false,
   })
   @IsString()
-  @IsNotEmpty()
-  refreshToken: string;
+  @IsOptional()
+  @IsIn(Object.values(ACCOUNT_TYPES))
+  accountType?: string = ACCOUNT_TYPES.CUSTOMER;
 }
