@@ -23,9 +23,10 @@ export class PrismaService
   private readonly logger = new Logger(PrismaService.name);
 
   constructor() {
-    // Prisma 7: Create adapter with connection string
+    // Prisma 7: Create adapter with connection string and connection limit
     const adapter = new PrismaPg({
       connectionString: process.env.DATABASE_URL!,
+      max: 3, // Limit connections to prevent exhausting DB pool
     });
 
     // Pass adapter to PrismaClient

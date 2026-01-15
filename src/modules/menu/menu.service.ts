@@ -7,7 +7,7 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
-import { t } from '../../common/utils';
+import { t, executeFuzzySearch } from '../../common/utils';
 import {
   CreateMenuItemDto,
   UpdateMenuItemDto,
@@ -50,8 +50,44 @@ export class MenuService {
       tenantId,
     };
 
+    // Search filter using fuzzy search with pg_trgm
     if (search) {
-      where.name = { contains: search, mode: 'insensitive' };
+      const matchingIds = await executeFuzzySearch(this.prisma, {
+        table: 'menu_items',
+        searchFields: ['name_unaccent', 'description_unaccent'],
+        searchTerm: search,
+        tenantIdField: 'tenant_id',
+        tenantId: tenantId,
+        similarityThreshold: 0.2,
+      });
+
+      if (matchingIds.length === 0) {
+        // Return empty result if no matches
+        return {
+          success: true,
+          data: {
+            menu_items: [],
+            pagination: {
+              page,
+              limit,
+              total: 0,
+              total_pages: 0,
+              has_next: false,
+              has_prev: page > 1,
+            },
+            filters: {
+              search: search || null,
+              category_id: category_id || null,
+              status: status || null,
+              is_chef_recommendation: is_chef_recommendation || null,
+              sort_by,
+              sort_order,
+            },
+          },
+        };
+      }
+
+      where.id = { in: matchingIds };
     }
 
     if (category_id) {
@@ -111,8 +147,14 @@ export class MenuService {
             modifierGroup: {
               select: {
                 id: true,
+                isRequired: true,
               },
             },
+          },
+        },
+        reviews: {
+          select: {
+            rating: true,
           },
         },
         _count: {
@@ -125,37 +167,48 @@ export class MenuService {
     });
 
     // Format response
-    const formattedMenuItems = menuItems.map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      base_price: item.basePrice,
-      preparation_time: item.preparationTime,
-      status: item.status,
-      is_chef_recommendation: item.isChefRecommendation,
-      allergen_info: item.allergenInfo,
-      nutritional_info: item.nutritionalInfo,
-      popularity_score: item.popularityScore,
-      category: item.category
-        ? {
-            id: item.category.id,
-            name: item.category.name,
-          }
-        : null,
-      images: item.images.map((img) => ({
-        id: img.id,
-        image_url: img.imageUrl,
-        display_order: img.displayOrder,
-        is_primary: img.isPrimary,
-      })),
-      modifier_groups: item.modifierGroups.map((mg) => ({
-        id: mg.modifierGroup.id,
-      })),
-      review_count: item._count.reviews,
-      order_count: item._count.orderItems,
-      created_at: item.createdAt,
-      updated_at: item.updatedAt,
-    }));
+    const formattedMenuItems = menuItems.map((item) => {
+      // Calculate average rating
+      const averageRating =
+        item.reviews.length > 0
+          ? item.reviews.reduce((sum, review) => sum + review.rating, 0) /
+            item.reviews.length
+          : 0;
+
+      return {
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        base_price: item.basePrice,
+        preparation_time: item.preparationTime,
+        status: item.status,
+        is_chef_recommendation: item.isChefRecommendation,
+        allergen_info: item.allergenInfo,
+        nutritional_info: item.nutritionalInfo,
+        popularity_score: item.popularityScore,
+        category: item.category
+          ? {
+              id: item.category.id,
+              name: item.category.name,
+            }
+          : null,
+        images: item.images.map((img) => ({
+          id: img.id,
+          image_url: img.imageUrl,
+          display_order: img.displayOrder,
+          is_primary: img.isPrimary,
+        })),
+        modifier_groups: item.modifierGroups.map((mg) => ({
+          id: mg.modifierGroup.id,
+          is_required: mg.modifierGroup.isRequired,
+        })),
+        average_rating: averageRating,
+        review_count: item._count.reviews,
+        order_count: item._count.orderItems,
+        created_at: item.createdAt,
+        updated_at: item.updatedAt,
+      };
+    });
 
     return {
       success: true,
@@ -230,6 +283,11 @@ export class MenuService {
             },
           },
         },
+        reviews: {
+          select: {
+            rating: true,
+          },
+        },
         _count: {
           select: {
             reviews: true,
@@ -244,6 +302,13 @@ export class MenuService {
         t('menu.menuItemNotFound', 'Menu item not found'),
       );
     }
+
+    // Calculate average rating
+    const averageRating =
+      menuItem.reviews.length > 0
+        ? menuItem.reviews.reduce((sum, review) => sum + review.rating, 0) /
+          menuItem.reviews.length
+        : 0;
 
     return {
       success: true,
@@ -291,6 +356,7 @@ export class MenuService {
           name: p.relatedItem.name,
           base_price: p.relatedItem.basePrice,
         })),
+        average_rating: averageRating,
         review_count: menuItem._count.reviews,
         order_count: menuItem._count.orderItems,
         created_at: menuItem.createdAt,

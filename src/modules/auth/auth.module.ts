@@ -19,7 +19,7 @@ import { PrismaService } from '../../prisma.service';
       ): Promise<JwtModuleOptions> => ({
         secret: configService.get<string>('JWT_SECRET') || 'default-secret',
         signOptions: {
-          expiresIn: '15m',
+          expiresIn: configService.get('JWT_EXPIRES_IN') || '5m',
         },
       }),
       inject: [ConfigService],

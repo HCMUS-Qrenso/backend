@@ -7,3 +7,4 @@ export * from './verify-email.dto';
 export * from './resend-email.dto';
 export * from './response.dto';
 export * from './setup-password.dto';
+export * from './change-password.dto';

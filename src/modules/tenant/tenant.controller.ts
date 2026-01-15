@@ -1,4 +1,13 @@
-import { Controller, Get, Query, UseGuards, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Body,
+  Query,
+  UseGuards,
+  HttpStatus,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -6,7 +15,11 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TenantService } from './tenant.service';
-import { QueryTenantsDto } from './dto';
+import {
+  QueryTenantsDto,
+  UpdateTenantSettingsDto,
+  UpdateOnboardingDraftDto,
+} from './dto';
 import { JwtAuthGuard } from '../auth/guards';
 import { Roles, CurrentUser, TenantContext } from '../../common/decorators';
 import { RolesGuard, TenantOwnershipGuard } from '../../common/guards';
@@ -45,7 +58,6 @@ export class TenantController {
               address: '123 Main St, City',
               status: 'active',
               subscription_tier: 'premium',
-              settings: {},
               statistics: {
                 total_users: 15,
                 total_tables: 25,
@@ -140,10 +152,6 @@ export class TenantController {
           address: '123 Main St, City',
           status: 'active',
           subscription_tier: 'premium',
-          settings: {
-            currency: 'USD',
-            timezone: 'America/New_York',
-          },
           owner: {
             id: 'owner-uuid',
             full_name: 'John Doe',
@@ -169,5 +177,168 @@ export class TenantController {
   })
   async findOne(@TenantContext() tenantId: string) {
     return this.tenantService.findOne(tenantId);
+  }
+
+  // ============================================
+  // Tenant Settings
+  // ============================================
+
+  @Get('settings')
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
+  @ApiOperation({
+    summary: 'Get tenant settings',
+    description:
+      'Returns all settings for the current tenant including general, tax, qr payment, service charge, operating hours, order, notification, and receipt settings.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns tenant settings',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          id: '123e4567-e89b-12d3-a456-426614174000',
+          name: 'Pizza Palace',
+          general: {
+            currency: 'VND',
+            currency_symbol: '₫',
+            timezone: 'Asia/Ho_Chi_Minh',
+            date_format: 'DD/MM/YYYY',
+            language: 'vi',
+            phone: '+84123456789',
+            contact_email: 'contact@restaurant.com',
+          },
+          tax: {
+            rate: 10,
+            inclusive: true,
+            label: 'VAT',
+          },
+          service_charge: {
+            enabled: false,
+            rate: 5,
+            taxable: false,
+            min_party: null,
+          },
+          operating_hours: {
+            monday: {
+              isOpen: true,
+              slots: [{ open: '09:00', close: '22:00' }],
+            },
+          },
+          order: {
+            min_value: 50000,
+            estimated_prep_time: 15,
+            allow_special_instructions: true,
+            session_timeout_minutes: 120,
+            require_guest_count: false,
+          },
+          notifications: {
+            sound_enabled: true,
+            email_enabled: false,
+            email: null,
+          },
+          receipt: {
+            header: 'Thank you for dining with us!',
+            footer: 'Please visit us again!',
+            show_logo: true,
+            invoice_prefix: 'QR-',
+          },
+          qr_payment: {
+            payos_api_key: 'sk_test_XXXXXXXXXXXXXXXXXXXX',
+            payos_checksum_key: 'ck_test_XXXXXXXXXXXXXXXXXXXX',
+            payos_client_id: 'client_1234567890',
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Tenant not found',
+  })
+  async getSettings(@TenantContext() tenantId: string) {
+    return this.tenantService.getSettings(tenantId);
+  }
+
+  @Patch('settings')
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
+  @ApiOperation({
+    summary: 'Update tenant settings',
+    description:
+      'Update one or more tenant settings. All fields are optional - only provided fields will be updated.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Settings updated successfully. Returns updated settings.',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid input data',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Tenant not found',
+  })
+  async updateSettings(
+    @TenantContext() tenantId: string,
+    @Body() dto: UpdateTenantSettingsDto,
+  ) {
+    return this.tenantService.updateSettings(tenantId, dto);
+  }
+
+  // ============================================
+  // Onboarding Endpoints
+  // ============================================
+
+  @Get('onboarding')
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
+  @ApiOperation({
+    summary: 'Get onboarding status and draft',
+    description:
+      'Returns onboarding completion status, saved draft, and current settings for prefill.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns onboarding data',
+  })
+  async getOnboarding(@TenantContext() tenantId: string) {
+    return this.tenantService.getOnboarding(tenantId);
+  }
+
+  @Patch('onboarding')
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
+  @ApiOperation({
+    summary: 'Save onboarding draft',
+    description:
+      'Save partial onboarding progress. Supports incremental saves per step.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Draft saved successfully',
+  })
+  async saveOnboardingDraft(
+    @TenantContext() tenantId: string,
+    @Body() dto: UpdateOnboardingDraftDto,
+  ) {
+    return this.tenantService.saveOnboardingDraft(tenantId, dto);
+  }
+
+  @Post('onboarding/complete')
+  @Roles(ROLES.OWNER, ROLES.ADMIN)
+  @ApiOperation({
+    summary: 'Complete onboarding',
+    description:
+      'Apply onboarding draft to actual settings and mark onboarding as completed.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Onboarding completed successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Missing required fields or no draft found',
+  })
+  async completeOnboarding(@TenantContext() tenantId: string) {
+    return this.tenantService.completeOnboarding(tenantId);
   }
 }

@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { t } from '../../common/utils';
 
 @Injectable()
 export class UserService {
@@ -42,5 +44,43 @@ export class UserService {
     });
 
     return users;
+  }
+
+  async updateUserProfile(userId: string, updateData: UpdateProfileDto) {
+    try {
+      // Mark the avatar with time-based query param to force refresh
+      if (updateData.avatarUrl) {
+        const separator = updateData.avatarUrl.includes('?') ? '&' : '?';
+        updateData.avatarUrl = `${updateData.avatarUrl}${separator}t=${Date.now()}`;
+      }
+
+      const user = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...updateData,
+          updatedAt: new Date(),
+        },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          phone: true,
+          avatarUrl: true,
+          updatedAt: true,
+        },
+      });
+
+      return {
+        message: t(
+          'user.profileUpdatedSuccess',
+          'Profile updated successfully',
+        ),
+        user: user,
+      };
+    } catch {
+      throw new Error(
+        t('user.profileUpdateFailed', 'Failed to update profile'),
+      );
+    }
   }
 }

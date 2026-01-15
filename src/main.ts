@@ -72,6 +72,14 @@ async function bootstrap() {
       .addTag('menu', 'Menu management endpoints')
       .addTag('categories', 'Category management endpoints')
       .addTag('modifiers', 'Modifier management endpoints')
+      .addTag('uploads', 'File upload endpoints')
+      .addTag('staff', 'Staff management endpoints')
+      .addTag('orders', 'Order processing endpoints')
+      .addTag('kds', 'Kitchen Display System endpoints')
+      .addTag('payments', 'Payment processing endpoints')
+      .addTag('dashboard', 'Dashboard and analytics endpoints')
+      .addTag('reviews', 'Customer reviews and ratings endpoints')
+      .addTag('vouchers', 'Voucher and discount management endpoints')
       .addBearerAuth(
         {
           type: 'http',

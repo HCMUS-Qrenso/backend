@@ -15,6 +15,10 @@
     "logoutSuccess": "Đăng xuất thành công",
     "refreshTokenNotFound": "Không tìm thấy refresh token",
     "userNotFoundOrInactive": "Không tìm thấy người dùng hoặc tài khoản đã bị vô hiệu hóa",
+    "userNotFound": "Không tìm thấy người dùng",
+    "noPasswordSet": "Chưa thiết lập mật khẩu cho tài khoản này. Vui lòng thiết lập mật khẩu trước.",
+    "incorrectCurrentPassword": "Mật khẩu hiện tại không chính xác",
+    "passwordChanged": "Đổi mật khẩu thành công",
     "emailNotVerified": "Email chưa được xác thực. Vui lòng kiểm tra email để lấy liên kết xác thực hoặc yêu cầu gửi lại.",
     "emailAlreadyVerified": "Email đã được xác thực",
     "verificationEmailSent": "Email xác thực đã được gửi thành công. Vui lòng kiểm tra hộp thư của bạn.",
@@ -144,5 +148,57 @@
     "unauthorized": "Chưa xác thực",
     "forbidden": "Bị cấm",
     "internalServerError": "Lỗi máy chủ nội bộ"
+  },
+  "payment": {
+    "created": "Đã tạo liên kết thanh toán thành công",
+    "notFound": "Không tìm thấy thanh toán",
+    "orderNotFound": "Không tìm thấy đơn hàng",
+    "orderNotCompleted": "Đơn hàng phải được hoàn thành trước khi tạo thanh toán",
+    "alreadyExists": "Đơn hàng đã có thanh toán đang chờ hoặc đã hoàn thành",
+    "paymentLocked": "Thanh toán đang được xử lý",
+    "cancelled": "Đã hủy thanh toán thành công",
+    "cannotCancelPaid": "Không thể hủy thanh toán đã thanh toán. Vui lòng sử dụng hoàn tiền.",
+    "alreadyCancelled": "Thanh toán đã được hủy",
+    "webhookProcessed": "Đã xử lý webhook thành công",
+    "webhookAlreadyProcessed": "Thanh toán đã được xử lý",
+    "statusChecked": "Đã kiểm tra trạng thái thanh toán thành công",
+    "statusSynced": "Đã đồng bộ trạng thái thanh toán với PayOS",
+    "createFailed": "Không thể tạo liên kết thanh toán",
+    "cancelFailed": "Không thể hủy thanh toán",
+    "webhookFailed": "Không thể xử lý webhook",
+    "statusCheckFailed": "Không thể kiểm tra trạng thái thanh toán",
+    "infoFailed": "Không thể lấy thông tin thanh toán",
+    "credentialsNotConfigured": "Thông tin xác thực PayOS chưa được cấu hình cho tenant này",
+    "invalidSignature": "Chữ ký webhook không hợp lệ"
+  },
+  "user": {
+    "profileUpdatedSuccess": "Cập nhật profile thành công",
+    "profileUpdateFailed": "Cập nhật profile thất bại"
+  },
+  "upload": {
+    "userIdRequiredForAvatar": "User ID là bắt buộc khi tải lên avatar",
+    "tenantIdRequiredForTenantImage": "Tenant ID là bắt buộc khi tải lên hình ảnh tenant"
+  },
+  "reviews": {
+    "orderNotFoundOrNotCompleted": "Không tìm thấy đơn hàng hoặc đơn hàng chưa hoàn thành, hoặc không thuộc về bạn",
+    "itemNotInOrder": "Món này không có trong đơn hàng đã chỉ định",
+    "alreadyReviewedItem": "Bạn đã đánh giá món này cho đơn hàng này",
+    "alreadyReviewedOrder": "Bạn đã đánh giá đơn hàng này",
+    "menuItemNotFound": "Không tìm thấy món ăn",
+    "reviewCreatedSuccess": "Tạo đánh giá thành công",
+    "orderReviewCreatedSuccess": "Tạo đánh giá đơn hàng thành công"
+  },
+  "vouchers": {
+    "voucherArchived": "Voucher đã được lưu trữ",
+    "voucherRevokedSuccessfully": "Voucher đã được thu hồi thành công",
+    "voucherNotFound": "Không tìm thấy voucher",
+    "voucherNotEligible": "Voucher không đủ điều kiện cho đơn hàng này",
+    "voucherAlreadyApplied": "Voucher này đã được áp dụng cho đơn hàng này",
+    "orderNotFound": "Không tìm thấy đơn hàng",
+    "voucherUsageLimitReached": "Voucher đã đạt giới hạn sử dụng",
+    "invalidVoucherCode": "Mã voucher không hợp lệ",
+    "voucherCannotBeAppliedByCode": "Voucher này không thể áp dụng bằng mã",
+    "voucherRedemptionNotFound": "Không tìm thấy việc đổi voucher hoặc đã bị thu hồi",
+    "customerHasVoucherApplied": "Đơn hàng đã có voucher khách hàng được áp dụng. Chỉ nhân viên mới có thể thêm voucher bổ sung."
   }
 }

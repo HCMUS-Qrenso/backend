@@ -5,14 +5,15 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
-import { t } from '../../common/utils';
+import { t, executeFuzzySearch } from '../../common/utils';
 import {
   CreateStaffDto,
   UpdateStaffDto,
-  UpdateStatusDto,
+  UpdateStaffStatusDto,
   QueryStaffDto,
 } from './dto';
 import { EmailService, TokenService } from '../auth/services';
+import { ACCOUNT_TYPES } from '../../common/constants';
 
 // Staff roles that this module manages
 const STAFF_ROLES: string[] = ['admin', 'waiter', 'kitchen_staff'];
@@ -67,6 +68,7 @@ export class StaffService {
     const where: any = {
       tenantId,
       role: { in: STAFF_ROLES },
+      accountType: ACCOUNT_TYPES.STAFF, // Only staff accounts
     };
 
     // Apply filters
@@ -82,12 +84,32 @@ export class StaffService {
       where.emailVerified = emailVerified;
     }
 
+    // Search filter using fuzzy search with pg_trgm
     if (search) {
-      where.OR = [
-        { fullName: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
-      ];
+      const matchingIds = await executeFuzzySearch(this.prisma, {
+        table: 'users',
+        searchFields: ['full_name_unaccent', 'email_unaccent'],
+        searchTerm: search,
+        tenantIdField: 'tenant_id',
+        tenantId: tenantId,
+        similarityThreshold: 0.2,
+        // Add additional condition to only search staff accounts
+        additionalWhere: `role IN ('admin', 'waiter', 'kitchen_staff') AND account_type = 'staff'`,
+      });
+
+      if (matchingIds.length === 0) {
+        return {
+          items: [],
+          meta: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+          },
+        };
+      }
+
+      where.id = { in: matchingIds };
     }
 
     // Validate and set orderBy
@@ -129,6 +151,7 @@ export class StaffService {
     const baseWhere = {
       tenantId,
       role: { in: STAFF_ROLES },
+      accountType: ACCOUNT_TYPES.STAFF,
     };
 
     // Get all staff grouped by role and status in a single query
@@ -180,6 +203,7 @@ export class StaffService {
         id,
         tenantId,
         role: { in: STAFF_ROLES },
+        accountType: ACCOUNT_TYPES.STAFF,
       },
     });
 
@@ -194,9 +218,14 @@ export class StaffService {
    * Create/invite a new staff member
    */
   async create(tenantId: string, createStaffDto: CreateStaffDto) {
-    // Check for duplicate email (globally unique)
+    // Check for duplicate email for staff account type
     const existing = await this.prisma.user.findUnique({
-      where: { email: createStaffDto.email },
+      where: {
+        email_accountType: {
+          email: createStaffDto.email,
+          accountType: ACCOUNT_TYPES.STAFF,
+        },
+      },
     });
 
     if (existing) {
@@ -212,6 +241,7 @@ export class StaffService {
         fullName: createStaffDto.fullName,
         phone: createStaffDto.phone,
         role: createStaffDto.role,
+        accountType: ACCOUNT_TYPES.STAFF, // Set account type to staff
         tenantId,
         emailVerified: false,
         status: 'active',
@@ -248,6 +278,7 @@ export class StaffService {
         id,
         tenantId,
         role: { in: STAFF_ROLES },
+        accountType: ACCOUNT_TYPES.STAFF,
       },
     });
 
@@ -276,7 +307,7 @@ export class StaffService {
   async updateStatus(
     tenantId: string,
     id: string,
-    updateStatusDto: UpdateStatusDto,
+    updateStatusDto: UpdateStaffStatusDto,
   ) {
     // Check if staff exists
     const existing = await this.prisma.user.findFirst({
@@ -284,6 +315,7 @@ export class StaffService {
         id,
         tenantId,
         role: { in: STAFF_ROLES },
+        accountType: ACCOUNT_TYPES.STAFF,
       },
     });
 
@@ -318,6 +350,7 @@ export class StaffService {
         id,
         tenantId,
         role: { in: STAFF_ROLES },
+        accountType: ACCOUNT_TYPES.STAFF,
       },
     });
 
@@ -360,6 +393,7 @@ export class StaffService {
         id,
         tenantId,
         role: { in: STAFF_ROLES },
+        accountType: ACCOUNT_TYPES.STAFF,
       },
     });
 
@@ -377,6 +411,7 @@ export class StaffService {
       existing.email,
       resetToken,
       existing.fullName,
+      existing.role, // Use staff role (will default to FRONTEND_URL)
     );
 
     this.logger.log(
@@ -401,6 +436,7 @@ export class StaffService {
         id,
         tenantId,
         role: { in: STAFF_ROLES },
+        accountType: ACCOUNT_TYPES.STAFF,
       },
     });
 

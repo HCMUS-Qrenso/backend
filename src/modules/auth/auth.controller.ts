@@ -29,6 +29,7 @@ import {
   VerifyEmailDto,
   ResendEmailDto,
   SetupPasswordDto,
+  ChangePasswordDto,
   AuthResponseDto,
   MessageResponseDto,
 } from './dto';
@@ -99,7 +100,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Login with email and password',
     description:
-      'Authenticate user with email and password. Returns specific error messages for different failure scenarios. Supports localization via Accept-Language header.',
+      'Authenticate user with email, password and account type. Account type determines whether to login as customer or staff. Returns specific error messages for different failure scenarios. Supports localization via Accept-Language header.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -111,8 +112,8 @@ export class AuthController {
     status: HttpStatus.UNAUTHORIZED,
     description:
       'Authentication failed. Possible errors:\n' +
-      '- Email address not found\n' +
-      '- Incorrect password\n' +
+      '- Invalid credentials for this account type\n' +
+      '- Email address not verified\n' +
       '- Account is inactive',
     type: ErrorResponseDto,
     schema: {
@@ -127,7 +128,7 @@ export class AuthController {
         {
           properties: {
             statusCode: { type: 'number', example: 401 },
-            message: { type: 'string', example: 'Incorrect password' },
+            message: { type: 'string', example: 'Email address not verified' },
             error: { type: 'string', example: 'Unauthorized' },
           },
         },
@@ -212,7 +213,11 @@ export class AuthController {
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Request password reset email' })
+  @ApiOperation({
+    summary: 'Request password reset email',
+    description:
+      'Send password reset email to specified email for the specified account type. Supports both customer and staff accounts.',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'If the email exists, a password reset link has been sent.',
@@ -225,7 +230,11 @@ export class AuthController {
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Reset password using token from email' })
+  @ApiOperation({
+    summary: 'Reset password using token from email',
+    description:
+      'Reset password using the token received in email. Account type must match the account type used when requesting the password reset.',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Password reset successfully',
@@ -290,7 +299,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Resend email for email verification or password reset',
     description:
-      'Request a new verification or password reset email. Supports both email_verification and password_reset types. ' +
+      'Request a new verification or password reset email for a specific account type. Supports both email_verification and password_reset types. ' +
       'Can be used if the original email was not received, expired, or accidentally deleted.',
   })
   @ApiResponse({
@@ -305,7 +314,11 @@ export class AuthController {
     type: ErrorResponseDto,
   })
   async resendEmail(@Body() resendDto: ResendEmailDto) {
-    return this.authService.resendEmail(resendDto.email, resendDto.type);
+    return this.authService.resendEmail(
+      resendDto.email,
+      resendDto.type,
+      resendDto.accountType,
+    );
   }
 
   @Public()
@@ -332,8 +345,9 @@ export class AuthController {
 
     this.setRefreshTokenCookie(res, refreshToken);
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${authResponse.accessToken}`;
+    const customerFrontendUrl =
+      process.env.CUSTOMER_FRONTEND_URL || 'http://localhost:3002';
+    const redirectUrl = `${customerFrontendUrl}/auth/callback?accessToken=${authResponse.accessToken}`;
 
     res.redirect(redirectUrl);
   }
@@ -403,5 +417,36 @@ export class AuthController {
       role: user.role,
       tenantId: user.tenantId,
     };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Change user password',
+    description:
+      "Change the current user's password. Requires current password verification for security.",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Password changed successfully',
+    type: MessageResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid current password or validation error',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Not authenticated',
+    type: ErrorResponseDto,
+  })
+  async changePassword(
+    @CurrentUser('id') userId: string,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(userId, changePasswordDto);
   }
 }

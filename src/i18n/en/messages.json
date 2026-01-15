@@ -15,6 +15,10 @@
     "logoutSuccess": "Logged out successfully",
     "refreshTokenNotFound": "Refresh token not found",
     "userNotFoundOrInactive": "User not found or inactive",
+    "userNotFound": "User not found",
+    "noPasswordSet": "No password set for this account. Please set up your password first.",
+    "incorrectCurrentPassword": "Current password is incorrect",
+    "passwordChanged": "Password changed successfully",
     "emailNotVerified": "Email address not verified. Please check your email for the verification link or request a new one.",
     "emailAlreadyVerified": "Email is already verified",
     "verificationEmailSent": "Verification email sent successfully. Please check your inbox.",
@@ -144,5 +148,57 @@
     "unauthorized": "Unauthorized",
     "forbidden": "Forbidden",
     "internalServerError": "Internal server error"
+  },
+  "payment": {
+    "created": "Payment link created successfully",
+    "notFound": "Payment not found",
+    "orderNotFound": "Order not found",
+    "orderNotCompleted": "Order must be completed before payment can be created",
+    "alreadyExists": "Order already has a pending or completed payment",
+    "paymentLocked": "Payment is currently being processed",
+    "cancelled": "Payment cancelled successfully",
+    "cannotCancelPaid": "Cannot cancel a paid payment. Use refund instead.",
+    "alreadyCancelled": "Payment is already cancelled",
+    "webhookProcessed": "Webhook processed successfully",
+    "webhookAlreadyProcessed": "Payment already processed",
+    "statusChecked": "Payment status checked successfully",
+    "statusSynced": "Payment status synchronized with PayOS",
+    "createFailed": "Failed to create payment link",
+    "cancelFailed": "Failed to cancel payment",
+    "webhookFailed": "Failed to process webhook",
+    "statusCheckFailed": "Failed to check payment status",
+    "infoFailed": "Failed to get payment information",
+    "credentialsNotConfigured": "PayOS credentials not configured for this tenant",
+    "invalidSignature": "Invalid webhook signature"
+  },
+  "user": {
+    "profileUpdatedSuccess": "Profile updated successfully",
+    "profileUpdateFailed": "Failed to update profile"
+  },
+  "upload": {
+    "userIdRequiredForAvatar": "User ID is required for avatar uploads",
+    "tenantIdRequiredForTenantImage": "Tenant ID is required for tenant image uploads"
+  },
+  "reviews": {
+    "orderNotFoundOrNotCompleted": "Order not found or not completed, or does not belong to you",
+    "itemNotInOrder": "This item was not ordered in the specified order",
+    "alreadyReviewedItem": "You have already reviewed this item for this order",
+    "alreadyReviewedOrder": "You have already reviewed this order",
+    "menuItemNotFound": "Menu item not found",
+    "reviewCreatedSuccess": "Review created successfully",
+    "orderReviewCreatedSuccess": "Order review created successfully"
+  },
+  "vouchers": {
+    "voucherArchived": "Voucher archived",
+    "voucherRevokedSuccessfully": "Voucher revoked successfully",
+    "voucherNotFound": "Voucher not found",
+    "voucherNotEligible": "Voucher is not eligible for this order",
+    "voucherAlreadyApplied": "This voucher is already applied to this order",
+    "orderNotFound": "Order not found",
+    "voucherUsageLimitReached": "Voucher has reached its usage limit",
+    "invalidVoucherCode": "Invalid voucher code",
+    "voucherCannotBeAppliedByCode": "This voucher cannot be applied by code",
+    "voucherRedemptionNotFound": "Voucher redemption not found or already revoked",
+    "customerHasVoucherApplied": "Order already has a customer voucher applied. Only staff can add additional vouchers."
   }
 }

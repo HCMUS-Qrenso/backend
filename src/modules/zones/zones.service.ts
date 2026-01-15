@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
-import { t } from '../../common/utils';
+import { t, executeFuzzySearch } from '../../common/utils';
 import { CreateZoneDto, UpdateZoneDto, QueryZonesDto } from './dto';
 
 @Injectable()
@@ -33,8 +33,30 @@ export class ZonesService {
       tenantId,
     };
 
+    // Search filter using fuzzy search with pg_trgm
     if (search) {
-      where.name = { contains: search, mode: 'insensitive' };
+      const matchingIds = await executeFuzzySearch(this.prisma, {
+        table: 'zones',
+        searchFields: ['name_unaccent'],
+        searchTerm: search,
+        tenantIdField: 'tenant_id',
+        tenantId: tenantId,
+        similarityThreshold: 0.2,
+      });
+
+      if (matchingIds.length === 0) {
+        return {
+          data: [],
+          pagination: {
+            total: 0,
+            page,
+            limit,
+            total_pages: 0,
+          },
+        };
+      }
+
+      where.id = { in: matchingIds };
     }
 
     if (is_active !== undefined) {
