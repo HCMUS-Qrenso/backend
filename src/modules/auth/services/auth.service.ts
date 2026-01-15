@@ -142,9 +142,11 @@ export class AuthService {
     return this.generateAuthResponse(user);
   }
 
-  async refreshToken(refreshTokenDto: RefreshTokenDto): Promise<AuthResponse> {
-    const { refreshToken } = refreshTokenDto;
-
+  async refreshToken({
+    refreshToken,
+  }: {
+    refreshToken: string;
+  }): Promise<AuthResponse> {
     const user = await this.tokenService.validateRefreshToken(refreshToken);
 
     if (!user) {
