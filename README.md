@@ -921,7 +921,80 @@ POST /auth/resend-email
 
 ---
 
-#### 🔓 POST /auth/logout
+#### � POST /auth/setup-password
+Set up password for newly invited staff member.
+
+**Request:**
+```json
+{
+  "token": "abc123def456ghi789",
+  "password": "SecurePass@123!",
+  "confirmPassword": "SecurePass@123!"
+}
+```
+
+**Fields:**
+- `token` (required): Setup token from invitation email
+- `password` (required): New password meeting requirements
+- `confirmPassword` (required): Must match password
+
+**Password Requirements:**
+- Minimum 8 characters
+- Must include uppercase, lowercase, number, and special character
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Password set up successfully. You can now login."
+}
+```
+
+**Errors:**
+- `400 Bad Request` - Invalid or expired token
+- `400 Bad Request` - Passwords don't match
+- `400 Bad Request` - Weak password (doesn't meet requirements)
+
+---
+
+#### 🔓 POST /auth/change-password
+Change password for authenticated user. **[Protected]**
+
+**Headers:**
+```
+Authorization: Bearer <access-token>
+```
+
+**Request:**
+```json
+{
+  "currentPassword": "OldPassword@123!",
+  "newPassword": "NewSecurePass@123!",
+  "confirmPassword": "NewSecurePass@123!"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Password changed successfully"
+}
+```
+
+**Errors:**
+- `400 Bad Request` - Current password incorrect
+- `400 Bad Request` - Passwords don't match
+- `400 Bad Request` - Weak password
+
+---
+
+#### 🔵 GET /auth/google/callback
+Google OAuth callback endpoint (handled automatically).
+
+**Note:** This endpoint is called by Google after user authentication. Do not call directly.
+
+---
+
+#### �🔓 POST /auth/logout
 Logout and clear refresh token. **[Protected]**
 
 **Headers:**
@@ -1820,8 +1893,8 @@ Delete a zone (only if no tables are assigned). **[Protected - Owner/Admin only]
 
 ### Payment Endpoints
 
-#### 💳 POST /payment/create
-Create a payment for a completed order. Supports both cash and QR payment methods. **[Protected]**
+#### 💳 POST /payments
+Create a payment link for a completed order (PayOS integration). **[Protected - Owner, Admin, Waiter]**
 
 **Request Headers:**
 ```
@@ -1921,8 +1994,44 @@ X-Tenant-Id: <tenant_id>
 
 ---
 
-#### 🔍 GET /payment/status/:orderCode
-Check payment status by order code. **[Protected]**
+#### 🧾e POST /payments/request-bill
+Request bill for an order (customer action). **[Protected - Customer/Guest with QR token]**
+
+**Request Body:**
+```json
+{
+  "orderId": "order-uuid"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Bill request sent to waiter",
+  "data": {
+    "orderId": "order-uuid",
+    "requestedAt": "2026-01-15T10:00:00Z"
+  }
+}
+```
+
+**Business Logic:**
+- Customer requests bill after finishing meal
+- Sends real-time notification to waiter
+- Waiter can then create payment using POST /payments
+
+**Errors:**
+- `404 Not Found` - Order not found
+- `400 Bad Request` - Order not completed
+
+---
+
+#### 🔍 GET /payments/check/:transactionId
+Check payment status by transaction ID. **[Protected - Owner, Admin, Waiter]**
+
+**Path Parameters:**
+- `transactionId` - PayOS transaction ID
 
 **Request Headers:**
 ```
@@ -1974,8 +2083,8 @@ X-Tenant-Id: <tenant_id>
 
 ---
 
-#### ✅ POST /payment/:id/complete
-Manually complete a cash payment. **[Protected - Staff/Admin only]**
+#### ✅ POST /payments/:id/complete
+Manually complete a cash payment. **[Protected - Owner, Admin, Waiter]**
 
 **Request Headers:**
 ```
@@ -2005,8 +2114,8 @@ X-Tenant-Id: <tenant_id>
 
 ---
 
-#### ❌ POST /payment/:id/cancel
-Cancel a pending payment. **[Protected]**
+#### ❌ DELETE /payments/:id
+Cancel a pending payment. **[Protected - Owner, Admin, Waiter]**
 
 **Request Headers:**
 ```
@@ -2040,8 +2149,8 @@ X-Tenant-Id: <tenant_id>
 
 ---
 
-#### 📋 GET /payment
-Get all payments with filtering and pagination. **[Protected]**
+#### 📋 GET /payments
+Get all payments with filtering and pagination. **[Protected - Owner, Admin, Waiter]**
 
 **Request Headers:**
 ```
@@ -2098,8 +2207,8 @@ X-Tenant-Id: <tenant_id>
 
 ---
 
-#### 🔎 GET /payment/:id
-Get payment details by ID. **[Protected]**
+#### 🔎 GET /payments/:id
+Get payment details by ID. **[Protected - Owner, Admin, Waiter]**
 
 **Request Headers:**
 ```
@@ -2135,7 +2244,7 @@ X-Tenant-Id: <tenant_id>
 
 ---
 
-#### 🔔 POST /payment/webhook
+#### 🔔 POST /payments/webhook
 Handle PayOS webhook for payment confirmation. **[Public - No auth required]**
 
 **Note:** This endpoint is called automatically by PayOS when payment status changes.
@@ -3287,6 +3396,1635 @@ await fetch(uploadUrl, {
 // 3. Construct public URL and save
 const publicUrl = `https://your-cdn.com/${key}`;
 // Save publicUrl to database (e.g., as menu item image)
+```
+
+---
+
+### Staff Management Endpoints
+
+#### 👥 GET /staff
+List all staff members for the current tenant. **[Protected - Owner, Admin]**
+
+**Query Parameters:**
+```typescript
+{
+  page?: number;         // Default: 1
+  limit?: number;        // Default: 10
+  role?: string;         // Filter by role: admin, waiter, kitchen_staff
+  status?: string;       // Filter by status: active, inactive
+  search?: string;       // Search by name or email
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "staff": [
+      {
+        "id": "uuid",
+        "email": "waiter@restaurant.com",
+        "fullName": "Jane Smith",
+        "role": "waiter",
+        "status": "active",
+        "phone": "+84901234567",
+        "avatarUrl": "https://...",
+        "createdAt": "2025-12-01T..."
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 8,
+      "totalPages": 1
+    }
+  }
+}
+```
+
+**Errors:**
+- `403 Forbidden` - Not owner or admin
+
+---
+
+#### 📊 GET /staff/stats
+Get staff statistics for the current tenant. **[Protected - Owner, Admin]**
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "totalStaff": 8,
+    "activeStaff": 7,
+    "byRole": {
+      "admin": 1,
+      "waiter": 4,
+      "kitchen_staff": 3
+    }
+  }
+}
+```
+
+---
+
+#### 🔍 GET /staff/:id
+Get staff member details. **[Protected - Owner, Admin]**
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "email": "waiter@restaurant.com",
+    "fullName": "Jane Smith",
+    "role": "waiter",
+    "status": "active",
+    "phone": "+84901234567",
+    "avatarUrl": "https://...",
+    "tenantId": "uuid",
+    "createdAt": "2025-12-01T...",
+    "lastLoginAt": "2026-01-15T..."
+  }
+}
+```
+
+---
+
+#### ➕ POST /staff
+Create/invite new staff member. **[Protected - Owner, Admin]**
+
+**Request:**
+```json
+{
+  "email": "newstaff@restaurant.com",
+  "fullName": "John Doe",
+  "role": "waiter",
+  "phone": "+84901234567"
+}
+```
+
+**Business Rules:**
+- Only owners can create admin accounts
+- Sends invitation email to staff member
+- Staff must set password via setup-password link in email
+- Email must not already exist as staff for this tenant
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "email": "newstaff@restaurant.com",
+    "fullName": "John Doe",
+    "role": "waiter",
+    "status": "pending"
+  },
+  "message": "Staff invitation sent successfully"
+}
+```
+
+**Errors:**
+- `409 Conflict` - Staff with this email already exists for this tenant
+- `403 Forbidden` - Cannot create admin (only owners can)
+
+---
+
+#### 📝 PUT /staff/:id
+Update staff member information. **[Protected - Owner, Admin]**
+
+**Request:**
+```json
+{
+  "fullName": "John Smith",
+  "phone": "+84987654321",
+  "role": "admin"
+}
+```
+
+**Business Rules:**
+- Only owners can change role to/from admin
+- Cannot change own role
+- Cannot update owner account
+
+**Response:** `200 OK`
+
+**Errors:**
+- `403 Forbidden` - Cannot modify admin role (not owner)
+- `400 Bad Request` - Cannot change own role
+
+---
+
+#### 🗑️ DELETE /staff/:id
+Delete/remove staff member. **[Protected - Owner, Admin]**
+
+**Business Rules:**
+- Cannot delete staff with active orders
+- Cannot delete self
+- Permanently removes staff account from tenant
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Staff member deleted successfully"
+}
+```
+
+**Errors:**
+- `400 Bad Request` - Staff has active orders
+- `400 Bad Request` - Cannot delete yourself
+- `403 Forbidden` - Not authorized
+
+---
+
+#### 🔄 PATCH /staff/:id/status
+Update staff member status (activate/deactivate). **[Protected - Owner, Admin]**
+
+**Request:**
+```json
+{
+  "status": "inactive"
+}
+```
+
+**Valid Status Values:**
+- `active` - Staff can login and work
+- `inactive` - Staff cannot login (temporary suspension)
+
+**Response:** `200 OK`
+
+**Errors:**
+- `400 Bad Request` - Cannot change own status
+
+---
+
+#### 🔑 POST /staff/:id/reset-password
+Send password reset email to staff member. **[Protected - Owner, Admin]**
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Password reset email sent"
+}
+```
+
+---
+
+#### 📧 POST /staff/:id/resend-invite
+Resend invitation email to pending staff member. **[Protected - Owner, Admin]**
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Invitation resent successfully"
+}
+```
+
+**Errors:**
+- `400 Bad Request` - Staff already active
+
+---
+
+### Tenant Settings & Onboarding Endpoints
+
+#### ⚙️ GET /tenants/settings
+Get all settings for the current tenant. **[Protected - Owner, Admin]**
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "currency": "VND",
+    "currencySymbol": "₫",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "language": "vi",
+    "taxRate": 10,
+    "serviceChargeEnabled": false,
+    "serviceChargeRate": 0,
+    "operatingHours": {
+      "monday": {"open": "08:00", "close": "22:00"},
+      "tuesday": {"open": "08:00", "close": "22:00"}
+    },
+    "payosClientId": "...",
+    "payosApiKey": "***",
+    "receiptHeader": "Cảm ơn quý khách!",
+    "receiptFooter": "Hẹn gặp lại!",
+    "notifySoundEnabled": true,
+    "notifySound": 2,
+    "onboardingCompleted": true
+  }
+}
+```
+
+---
+
+#### 🔧 PATCH /tenants/settings
+Update tenant settings. **[Protected - Owner, Admin]**
+
+**Request (all fields optional):**
+```json
+{
+  "currency": "VND",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "language": "vi",
+  "taxRate": 10,
+  "serviceChargeEnabled": true,
+  "serviceChargeRate": 5,
+  "operatingHours": {
+    "monday": {"open": "08:00", "close": "22:00"}
+  },
+  "payosClientId": "...",
+  "payosApiKey": "...",
+  "receiptHeader": "Thank you!",
+  "notifySoundEnabled": true,
+  "notifySound": 2
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Settings updated successfully"
+}
+```
+
+---
+
+#### 📋 GET /tenants/onboarding
+Get onboarding status and draft progress. **[Protected - Owner, Admin]**
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "onboardingCompleted": false,
+    "onboardingDraft": {
+      "currentStep": 3,
+      "completedSteps": [1, 2],
+      "restaurantInfo": {
+        "name": "Joe's Diner",
+        "address": "123 Main St"
+      },
+      "paymentSettings": {}
+    }
+  }
+}
+```
+
+---
+
+#### 💾 PATCH /tenants/onboarding
+Save onboarding progress (draft). **[Protected - Owner, Admin]**
+
+**Request:**
+```json
+{
+  "currentStep": 4,
+  "completedSteps": [1, 2, 3],
+  "restaurantInfo": {
+    "name": "Joe's Diner",
+    "address": "123 Main St",
+    "phone": "+84901234567"
+  },
+  "paymentSettings": {
+    "payosClientId": "...",
+    "payosApiKey": "..."
+  }
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Onboarding draft saved"
+}
+```
+
+---
+
+#### ✅ POST /tenants/onboarding/complete
+Complete onboarding and apply draft to tenant settings. **[Protected - Owner, Admin]**
+
+**Business Rules:**
+- Marks onboarding as completed
+- Applies all draft settings to tenant
+- Cannot be reversed once completed
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Onboarding completed successfully"
+}
+```
+
+**Errors:**
+- `400 Bad Request` - Onboarding already completed
+- `400 Bad Request` - Missing required fields in draft
+
+---
+
+### Order Management Endpoints
+
+#### 📋 GET /orders
+List orders with filtering and pagination. **[Protected - Owner, Admin, Waiter, Kitchen Staff]**
+
+**Query Parameters:**
+```typescript
+{
+  page?: number;
+  limit?: number;
+  status?: string;         // pending, accepted, preparing, ready, served, completed, rejected
+  tableId?: string;
+  waiterId?: string;
+  priority?: string;       // low, normal, high, urgent
+  dateFrom?: string;       // ISO date (2026-01-15)
+  dateTo?: string;
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "orders": [
+      {
+        "id": "uuid",
+        "orderNumber": "ORD-20260115-JOES-D-0001",
+        "status": "pending",
+        "priority": "normal",
+        "table": {
+          "id": "uuid",
+          "tableNumber": "T-05",
+          "zone": {
+            "name": "Ground Floor"
+          }
+        },
+        "waiter": {
+          "id": "uuid",
+          "fullName": "Jane Smith"
+        },
+        "items": [
+          {
+            "id": "uuid",
+            "menuItem": {
+              "name": "Pho Bo",
+              "basePrice": 65000
+            },
+            "quantity": 2,
+            "unitPrice": 65000,
+            "subtotal": 130000,
+            "status": "pending",
+            "modifiers": [
+              {
+                "name": "Large",
+                "priceAdjustment": 10000
+              }
+            ],
+            "specialInstructions": "No onions"
+          }
+        ],
+        "subtotal": 130000,
+        "taxAmount": 13000,
+        "serviceChargeAmount": 0,
+        "discountAmount": 0,
+        "totalAmount": 143000,
+        "specialInstructions": "Please deliver quickly",
+        "createdAt": "2026-01-15T10:30:00Z",
+        "updatedAt": "2026-01-15T10:30:00Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 45,
+      "totalPages": 5
+    }
+  }
+}
+```
+
+---
+
+#### 📊 GET /orders/stats
+Get order statistics. **[Protected - Owner, Admin, Waiter]**
+
+**Query Parameters:**
+```typescript
+{
+  dateFrom?: string;
+  dateTo?: string;
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "totalOrders": 45,
+    "totalRevenue": 5250000,
+    "averageOrderValue": 116666,
+    "ordersByStatus": {
+      "pending": 3,
+      "accepted": 5,
+      "preparing": 4,
+      "ready": 0,
+      "served": 8,
+      "completed": 25
+    }
+  }
+}
+```
+
+---
+
+#### 📜 GET /orders/my-orders
+Get customer's order history. **[Protected - Customer]**
+
+**Query Parameters:**
+```typescript
+{
+  page?: number;
+  limit?: number;
+  status?: string;
+}
+```
+
+**Response:** `200 OK` (similar structure to GET /orders but filtered to customer's orders)
+
+---
+
+#### 🔍 GET /orders/my-orders/:id
+Get specific order from customer's history. **[Protected - Customer]**
+
+**Response:** `200 OK` (detailed order object)
+
+---
+
+#### 🛒 GET /orders/current
+Get current order for customer's table session. **[Protected - Customer/Guest with session token]**
+
+**Alias:** `GET /orders/my-order` (same endpoint)
+
+**Headers:**
+```
+x-table-session-token: <session-token>
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "order": {
+      "id": "uuid",
+      "orderNumber": "ORD-20260115-JOES-D-0001",
+      "status": "pending",
+      "items": [...],
+      "subtotal": 130000,
+      "totalAmount": 143000
+    },
+    "canAddItems": true
+  }
+}
+```
+
+**Errors:**
+- `404 Not Found` - No active order for this session
+
+---
+
+#### ➕ POST /orders
+Create new order or add items to session's order. **[Protected - Customer/Guest with session token]**
+
+**Headers:**
+```
+x-table-session-token: <session-token>
+Idempotency-Key: <unique-key>  # Optional but recommended
+```
+
+**Request:**
+```json
+{
+  "items": [
+    {
+      "menuItemId": "uuid",
+      "quantity": 2,
+      "specialInstructions": "No onions",
+      "modifiers": [
+        {
+          "modifierId": "uuid",
+          "modifierName": "Large",
+          "priceAdjustment": 10000
+        }
+      ]
+    }
+  ],
+  "specialInstructions": "Please deliver quickly"
+}
+```
+
+**Business Rules:**
+- Creates new order if none exists for session
+- Adds items to existing pending/accepted order if exists
+- Cannot add items to orders in preparing/ready/served/completed status
+- Validates menu items are available
+- Calculates prices server-side (ignores client prices)
+- Idempotency-Key prevents duplicate orders
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "order": {
+      "id": "uuid",
+      "orderNumber": "ORD-20260115-JOES-D-0001",
+      "status": "pending",
+      "items": [...],
+      "totalAmount": 143000
+    }
+  }
+}
+```
+
+**Errors:**
+- `400 Bad Request` - Cannot add items to order (status not pending/accepted)
+- `404 Not Found` - Menu item not found or unavailable
+- `400 Bad Request` - Invalid session token
+- `409 Conflict` - Duplicate request (same Idempotency-Key)
+
+---
+
+#### ➕ POST /orders/current/items
+Add items to current order (preferred endpoint for customers). **[Protected - Customer/Guest with session token]**
+
+**Headers:**
+```
+x-table-session-token: <session-token>
+Idempotency-Key: <unique-key>
+```
+
+**Request:** (same as POST /orders items array)
+```json
+{
+  "items": [
+    {
+      "menuItemId": "uuid",
+      "quantity": 2,
+      "specialInstructions": "No onions",
+      "modifiers": [...]
+    }
+  ],
+  "specialInstructions": "Please deliver quickly"
+}
+```
+
+**Response:** `200 OK` (returns updated order)
+
+**Business Logic:**
+- Creates new order if none exists for session
+- Adds items to existing pending/accepted order
+- Idempotent with Idempotency-Key header
+
+**Errors:** (same as POST /orders)
+
+---
+
+#### ➕ POST /orders/:id/items
+Add items to specific order by ID. **[Protected - Customer/Guest with session token]**
+
+**Headers:**
+```
+x-table-session-token: <session-token>
+Idempotency-Key: <unique-key>
+```
+
+**Request:** (same as POST /orders items array)
+
+**Response:** `201 Created`
+
+**Errors:** (same as POST /orders)
+
+---
+
+#### 🔍 GET /orders/:id
+Get order details by ID. **[Protected - Owner, Admin, Waiter, Kitchen Staff]**
+
+**Response:** `200 OK` (detailed order object)
+
+---
+
+#### 🔄 PATCH /orders/:id/status
+Update order status. **[Protected - Owner, Admin, Waiter]**
+
+**Request:**
+```json
+{
+  "status": "accepted",
+  "notes": "Confirmed with kitchen"
+}
+```
+
+**Valid Status Transitions:**
+- `pending` → `accepted` or `rejected`
+- `accepted` → `preparing`
+- `preparing` → `ready`
+- `ready` → `served`
+- `served` → `completed`
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Order status updated",
+  "data": {
+    "order": {...}
+  }
+}
+```
+
+**Side Effects:**
+- Sends notification to relevant parties (kitchen, waiter, customer)
+- Updates order timestamps
+- May trigger payment workflow (when status → completed)
+
+**Errors:**
+- `400 Bad Request` - Invalid status transition
+
+---
+
+#### ⚡ PATCH /orders/:id/priority
+Update order priority. **[Protected - Owner, Admin, Waiter]**
+
+**Request:**
+```json
+{
+  "priority": "high"
+}
+```
+
+**Valid Priorities:**
+- `low` - Low priority
+- `normal` - Normal priority (default)
+- `high` - High priority (rushed)
+- `urgent` - Urgent (VIP, special occasion)
+
+**Response:** `200 OK`
+
+---
+
+#### 🍳 PATCH /orders/:orderId/items/:itemId/status
+Update individual order item status. **[Protected - Owner, Admin, Waiter, Kitchen Staff]**
+
+**Request:**
+```json
+{
+  "status": "preparing"
+}
+```
+
+**Valid Item Status Transitions:**
+- `pending` → `accepted` or `cancelled`
+- `accepted` → `preparing`
+- `preparing` → `ready`
+- `ready` → `served`
+- Any status → `cancelled` (by authorized user)
+
+**Response:** `200 OK`
+
+**Use Case:**
+- Kitchen staff marks individual items as they prepare them
+- Waiter marks items as served individually
+- Allows partial order fulfillment tracking
+
+---
+
+#### 🎫 POST /orders/:id/vouchers/apply
+Apply voucher to order (staff applies manually). **[Protected - Owner, Admin, Waiter]**
+
+**Request:**
+```json
+{
+  "voucherId": "uuid",
+  "notes": "Student discount - verified ID"
+}
+```
+
+**Business Rules:**
+- Staff can apply staff-only vouchers
+- Validates voucher eligibility (min_subtotal, max_redemptions, etc.)
+- Only one voucher per order (unless voucher is stackable)
+- Cannot apply to completed orders
+- Recalculates order totals
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "redemption": {
+      "id": "uuid",
+      "voucherId": "uuid",
+      "discountAmount": 22500,
+      "appliedAt": "2026-01-15T..."
+    },
+    "order": {
+      "discountAmount": 22500,
+      "totalAmount": 120500
+    }
+  }
+}
+```
+
+**Errors:**
+- `400 Bad Request` - Voucher not eligible for this order
+- `400 Bad Request` - Order already has non-stackable voucher
+- `404 Not Found` - Voucher not found
+- `400 Bad Request` - Voucher expired or exhausted
+
+---
+
+#### 🎟️ POST /orders/:id/vouchers/apply-code
+Apply voucher by code (customer applies). **[Protected - Customer/Guest with session token]**
+
+**Headers:**
+```
+x-table-session-token: <session-token>
+```
+
+**Request:**
+```json
+{
+  "code": "SINHVIEN2026"
+}
+```
+
+**Business Rules:**
+- Customer can apply public vouchers with codes
+- Validates code and eligibility
+- Recalculates order totals
+
+**Response:** `200 OK` (similar to staff voucher application)
+
+**Errors:**
+- `400 Bad Request` - Invalid voucher code
+- `400 Bad Request` - Voucher not eligible
+- `403 Forbidden` - Staff-only voucher
+
+---
+
+#### ❌ DELETE /orders/:id/voucher/:redemptionId
+Revoke/remove voucher from order. **[Protected - Owner, Admin, Waiter]**
+
+**Request:**
+```json
+{
+  "reason": "Applied wrong voucher"
+}
+```
+
+**Business Rules:**
+- Can only revoke from pending/accepted orders
+- Recalculates order totals
+- Redemption count is restored
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Voucher revoked successfully",
+  "data": {
+    "order": {
+      "discountAmount": 0,
+      "totalAmount": 143000
+    }
+  }
+}
+```
+
+---
+
+### Kitchen Display System (KDS) Endpoints
+
+#### 🍳 GET /kds/orders
+Get orders for kitchen display system. **[Protected - Owner, Admin, Waiter, Kitchen Staff]**
+
+**Query Parameters:**
+```typescript
+{
+  status?: string;  // Filter by status (accepted, preparing, ready)
+  priority?: string;
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "orders": [
+      {
+        "id": "uuid",
+        "orderNumber": "ORD-20260115-JOES-D-0001",
+        "table": {
+          "tableNumber": "T-05",
+          "zone": {
+            "name": "Ground Floor"
+          }
+        },
+        "priority": "high",
+        "status": "accepted",
+        "items": [
+          {
+            "id": "uuid",
+            "menuItemName": "Pho Bo",
+            "quantity": 2,
+            "status": "preparing",
+            "modifiers": ["Large", "Extra beef"],
+            "specialInstructions": "Well done",
+            "estimatedPrepTime": 15,
+            "elapsedTime": 8
+          }
+        ],
+        "orderAge": 8,
+        "createdAt": "2026-01-15T10:30:00Z",
+        "acceptedAt": "2026-01-15T10:31:00Z"
+      }
+    ]
+  }
+}
+```
+
+**Business Logic:**
+- Orders sorted by priority algorithm:
+  - urgent → high → normal → low
+  - Then by age (oldest first)
+- Shows elapsed time since order created/accepted
+- Shows item-level preparation status
+- Real-time updates via WebSocket
+
+**Use Case:**
+Kitchen display shows all active orders that need preparation, sorted by urgency.
+
+---
+
+### Dashboard Endpoints
+
+#### 📊 GET /dashboard/today-stats
+Get today's KPI statistics. **[Protected - Owner, Admin, Waiter, Kitchen Staff]**
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "todayOrders": 45,
+    "todayRevenue": 5250000,
+    "averageOrderValue": 116666,
+    "pendingOrders": 3,
+    "activeOrders": 12,
+    "completedOrders": 30,
+    "occupiedTables": 8,
+    "totalTables": 15,
+    "occupancyRate": 53.33
+  }
+}
+```
+
+**Business Logic:**
+- Today = current date in tenant's timezone
+- activeOrders = pending + accepted + preparing + ready + served
+- occupancyRate = (occupiedTables / totalTables) × 100
+
+---
+
+#### 📜 GET /dashboard/recent-orders
+Get recent orders for dashboard. **[Protected - Owner, Admin, Waiter]**
+
+**Query Parameters:**
+```typescript
+{
+  limit?: number;  // Default: 10, Max: 50
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "orders": [
+      {
+        "id": "uuid",
+        "orderNumber": "ORD-20260115-JOES-D-0001",
+        "table": {
+          "tableNumber": "T-05"
+        },
+        "status": "pending",
+        "totalAmount": 143000,
+        "createdAt": "2026-01-15T10:30:00Z"
+      }
+    ]
+  }
+}
+```
+
+---
+
+#### 📈 GET /dashboard/performance
+Get performance chart data. **[Protected - Owner, Admin]**
+
+**Query Parameters:**
+```typescript
+{
+  dateFrom?: string;  // ISO date (default: 30 days ago)
+  dateTo?: string;    // ISO date (default: today)
+  groupBy?: string;   // hour, day, week, month (default: day)
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "revenueChart": [
+      {
+        "date": "2026-01-15",
+        "revenue": 5250000,
+        "orders": 45,
+        "averageOrderValue": 116666
+      }
+    ],
+    "topItems": [
+      {
+        "menuItemId": "uuid",
+        "name": "Pho Bo",
+        "quantity": 120,
+        "revenue": 7800000
+      }
+    ],
+    "revenueByCategory": [
+      {
+        "categoryName": "Main Dishes",
+        "revenue": 3500000,
+        "percentage": 66.67
+      }
+    ]
+  }
+}
+```
+
+---
+
+#### 🏆 GET /dashboard/top-items
+Get top selling menu items. **[Protected - Owner, Admin, Waiter, Kitchen Staff]**
+
+**Query Parameters:**
+```typescript
+{
+  limit?: number;      // Default: 10, Max: 50
+  dateFrom?: string;   // Default: 30 days ago
+  dateTo?: string;     // Default: today
+  sortBy?: string;     // quantity, revenue (default: quantity)
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "topItems": [
+      {
+        "menuItemId": "uuid",
+        "name": "Pho Bo",
+        "categoryName": "Main Dishes",
+        "quantity": 120,
+        "revenue": 7800000,
+        "averagePrice": 65000
+      }
+    ]
+  }
+}
+```
+
+---
+
+### Review Endpoints
+
+#### ⭐ POST /reviews/items
+Create a review for a menu item. **[Protected - Customer]**
+
+**Request:**
+```json
+{
+  "menuItemId": "uuid",
+  "orderId": "uuid",
+  "rating": 5,
+  "comment": "Delicious! Highly recommended."
+}
+```
+
+**Validation:**
+- Rating: 1-5 stars (integer)
+- Comment: Optional, max 1000 characters
+- Customer must have ordered this item
+- Can only review once per order
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "review": {
+      "id": "uuid",
+      "menuItemId": "uuid",
+      "customerId": "uuid",
+      "orderId": "uuid",
+      "rating": 5,
+      "comment": "Delicious!",
+      "isVerifiedPurchase": true,
+      "createdAt": "2026-01-15T..."
+    }
+  }
+}
+```
+
+**Errors:**
+- `400 Bad Request` - Customer didn't order this item
+- `409 Conflict` - Already reviewed this item for this order
+- `400 Bad Request` - Order not completed
+
+---
+
+#### 📝 POST /reviews/orders
+Create a review for an order (overall experience). **[Protected - Customer]**
+
+**Request:**
+```json
+{
+  "orderId": "uuid",
+  "rating": 4,
+  "comment": "Good service, food was a bit slow."
+}
+```
+
+**Response:** `201 Created`
+
+**Errors:**
+- `409 Conflict` - Already reviewed this order
+- `400 Bad Request` - Order not completed
+- `403 Forbidden` - Not your order
+
+---
+
+#### 📋 GET /reviews/items/:menuItemId
+Get all reviews for a menu item. **[Public - No authentication required]**
+
+**Query Parameters:**
+```typescript
+{
+  page?: number;
+  limit?: number;
+  sortBy?: string;  // rating, createdAt (default: createdAt)
+  sortOrder?: string;  // asc, desc (default: desc)
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "reviews": [
+      {
+        "id": "uuid",
+        "customer": {
+          "fullName": "John Doe",
+          "avatarUrl": "https://..."
+        },
+        "rating": 5,
+        "comment": "Delicious!",
+        "isVerifiedPurchase": true,
+        "createdAt": "2026-01-10T...",
+        "helpful": 15
+      }
+    ],
+    "stats": {
+      "averageRating": 4.5,
+      "totalReviews": 234,
+      "ratingDistribution": {
+        "5": 150,
+        "4": 60,
+        "3": 15,
+        "2": 5,
+        "1": 4
+      }
+    },
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 234,
+      "totalPages": 24
+    }
+  }
+}
+```
+
+---
+
+#### 📜 GET /reviews/orders/:orderId
+Get reviews for an order. **[Public - No authentication required]**
+
+**Response:** `200 OK` (similar structure to item reviews)
+
+---
+
+#### 👤 GET /reviews/my-reviews
+Get all reviews by current customer. **[Protected - Customer]**
+
+**Query Parameters:**
+```typescript
+{
+  page?: number;
+  limit?: number;
+  type?: string;  // item, order (default: all)
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "reviews": [
+      {
+        "id": "uuid",
+        "type": "item",
+        "menuItem": {
+          "id": "uuid",
+          "name": "Pho Bo"
+        },
+        "rating": 5,
+        "comment": "Delicious!",
+        "createdAt": "2026-01-10T..."
+      }
+    ],
+    "pagination": {...}
+  }
+}
+```
+
+---
+
+#### 📋 GET /reviews/reviewable-orders
+Get completed orders with reviewable items for current customer. **[Protected - Customer]**
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "orders": [
+      {
+        "id": "uuid",
+        "orderNumber": "ORD-20260115-...",
+        "completedAt": "2026-01-15T12:00:00Z",
+        "canReviewOrder": true,
+        "orderReviewed": false,
+        "items": [
+          {
+            "menuItemId": "uuid",
+            "menuItemName": "Pho Bo",
+            "menuItemImage": "https://...",
+            "canReview": true,
+            "alreadyReviewed": false
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Business Logic:**
+- Shows only completed orders
+- Indicates which items/orders can be reviewed
+- Shows which ones are already reviewed
+
+---
+
+### Upload Endpoints
+
+#### 📤 POST /uploads/presign
+Generate presigned URL for file upload. **[Protected - Owner, Admin, Waiter]**
+
+**Request:**
+```json
+{
+  "fileName": "menu-item-photo.jpg",
+  "fileType": "image/jpeg",
+  "fileSize": 2048576,
+  "uploadType": "menu_item_image"
+}
+```
+
+**Upload Types:**
+- `menu_item_image` - Menu item photos
+- `category_image` - Category images
+- `tenant_logo` - Restaurant logo
+- `tenant_cover` - Restaurant cover photo
+- `avatar` - User/staff avatar
+
+**Validation:**
+- Max file size: 10MB for images
+- Allowed types: image/jpeg, image/png, image/webp
+- File name sanitization
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "uploadUrl": "https://s3.amazonaws.com/bucket/path?signature=...",
+    "fileUrl": "https://cdn.example.com/uploads/menu-item-photo.jpg",
+    "expiresIn": 300
+  }
+}
+```
+
+**Usage Flow:**
+1. Client requests presigned URL
+2. Client uploads file directly to cloud storage using uploadUrl
+3. Client saves fileUrl to database (e.g., menu item image_url)
+
+**Errors:**
+- `400 Bad Request` - Invalid file type
+- `400 Bad Request` - File size exceeds limit
+
+---
+
+### Voucher Management Endpoints
+
+#### 🎫 POST /vouchers
+Create a new voucher. **[Protected - Owner, Admin]**
+
+**Request:**
+```json
+{
+  "code": "SINHVIEN2026",
+  "name": "Student Discount 2026",
+  "description": "15% off for students",
+  "kind": "staff_only",
+  "discountType": "percent",
+  "percentOff": 15.00,
+  "maxDiscountAmount": 50000,
+  "startsAt": "2026-01-01T00:00:00Z",
+  "endsAt": "2026-12-31T23:59:59Z",
+  "minSubtotal": 100000,
+  "minParty": 1,
+  "maxRedemptionsTotal": 1000,
+  "maxRedemptionsPerCustomer": 5,
+  "autoApply": false,
+  "isPublic": false,
+  "stackable": false,
+  "priority": 0
+}
+```
+
+**Voucher Fields:**
+- `code` (required): Unique voucher code (uppercase, alphanumeric)
+- `name` (required): Display name
+- `description` (optional): Description shown to customers
+- `kind` (required): `automatic`, `staff_only`, `code`
+  - `automatic` - Auto-applied for eligible orders
+  - `staff_only` - Staff applies manually (e.g., student discount)
+  - `code` - Customer enters code
+- `discountType` (required): `percent` or `fixed`
+- `percentOff` (if percent): Percentage off (0.01-100.00)
+- `fixedOff` (if fixed): Fixed amount off in currency units
+- `maxDiscountAmount` (optional): Max discount cap for percent vouchers
+- `startsAt`, `endsAt`: Validity period
+- `minSubtotal` (optional): Minimum order subtotal required
+- `minParty` (optional): Minimum party size (guests)
+- `maxRedemptionsTotal` (optional): Total redemption limit
+- `maxRedemptionsPerCustomer` (optional): Per-customer limit
+- `autoApply` (boolean): Auto-apply if eligible (for automatic kind)
+- `isPublic` (boolean): Show in customer voucher list
+- `stackable` (boolean): Can be used with other vouchers
+- `priority` (number): Priority when multiple auto-apply (higher = applied first)
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "voucher": {
+      "id": "uuid",
+      "code": "SINHVIEN2026",
+      "status": "draft"
+    }
+  }
+}
+```
+
+**Errors:**
+- `409 Conflict` - Voucher code already exists
+- `400 Bad Request` - Invalid discount configuration
+
+---
+
+#### 📋 GET /vouchers
+List all vouchers. **[Protected - Owner, Admin]**
+
+**Query Parameters:**
+```typescript
+{
+  page?: number;
+  limit?: number;
+  status?: string;    // draft, active, paused, archived
+  kind?: string;      // automatic, staff_only, code
+  search?: string;    // Search by name or code
+  sortBy?: string;    // createdAt, startsAt, endsAt, code
+  sortOrder?: string; // asc, desc
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "vouchers": [
+      {
+        "id": "uuid",
+        "code": "SINHVIEN2026",
+        "name": "Student Discount 2026",
+        "kind": "staff_only",
+        "discountType": "percent",
+        "percentOff": 15.00,
+        "status": "active",
+        "startsAt": "2026-01-01T...",
+        "endsAt": "2026-12-31T...",
+        "stats": {
+          "totalRedemptions": 45,
+          "remainingUses": 955
+        }
+      }
+    ],
+    "pagination": {...}
+  }
+}
+```
+
+---
+
+#### 🎟️ GET /vouchers/staff-available
+Get staff-only vouchers available for manual application. **[Protected - Owner, Admin, Waiter]**
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "vouchers": [
+      {
+        "id": "uuid",
+        "code": "SINHVIEN2026",
+        "name": "Student Discount 2026",
+        "description": "15% off for students",
+        "discountType": "percent",
+        "percentOff": 15.00,
+        "maxDiscountAmount": 50000,
+        "minSubtotal": 100000
+      }
+    ]
+  }
+}
+```
+
+**Business Logic:**
+- Shows only active staff-only vouchers
+- Filters by current date (startsAt ≤ now ≤ endsAt)
+- Excludes exhausted vouchers
+
+---
+
+#### 🛍️ GET /vouchers/customer-available
+Get public vouchers for customers. **[Protected - Customer/Guest with session token]**
+
+**Headers:**
+```
+x-table-session-token: <session-token>
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "vouchers": [
+      {
+        "code": "NEWYEAR2026",
+        "name": "New Year Special",
+        "description": "20% off your order",
+        "discountType": "percent",
+        "percentOff": 20.00,
+        "minSubtotal": 200000,
+        "endsAt": "2026-01-31T..."
+      }
+    ]
+  }
+}
+```
+
+**Business Logic:**
+- Shows only active, public vouchers available by code
+- Filters by current date
+- Excludes exhausted vouchers
+- Does not show staff-only or automatic vouchers
+
+---
+
+#### 🔍 GET /vouchers/:id
+Get voucher details. **[Protected - Owner, Admin]**
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "voucher": {
+      "id": "uuid",
+      "code": "SINHVIEN2026",
+      "name": "Student Discount 2026",
+      "description": "15% off for students",
+      "kind": "staff_only",
+      "discountType": "percent",
+      "percentOff": 15.00,
+      "maxDiscountAmount": 50000,
+      "status": "active",
+      "startsAt": "2026-01-01T...",
+      "endsAt": "2026-12-31T...",
+      "minSubtotal": 100000,
+      "maxRedemptionsTotal": 1000,
+      "maxRedemptionsPerCustomer": 5,
+      "stats": {
+        "totalRedemptions": 45,
+        "totalDiscountGiven": 1125000,
+        "remainingUses": 955
+      }
+    }
+  }
+}
+```
+
+---
+
+#### 📝 PATCH /vouchers/:id
+Update voucher. **[Protected - Owner, Admin]**
+
+**Request:** (all fields optional, same as create)
+```json
+{
+  "name": "Student Discount 2026 - Extended",
+  "endsAt": "2027-01-31T23:59:59Z",
+  "status": "active"
+}
+```
+
+**Business Rules:**
+- Cannot change `code` or `kind` after creation
+- Cannot activate voucher with past `endsAt`
+- Can pause active voucher (status → paused)
+
+**Response:** `200 OK`
+
+---
+
+#### 🗑️ DELETE /vouchers/:id
+Archive voucher (soft delete). **[Protected - Owner, Admin]**
+
+**Business Rules:**
+- Soft delete (status → archived)
+- Cannot delete vouchers with active redemptions in pending orders
+- Archived vouchers cannot be reactivated
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Voucher archived successfully"
+}
+```
+
+**Errors:**
+- `400 Bad Request` - Voucher has active redemptions
+
+---
+
+#### 📊 GET /vouchers/:id/redemptions
+Get voucher redemption history. **[Protected - Owner, Admin]**
+
+**Query Parameters:**
+```typescript
+{
+  page?: number;
+  limit?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  source?: string;  // waiter, customer, automatic
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "redemptions": [
+      {
+        "id": "uuid",
+        "order": {
+          "orderNumber": "ORD-20260115-JOES-D-0001",
+          "subtotal": 150000,
+          "table": {
+            "tableNumber": "T-05"
+          }
+        },
+        "source": "waiter",
+        "appliedBy": {
+          "fullName": "Jane Smith",
+          "role": "waiter"
+        },
+        "discountAmount": 22500,
+        "notes": "Verified student ID",
+        "createdAt": "2026-01-15T10:35:00Z"
+      }
+    ],
+    "stats": {
+      "totalRedemptions": 45,
+      "totalDiscountGiven": 1125000,
+      "averageDiscountAmount": 25000,
+      "remainingUses": 955
+    },
+    "pagination": {...}
+  }
+}
 ```
 
 ---
