@@ -8,7 +8,12 @@ import { AuthModule } from '../auth/auth.module';
 import { TablesModule } from '../tables/tables.module';
 
 @Module({
-  imports: [ConfigModule, EventsModule, AuthModule, forwardRef(() => TablesModule)],
+  imports: [
+    ConfigModule,
+    EventsModule,
+    AuthModule,
+    forwardRef(() => TablesModule),
+  ],
   controllers: [PaymentController],
   providers: [PaymentService, PrismaService],
   exports: [PaymentService],

@@ -596,6 +596,8 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
         tenantId: user.tenantId,
+        avatarUrl: user.avatarUrl ?? null,
+        phone: user.phone ?? null,
       },
     };
   }
