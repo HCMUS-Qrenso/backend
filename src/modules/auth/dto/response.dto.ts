@@ -33,6 +33,20 @@ class UserDto {
     nullable: true,
   })
   tenantId: string | null;
+
+  @ApiProperty({
+    description: 'User avatar URL',
+    example: 'https://example.com/avatar.jpg',
+    nullable: true,
+  })
+  avatarUrl?: string | null;
+
+  @ApiProperty({
+    description: 'User phone number',
+    example: '+1234567890',
+    nullable: true,
+  })
+  phone?: string | null;
 }
 
 export class AuthResponseDto {

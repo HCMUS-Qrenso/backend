@@ -6,5 +6,7 @@ export interface AuthResponse {
     fullName: string;
     role: string;
     tenantId?: string;
+    avatarUrl?: string | null;
+    phone?: string | null;
   };
 }
